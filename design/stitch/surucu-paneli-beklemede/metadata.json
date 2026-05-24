@@ -1,0 +1,10 @@
+{
+  "projectTitle": "Live Shuttle Tracker",
+  "projectId": "4512915692073690860",
+  "screenTitle": "Sürücü Paneli - Beklemede (Köşeli Tasarım)",
+  "screenId": "d93be12d31574cb688e41151d51d5f16",
+  "files": {
+    "html": "screen.html",
+    "screenshot": "screen.png"
+  }
+}

@@ -1,17 +1,27 @@
-//
-//  BusTrackerApp.swift
-//  BusTracker
-//
-//  Created by Mert Köksal on 24.05.2026.
-//
-
 import SwiftUI
 
 @main
 struct BusTrackerApp: App {
+#if os(iOS) || os(visionOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+#endif
+
+    @State private var session = UserSession.shared
+    @State private var authService = AuthService.shared
+    @State private var firebaseSession = FirebaseSession.shared
+    @State private var store = ShuttleStore()
+    @State private var locationTracker = LocationTracker()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            FirebaseGateView {
+                ContentView()
+            }
+            .environment(session)
+            .environment(authService)
+            .environment(firebaseSession)
+            .environment(store)
+            .environment(locationTracker)
         }
     }
 }

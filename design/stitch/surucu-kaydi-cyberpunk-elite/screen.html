@@ -1,0 +1,376 @@
+<!DOCTYPE html><html class="dark" lang="tr" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Driver Registration | Neon Tokyo</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#1a0000",
+                        "inverse-primary": "#8c0038",
+                        "on-secondary-container": "#c0fff4",
+                        "on-error-container": "#ffa0a0",
+                        "surface-dim": "#0f0f1a",
+                        "inverse-on-surface": "#0a0a12",
+                        "error-container": "#3d0f0f",
+                        "tertiary": "#ffe04a",
+                        "primary-fixed-dim": "#ff80aa",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "on-primary": "#1a0010",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "on-tertiary-fixed": "#1a1000",
+                        "primary-fixed": "#ffe0ec",
+                        "primary-container": "#b3004e",
+                        "on-primary-container": "#ffe0ec",
+                        "background": "#0a0a12",
+                        "on-background": "#e8e0f0",
+                        "secondary-fixed": "#c0fff4",
+                        "outline-variant": "#302840",
+                        "surface-container-high": "#1e1e30",
+                        "surface-bright": "#1a1a2e",
+                        "surface": "#0f0f1a",
+                        "secondary": "#00ffcc",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "surface-container-low": "#111118",
+                        "tertiary-container": "#665200",
+                        "surface-variant": "#1e1e30",
+                        "primary": "#ff2d78",
+                        "on-secondary-fixed": "#001a1a",
+                        "surface-container-highest": "#28283e",
+                        "on-secondary": "#001a1a",
+                        "secondary-container": "#004d3d",
+                        "on-primary-fixed": "#3d0020",
+                        "surface-tint": "#ff2d78",
+                        "surface-container": "#141422",
+                        "error": "#ff4444",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "on-tertiary-container": "#fff0c0",
+                        "outline": "#5a5068",
+                        "tertiary-fixed": "#fff0c0",
+                        "on-tertiary": "#1a1000",
+                        "on-surface-variant": "#a098b0",
+                        "inverse-surface": "#e8e0f0",
+                        "on-surface": "#e8e0f0",
+                        "surface-container-lowest": "#0a0a12",
+                        "on-secondary-fixed-variant": "#004d4d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #05050a;
+            color: #e8e0f0;
+            overflow-x: hidden;
+        }
+
+        /* Multi-layered Cyberpunk Background */
+        .cyber-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 50% -20%, rgba(255, 45, 120, 0.15), transparent 60%),
+                radial-gradient(circle at 0% 100%, rgba(0, 255, 204, 0.08), transparent 40%);
+        }
+
+        .grid-pattern {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+        }
+
+        .circuit-lines {
+            position: absolute;
+            inset: 0;
+            opacity: 0.1;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10 H90 V90 H10 Z M50 10 V90 M10 50 H90' stroke='%23ff2d78' stroke-width='0.5' fill='none'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+        }
+
+        /* Premium Glassmorphism */
+        .glass-card {
+            background: rgba(15, 15, 26, 0.6);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 45, 120, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 45, 120, 0.5), transparent);
+        }
+
+        /* Scanning Line Animation */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.4), transparent);
+            top: -100%;
+            animation: scan 4s linear infinite;
+            z-index: 2;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+
+        .glow-text-primary { text-shadow: 0 0 12px rgba(255, 45, 120, 0.6); }
+        .glow-text-secondary { text-shadow: 0 0 12px rgba(0, 255, 204, 0.6); }
+
+        /* Custom Input Styling */
+        .input-container {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .input-field {
+            background: rgba(20, 20, 34, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-field:focus {
+            background: rgba(20, 20, 34, 0.8);
+            border-color: rgba(0, 255, 204, 0.5);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.1), inset 0 0 10px rgba(0, 255, 204, 0.05);
+        }
+
+        /* Floating labels/decorative tags */
+        .tech-tag {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            color: rgba(160, 152, 176, 0.5);
+            text-transform: uppercase;
+        }
+
+        .btn-neon {
+            background: #ff2d78;
+            box-shadow: 0 0 20px rgba(255, 45, 120, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-neon::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: rotate(45deg);
+            transition: 0.5s;
+        }
+
+        .btn-neon:hover::after {
+            left: 100%;
+        }
+
+        .btn-neon:active {
+            transform: scale(0.98);
+            box-shadow: 0 0 10px rgba(255, 45, 120, 0.6);
+        }
+    </style>
+</head>
+<body class="font-body">
+<div class="cyber-bg">
+<div class="grid-pattern" style="transform: translate(3.7px, -9.61px);"></div>
+<div class="circuit-lines"></div>
+</div>
+<!-- Header -->
+<header class="fixed top-0 w-full z-50 h-16 flex items-center justify-between px-6 bg-surface/40 backdrop-blur-xl border-b border-white/5">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">menu</span>
+</button>
+<div class="flex flex-col">
+
+<h1 class="font-headline font-extrabold text-sm tracking-widest text-white uppercase">Hesap Oluştur</h1>
+</div>
+</div>
+
+</header>
+<main class="relative z-10 pt-28 pb-12 px-6 flex flex-col items-center max-w-md mx-auto">
+<!-- Hero Visual Section -->
+<div class="w-full text-center mb-12 relative">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-primary/10 rounded-full blur-[60px]"></div>
+<div class="relative inline-block mb-6">
+<div class="w-20 h-20 rounded-2xl border border-secondary/30 bg-secondary/5 flex items-center justify-center relative group">
+<div class="absolute inset-0 border border-secondary/20 rounded-2xl animate-pulse"></div>
+<span class="material-symbols-outlined text-4xl text-secondary glow-text-secondary" style="font-variation-settings: 'FILL' 1;">directions_bus</span>
+<!-- Corner Deco -->
+<div class="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-secondary"></div>
+<div class="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-secondary"></div>
+</div>
+</div>
+<div class="space-y-2">
+<h2 class="font-headline text-4xl font-extrabold text-white tracking-tight glow-text-primary">
+                    Sürücü Kaydı
+                </h2>
+<div class="flex items-center justify-center gap-2">
+<span class="h-px w-8 bg-gradient-to-r from-transparent to-on-surface-variant/30"></span>
+<p class="font-body text-on-surface-variant text-sm tracking-wide">Şehrin geleceğini siz şekillendirin.</p>
+<span class="h-px w-8 bg-gradient-to-l from-transparent to-on-surface-variant/30"></span>
+</div>
+</div>
+</div>
+<!-- Registration Form Container -->
+<div class="w-full glass-card rounded-2xl p-8 relative">
+<div class="scan-line"></div>
+<!-- Technical Labels Deco -->
+<div class="absolute top-4 right-6 flex flex-col items-end opacity-40">
+<span class="tech-tag">REG_TYPE: DRIVER</span>
+<span class="tech-tag">NODE_ID: 0x2A4</span>
+</div>
+<form class="space-y-8" id="driverForm">
+<!-- Name Input -->
+<div class="space-y-2 group">
+<div class="flex justify-between items-end px-1">
+<label class="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant group-focus-within:text-secondary transition-colors" for="adiniz">Adınız</label>
+<span class="tech-tag text-[8px] opacity-30">DATA_STR_UTF8</span>
+</div>
+<div class="input-container">
+<input class="input-field w-full py-4 pl-5 pr-12 rounded-xl text-white placeholder:text-on-surface-variant/30 focus:ring-0 outline-none font-body text-sm" id="adiniz" placeholder="Örn: Eren Yılmaz" type="text">
+<span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/40 group-focus-within:text-secondary transition-colors text-xl">person</span>
+</div>
+</div>
+<!-- Phone Input -->
+<div class="space-y-2 group">
+<div class="flex justify-between items-end px-1">
+<label class="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant group-focus-within:text-primary transition-colors" for="telefon">Telefon</label>
+<span class="tech-tag text-[8px] opacity-30">INT_COUNTRY_90</span>
+</div>
+<div class="input-container">
+<input class="input-field w-full py-4 pl-5 pr-12 rounded-xl text-white placeholder:text-on-surface-variant/30 focus:ring-0 outline-none font-body text-sm" id="telefon" placeholder="+90 5XX XXX XX XX" type="tel">
+<span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/40 group-focus-within:text-primary transition-colors text-xl">call</span>
+</div>
+</div>
+<!-- Service Name Input -->
+<div class="space-y-2 group">
+<div class="flex justify-between items-end px-1">
+<label class="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant group-focus-within:text-tertiary transition-colors" for="servis_adi">Servis Adı</label>
+<span class="tech-tag text-[8px] opacity-30">FLEET_ID</span>
+</div>
+<div class="input-container">
+<input class="input-field w-full py-4 pl-5 pr-12 rounded-xl text-white placeholder:text-on-surface-variant/30 focus:ring-0 outline-none font-body text-sm" id="servis_adi" placeholder="Örn: Metro Trans" type="text">
+<span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/40 group-focus-within:text-tertiary transition-colors text-xl">local_shipping</span>
+</div>
+</div>
+<!-- Create Account Button -->
+<div class="pt-4 relative">
+<div class="absolute -inset-1 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<button class="btn-neon w-full py-5 rounded-xl text-white font-headline font-extrabold tracking-widest text-sm flex items-center justify-center gap-3 transition-all active:scale-95 group" type="submit">
+<span class="uppercase">Hesabı Oluştur</span>
+<span class="material-symbols-outlined text-xl group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">rocket_launch</span>
+</button>
+</div>
+</form>
+<!-- Decorative corner elements for the glass card -->
+<div class="absolute bottom-0 left-0 w-8 h-8 pointer-events-none opacity-20">
+<svg class="w-full h-full fill-none stroke-current text-on-surface-variant" viewBox="0 0 40 40">
+<path d="M0 40 L0 30 M0 40 L10 40" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Back Button -->
+<div class="mt-10 text-center">
+<button class="group relative px-6 py-2" onclick="window.history.back()">
+<div class="flex items-center gap-3 font-label text-[10px] font-bold uppercase tracking-[0.3em] text-on-surface-variant hover:text-secondary transition-all duration-300">
+<span class="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-2">arrow_back</span>
+                    Rol Seçimine Dön
+                </div>
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[1px] bg-secondary group-hover:w-full transition-all duration-500"></div>
+</button>
+</div>
+<!-- System Footer Stats Deco -->
+<div class="mt-16 w-full flex justify-between items-center px-4 opacity-30">
+<div class="flex flex-col">
+<span class="tech-tag">LATENCY: 24MS</span>
+<span class="tech-tag">PKT_LOSS: 0.00%</span>
+</div>
+<div class="h-8 w-[1px] bg-white/10"></div>
+<div class="flex flex-col text-right">
+<span class="tech-tag">VER: 2.0.8_NEON</span>
+<span class="tech-tag">ENC: AES-256</span>
+</div>
+</div>
+</main>
+<!-- Interactive Scripts -->
+<script>
+        // Form submission interaction
+        document.getElementById('driverForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span><span class="uppercase">Doğrulanıyor...</span>';
+            btn.style.boxShadow = '0 0 30px rgba(255, 45, 120, 0.8)';
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined text-secondary glow-text-secondary">verified_user</span><span class="uppercase">Aktif!</span>';
+                btn.style.backgroundColor = '#004d3d';
+                btn.style.boxShadow = '0 0 40px rgba(0, 255, 204, 0.6)';
+                
+                setTimeout(() => {
+                    alert('Kayıt talebiniz başarıyla alındı. Onay süreci için sizinle iletişime geçeceğiz.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    btn.style.backgroundColor = '#ff2d78';
+                    btn.style.boxShadow = '0 0 20px rgba(255, 45, 120, 0.4)';
+                }, 1500);
+            }, 2000);
+        });
+
+        // Parallax depth effect
+        document.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.02;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.02;
+            const grid = document.querySelector('.grid-pattern');
+            if(grid) {
+                grid.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            }
+        });
+    </script>
+
+
+</body></html>

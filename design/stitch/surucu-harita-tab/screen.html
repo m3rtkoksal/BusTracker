@@ -1,0 +1,212 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SU - Driver Navigation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@400;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#1a1000",
+                    "outline-variant": "#302840",
+                    "on-primary-fixed": "#3d0020",
+                    "on-primary-container": "#ffe0ec",
+                    "surface-container-high": "#1e1e30",
+                    "on-secondary-container": "#c0fff4",
+                    "inverse-surface": "#e8e0f0",
+                    "surface": "#0f0f1a",
+                    "surface-bright": "#1a1a2e",
+                    "outline": "#5a5068",
+                    "error-container": "#3d0f0f",
+                    "on-tertiary-container": "#fff0c0",
+                    "tertiary-container": "#665200",
+                    "surface-container-highest": "#28283e",
+                    "on-surface": "#e8e0f0",
+                    "on-secondary-fixed-variant": "#004d4d",
+                    "on-error-container": "#ffa0a0",
+                    "on-secondary-fixed": "#001a1a",
+                    "surface-container-low": "#111118",
+                    "secondary-fixed-dim": "#00e6b8",
+                    "tertiary": "#ffe04a",
+                    "error": "#ff4444",
+                    "background": "#0a0a12",
+                    "on-background": "#e8e0f0",
+                    "on-secondary": "#001a1a",
+                    "tertiary-fixed": "#fff0c0",
+                    "surface-variant": "#1e1e30",
+                    "on-surface-variant": "#a098b0",
+                    "primary-fixed-dim": "#ff80aa",
+                    "on-tertiary-fixed-variant": "#665200",
+                    "inverse-on-surface": "#0a0a12",
+                    "secondary-fixed": "#c0fff4",
+                    "tertiary-fixed-dim": "#ffe04a",
+                    "surface-tint": "#ff2d78",
+                    "surface-container": "#141422",
+                    "on-primary": "#1a0010",
+                    "inverse-primary": "#8c0038",
+                    "surface-container-lowest": "#0a0a12",
+                    "primary-container": "#b3004e",
+                    "on-error": "#1a0000",
+                    "primary-fixed": "#ffe0ec",
+                    "surface-dim": "#0f0f1a",
+                    "secondary-container": "#004d3d",
+                    "primary": "#ff2d78",
+                    "on-tertiary-fixed": "#1a1000",
+                    "on-primary-fixed-variant": "#8c0038",
+                    "secondary": "#00ffcc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0px",
+                    "lg": "0px",
+                    "xl": "0px",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Sora"],
+                    "display": ["Sora"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .neon-glow-primary { text-shadow: 0 0 8px #ff2d78; }
+        .neon-glow-secondary { text-shadow: 0 0 8px #00ffcc; }
+        .neon-border-secondary { border: 1px solid rgba(0, 255, 204, 0.3); box-shadow: inset 0 0 12px rgba(0, 255, 204, 0.1); }
+        .scanline {
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 255, 204, 0.02) 50%);
+            background-size: 100% 4px;
+        }
+        .map-gradient-overlay {
+            background: radial-gradient(circle at center, transparent 0%, #0a0a12 90%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary selection:text-white overflow-hidden h-screen w-screen">
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 w-full z-50 items-center px-4 h-16 bg-surface/80 backdrop-blur-md border-b border-primary/20 shadow-[0_0_15px_rgba(255,45,120,0.1)] grid grid-cols-3">
+<div class="flex items-center justify-self-start">
+
+
+</div>
+<div class="flex items-center bg-surface-container-low px-3 py-1 border border-secondary/20 rounded-sm justify-self-end mr-4">
+<div class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#00ffcc] animate-pulse mr-2"></div>
+<span class="font-label text-[10px] tracking-widest text-secondary neon-glow-secondary">ACTIVE</span>
+</div>
+
+</header>
+<!-- Map Canvas (Main Content) -->
+<main class="relative h-screen w-screen bg-surface-container-lowest overflow-hidden">
+<!-- Pseudo Map Layer -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale contrast-125" data-alt="A dark-themed satellite map of a metropolitan city at night, featuring glowing cyan and pink arterial roads and traffic patterns. The aesthetic is high-contrast and futuristic, with deep black voids for non-urban areas and vibrant neon light trails representing infrastructure. The atmosphere is immersive and cinematic, matching a cyberpunk elite visual style with a cold, electric mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_FHkTyV4MqL82kczJsxVlKAoSh1sRWMusfRB1KaesT-I0EZrE4eAnuJ-4hHJgm1ULB-9AqzfkvYC7-YpgTyTSsQuzdlOj64FhADpTm2pCRC2MDQ3W7WDAzjE2bK870KdT5it6m-ZuNnFtcjgKswq_5Uy7Td7QWF0k8hFqjN_a0Z-FxoT1qqWT5HJ1uiOI0RmTOodLMqETYaSLwQinYOuUq04LqF7mVUyYfRrgBZee8etQ0P5lYmrsPVEp16CRr4jsIwVKrepFe0Q">
+<div class="absolute inset-0 map-gradient-overlay pointer-events-none"></div>
+<div class="absolute inset-0 scanline pointer-events-none"></div>
+</div>
+<!-- Navigation Arrow / Shuttle Icon -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+<div class="relative flex items-center justify-center">
+<div class="absolute w-24 h-24 bg-secondary/10 rounded-full animate-ping"></div>
+<div class="relative w-12 h-12 flex items-center justify-center transform rotate-[45deg] transition-transform duration-700 ease-in-out" id="shuttle-marker" style="transform: rotate(47.5175deg);">
+<span class="material-symbols-outlined text-secondary text-5xl drop-shadow-[0_0_12px_#00ffcc]" style="font-variation-settings: &quot;FILL&quot; 1;">navigation</span>
+</div>
+</div>
+</div>
+<!-- Float Info Cards -->
+<div class="absolute top-20 left-4 z-20 space-y-3 max-w-[200px]">
+<div class="bg-surface-container/80 backdrop-blur-md p-3 neon-border-secondary border-l-4 border-l-secondary">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-tighter">Next Stop</p>
+<h3 class="font-headline font-bold text-on-surface text-sm">Aoyama District</h3>
+<div class="mt-2 flex items-center justify-between">
+<span class="text-secondary font-label text-xs">2.4 KM</span>
+<span class="text-on-surface-variant font-label text-xs">4 MIN</span>
+</div>
+</div>
+</div>
+<div class="absolute top-20 right-4 z-20 space-y-2">
+<button class="w-10 h-10 bg-surface-container/90 flex items-center justify-center border border-outline/30 text-on-surface hover:text-secondary hover:border-secondary transition-all active:scale-90">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 bg-surface-container/90 flex items-center justify-center border border-outline/30 text-on-surface hover:text-secondary hover:border-secondary transition-all active:scale-90">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="w-10 h-10 bg-surface-container/90 flex items-center justify-center border border-outline/30 text-secondary border-secondary/50 transition-all active:scale-90 shadow-[0_0_10px_rgba(0,255,204,0.2)]">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">near_me</span>
+</button>
+</div>
+<!-- Passenger Quick Peek (Bento Style) -->
+<div class="absolute bottom-24 left-4 right-4 z-20 md:max-w-md md:left-auto">
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container/90 backdrop-blur-md p-4 border border-outline/20 flex flex-col justify-between h-24 hover:bg-surface-variant/50 transition-colors">
+<span class="font-label text-[10px] text-on-surface-variant tracking-widest uppercase">Capacity</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-headline font-bold text-primary neon-glow-primary">12</span>
+<span class="text-on-surface-variant text-xs">/ 18</span>
+</div>
+</div>
+<div class="bg-surface-container/90 backdrop-blur-md p-4 border border-outline/20 flex flex-col justify-between h-24 hover:bg-surface-variant/50 transition-colors">
+<span class="font-label text-[10px] text-on-surface-variant tracking-widest uppercase">Alerts</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+<span class="text-on-surface text-xs font-medium">Road Work</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-4 pt-2 bg-surface-container/90 backdrop-blur-xl border-t border-secondary/20 shadow-[0_-4px_20px_rgba(0,255,204,0.15)] rounded-t-full md:rounded-t-none">
+<!-- Yolcular -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-all active:scale-90 duration-200 group">
+<span class="material-symbols-outlined mb-1 group-hover:drop-shadow-[0_0_5px_rgba(0,255,204,0.6)]">group</span>
+<span class="font-label text-xs uppercase tracking-widest">Yolcular</span>
+</button>
+<!-- Harita (Active) -->
+<button class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_5px_rgba(255,45,120,0.6)] active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: &quot;FILL&quot; 1;">map</span>
+<span class="font-label text-xs uppercase tracking-widest">Harita</span>
+</button>
+<!-- Ayarlar -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-all active:scale-90 duration-200 group">
+<span class="material-symbols-outlined mb-1 group-hover:drop-shadow-[0_0_5px_rgba(0,255,204,0.6)]">settings</span>
+<span class="font-label text-xs uppercase tracking-widest">Ayarlar</span>
+</button>
+</nav>
+<script>
+        // Subtle interaction: Rotate the marker slightly to simulate movement
+        const marker = document.getElementById('shuttle-marker');
+        let currentRotation = 45;
+
+        setInterval(() => {
+            const jitter = (Math.random() - 0.5) * 10;
+            marker.style.transform = `rotate(${currentRotation + jitter}deg)`;
+        }, 3000);
+
+        // Map movement simulation
+        const mapImg = document.querySelector('main img');
+        let posX = 0;
+        let posY = 0;
+
+        function animateMap() {
+            posX -= 0.05;
+            posY -= 0.03;
+            mapImg.style.transform = `scale(1.2) translate(${posX}px, ${posY}px)`;
+            requestAnimationFrame(animateMap);
+        }
+        
+        // Uncomment below to enable map drift animation
+        // animateMap();
+    </script>
+
+
+</body></html>

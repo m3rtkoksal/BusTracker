@@ -1,0 +1,24 @@
+{
+  "projectTitle": "Live Shuttle Tracker",
+  "projectId": "4512915692073690860",
+  "screenTitle": "Rol Seçimi - Modern Neon",
+  "screenId": "f25afaf4f5314b82ae1c552cd999ee82",
+  "files": {
+    "html": "screen.html",
+    "screenshot": "screen.png"
+  },
+  "colors": {
+    "background": "#0a0a12",
+    "surface": "#0f0f1a",
+    "surfaceContainer": "#141422",
+    "onSurface": "#e8e0f0",
+    "onSurfaceVariant": "#a098b0",
+    "primary": "#ff2d78",
+    "secondary": "#00ffcc"
+  },
+  "fonts": {
+    "headline": "Sora",
+    "body": "Inter",
+    "label": "Space Grotesk"
+  }
+}

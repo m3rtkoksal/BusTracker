@@ -1,0 +1,10 @@
+{
+  "projectTitle": "Live Shuttle Tracker",
+  "projectId": "4512915692073690860",
+  "screenTitle": "SU - Driver Navigation",
+  "screenId": "f76ea5bcb3aa48b48a1960b6ac83baf8",
+  "files": {
+    "html": "screen.html",
+    "screenshot": "screen.png"
+  }
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="BusTracker">
+    <wpt lat="41.013298" lon="29.224813">
+        <name>Sancaktepe Atatürk Mah.</name>
+        <desc>34785 - Simülatör test konumu</desc>
+    </wpt>
+    <trk>
+        <name>Sancaktepe Loop</name>
+        <trkseg>
+            <trkpt lat="41.013298" lon="29.224813"/>
+            <trkpt lat="41.013450" lon="29.225100"/>
+            <trkpt lat="41.013150" lon="29.224600"/>
+        </trkseg>
+    </trk>
+</gpx>

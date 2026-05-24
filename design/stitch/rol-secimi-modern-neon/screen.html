@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Role Selection - Neon Tokyo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Inter:wght@400;500&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#ff2d78",
+                        "inverse-primary": "#8c0038",
+                        "tertiary-fixed": "#fff0c0",
+                        "primary-fixed-dim": "#ff80aa",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "primary-container": "#b3004e",
+                        "on-background": "#e8e0f0",
+                        "surface-tint": "#ff2d78",
+                        "surface": "#0f0f1a",
+                        "on-surface": "#e8e0f0",
+                        "on-secondary-fixed": "#001a1a",
+                        "background": "#0a0a12",
+                        "secondary-container": "#004d3d",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "surface-container": "#141422",
+                        "surface-container-low": "#111118",
+                        "surface-bright": "#1a1a2e",
+                        "error": "#ff4444",
+                        "tertiary-container": "#665200",
+                        "primary-fixed": "#ffe0ec",
+                        "on-secondary-container": "#c0fff4",
+                        "surface-container-lowest": "#0a0a12",
+                        "on-secondary": "#001a1a",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "on-surface-variant": "#a098b0",
+                        "error-container": "#3d0f0f",
+                        "surface-variant": "#1e1e30",
+                        "on-tertiary-container": "#fff0c0",
+                        "surface-dim": "#0f0f1a",
+                        "surface-container-highest": "#28283e",
+                        "on-primary-fixed": "#3d0020",
+                        "on-primary": "#1a0010",
+                        "inverse-surface": "#e8e0f0",
+                        "outline-variant": "#302840",
+                        "on-tertiary": "#1a1000",
+                        "on-primary-container": "#ffe0ec",
+                        "inverse-on-surface": "#0a0a12",
+                        "on-tertiary-fixed": "#1a1000",
+                        "secondary-fixed": "#c0fff4",
+                        "on-error-container": "#ffa0a0",
+                        "surface-container-high": "#1e1e30",
+                        "secondary": "#00ffcc",
+                        "outline": "#5a5068",
+                        "on-error": "#1a0000",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "tertiary": "#ffe04a",
+                        "on-secondary-fixed-variant": "#004d4d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0a12;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255, 45, 120, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(0, 255, 204, 0.05) 0%, transparent 40%),
+                linear-gradient(rgba(10, 10, 18, 0.8) 0%, rgba(10, 10, 18, 0.8) 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255, 255, 255, 0.01) 1px, rgba(255, 255, 255, 0.01) 2px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 100% 4px;
+        }
+
+        .neon-glow-pink {
+            text-shadow: 0 0 8px #ff2d78;
+        }
+
+        .neon-glow-cyan {
+            text-shadow: 0 0 8px #00ffcc;
+        }
+
+        .glass-card {
+            background: rgba(20, 20, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px);
+            background: rgba(20, 20, 34, 0.8);
+        }
+
+        .card-pink:hover {
+            border-color: rgba(255, 45, 120, 0.5);
+            box-shadow: 0 0 20px rgba(255, 45, 120, 0.2), inset 0 0 12px rgba(255, 45, 120, 0.1);
+        }
+
+        .card-cyan:hover {
+            border-color: rgba(0, 255, 204, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 12px rgba(0, 255, 204, 0.1);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body text-on-surface min-h-screen flex flex-col items-center justify-center p-6 md:p-12 overflow-x-hidden">
+<!-- Background Decoration -->
+<div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="w-full max-w-4xl z-10">
+<!-- Header Section -->
+<header class="text-center mb-16 space-y-4">
+<h1 class="font-headline font-black text-4xl md:text-6xl tracking-tighter text-on-surface">
+                Hesap Oluştur
+            </h1>
+<p class="font-label text-secondary tracking-widest uppercase text-sm md:text-base neon-glow-cyan">
+                Sürücü müsünüz, yolcu mu?
+            </p>
+</header>
+<!-- Role Selection Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+<!-- Driver Card -->
+<button class="group glass-card card-pink rounded-xl p-8 flex flex-col items-center text-center cursor-pointer" onclick="selectRole('driver')">
+<div class="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 transition-all group-hover:scale-110 group-hover:bg-primary/20">
+<span class="material-symbols-outlined text-5xl text-primary neon-glow-pink">steering_wheel_heat</span>
+</div>
+<h3 class="font-headline font-bold text-2xl mb-3 text-on-surface transition-colors group-hover:text-primary">
+                    Sürücüyüm
+                </h3>
+<p class="text-on-surface-variant font-body leading-relaxed max-w-[240px]">
+                    Kendi aracınızla ek gelir elde edin ve topluluğa hizmet verin.
+                </p>
+<div class="mt-8 flex items-center gap-2 font-label text-xs uppercase tracking-widest text-primary opacity-0 translate-y-2 transition-all group-hover:opacity-100 group-hover:translate-y-0">
+                    Seç ve Devam Et <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</div>
+</button>
+<!-- Passenger Card -->
+<button class="group glass-card card-cyan rounded-xl p-8 flex flex-col items-center text-center cursor-pointer" onclick="selectRole('passenger')">
+<div class="w-24 h-24 mb-6 rounded-full bg-secondary/10 flex items-center justify-center border border-secondary/20 transition-all group-hover:scale-110 group-hover:bg-secondary/20">
+<span class="material-symbols-outlined text-5xl text-secondary neon-glow-cyan">
+                        person
+                    </span>
+</div>
+<h3 class="font-headline font-bold text-2xl mb-3 text-on-surface transition-colors group-hover:text-secondary">
+                    Yolcuyum
+                </h3>
+<p class="text-on-surface-variant font-body leading-relaxed max-w-[240px]">
+                    Konforlu ve güvenli yolculuklar için hızlıca araç bulun.
+                </p>
+<div class="mt-8 flex items-center gap-2 font-label text-xs uppercase tracking-widest text-secondary opacity-0 translate-y-2 transition-all group-hover:opacity-100 group-hover:translate-y-0">
+                    Seç ve Devam Et <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</div>
+</button>
+</div>
+<!-- Footer Link -->
+<footer class="text-center">
+<a class="group inline-flex items-center gap-2 font-body text-on-surface-variant hover:text-on-surface transition-colors duration-300" href="/login">
+<span>Zaten hesabım var —</span>
+<span class="text-secondary font-semibold group-hover:underline underline-offset-4 decoration-primary transition-all">Giriş yap</span>
+</a>
+</footer>
+</div>
+<!-- Visual Accents (Scattered Bits) -->
+<div class="absolute top-1/4 right-10 w-2 h-2 bg-primary rounded-full blur-[2px] animate-pulse"></div>
+<div class="absolute bottom-1/4 left-10 w-1.5 h-1.5 bg-secondary rounded-full blur-[2px] animate-pulse" style="animation-delay: 1s;"></div>
+<div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<script>
+        function selectRole(role) {
+            console.log('Role selected:', role);
+            // Interaction feedback
+            const body = document.body;
+            body.style.transition = 'background-color 0.5s ease';
+            if (role === 'driver') {
+                body.style.backgroundColor = '#1a0010';
+            } else {
+                body.style.backgroundColor = '#001a1a';
+            }
+            
+            // Revert after feedback
+            setTimeout(() => {
+                body.style.backgroundColor = '#0a0a12';
+            }, 600);
+        }
+
+        // Micro-interaction for cursor glow
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            const glow = document.createElement('div');
+            glow.className = 'fixed pointer-events-none w-[200px] h-[200px] rounded-full opacity-[0.03] z-[0]';
+            glow.style.left = (x - 100) + 'px';
+            glow.style.top = (y - 100) + 'px';
+            glow.style.background = 'radial-gradient(circle, white 0%, transparent 70%)';
+            document.body.appendChild(glow);
+            
+            setTimeout(() => {
+                glow.remove();
+            }, 500);
+        });
+    </script>
+</body></html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SU Driver Dashboard - Adana Servis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@300;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .glass {
+            background: rgba(20, 20, 34, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 45, 120, 0.2);
+        }
+        .neon-text-pink { text-shadow: 0 0 8px #ff2d78; }
+        .neon-text-cyan { text-shadow: 0 0 8px #00ffcc; }
+        .neon-border-pink { box-shadow: 0 0 15px rgba(255, 45, 120, 0.3), inset 0 0 10px rgba(255, 45, 120, 0.1); }
+        .neon-border-cyan { box-shadow: 0 0 15px rgba(0, 255, 204, 0.3), inset 0 0 10px rgba(0, 255, 204, 0.1); }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Squared aesthetic overrides */
+        .rounded-xl, .rounded-lg, .rounded-full, .rounded-t-xl {
+            border-radius: 0px !important;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#ff80aa",
+                        "on-secondary-fixed-variant": "#004d4d",
+                        "inverse-primary": "#8c0038",
+                        "surface-tint": "#ff2d78",
+                        "on-surface": "#e8e0f0",
+                        "surface-container-highest": "#28283e",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "background": "#0a0a12",
+                        "inverse-surface": "#e8e0f0",
+                        "surface-bright": "#1a1a2e",
+                        "on-error": "#1a0000",
+                        "surface-container": "#141422",
+                        "primary": "#ff2d78",
+                        "on-tertiary-fixed": "#1a1000",
+                        "secondary-fixed": "#c0fff4",
+                        "primary-container": "#b3004e",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "on-primary-fixed": "#3d0020",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "on-surface-variant": "#a098b0",
+                        "secondary-container": "#004d3d",
+                        "on-secondary": "#001a1a",
+                        "on-primary": "#1a0010",
+                        "surface-container-high": "#1e1e30",
+                        "error": "#ff4444",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "tertiary": "#ffe04a",
+                        "on-tertiary": "#1a1000",
+                        "surface-container-lowest": "#0a0a12",
+                        "tertiary-container": "#665200",
+                        "surface-dim": "#0f0f1a",
+                        "secondary": "#00ffcc",
+                        "tertiary-fixed": "#fff0c0",
+                        "on-tertiary-container": "#fff0c0",
+                        "surface-variant": "#1e1e30",
+                        "outline-variant": "#302840",
+                        "outline": "#5a5068",
+                        "on-secondary-fixed": "#001a1a",
+                        "error-container": "#3d0f0f",
+                        "surface": "#0f0f1a",
+                        "inverse-on-surface": "#0a0a12",
+                        "surface-container-low": "#111118",
+                        "on-background": "#e8e0f0",
+                        "primary-fixed": "#ffe0ec",
+                        "on-secondary-container": "#c0fff4",
+                        "on-primary-container": "#ffe0ec",
+                        "on-error-container": "#ffa0a0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body overflow-x-hidden min-h-screen">
+<!-- Solid Anthracite Background -->
+<div class="fixed inset-0 z-0 bg-background"></div>
+<!-- Top Navigation -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-20 bg-background/95 border-b border-primary/30 shadow-[0_0_12px_rgba(255,45,120,0.1)]">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 duration-200 text-on-surface hover:text-secondary transition-all">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</button>
+
+</div>
+<div class="flex items-center gap-4">
+
+
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="relative z-10 pt-24 pb-32 px-6 max-w-lg mx-auto flex flex-col gap-6">
+<!-- Service Title Section -->
+<section class="flex flex-col gap-1">
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant flex items-center gap-2"><span class="w-2 h-2 bg-secondary animate-pulse"></span> Servis Adı</span>
+<h2 class="font-headline font-bold text-3xl text-on-surface tracking-tight">ADANA SERVİS</h2>
+</section>
+<!-- Service Code Card (Squared) -->
+<section class="glass rounded-none p-8 flex flex-col items-center justify-center text-center gap-4 neon-border-pink relative overflow-hidden group">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 blur-3xl"></div>
+<span class="font-label text-xs uppercase text-primary tracking-[0.2em] font-bold neon-text-pink" style="opacity: 1;">Service Access Code</span>
+<div class="font-headline font-extrabold text-5xl tracking-[0.15em] text-on-surface my-2">
+                832D6X
+            </div>
+<div class="flex gap-2 w-full">
+<button class="flex-1 py-3 bg-primary/10 rounded-none border border-primary/40 flex items-center justify-center gap-2 hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="share">share</span>
+<span class="font-label text-[10px] text-primary font-bold uppercase tracking-widest">Share</span>
+</button>
+<button class="flex-1 py-3 bg-surface-container rounded-none border border-outline/30 flex items-center justify-center gap-2 hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="content_copy">content_copy</span>
+<span class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">Copy</span>
+</button>
+</div>
+</section>
+<!-- Bento Grid Stats Section (Squared) -->
+<section class="grid grid-cols-2 gap-4">
+<div class="surface-container rounded-none p-5 border border-secondary/30 flex flex-col gap-2 relative overflow-hidden neon-border-cyan">
+<span class="font-label text-[10px] uppercase text-on-surface-variant tracking-widest">Total Passengers</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline font-bold text-4xl text-secondary neon-text-cyan" style="opacity: 1;">0</span>
+<span class="font-label text-xs text-on-surface-variant">/ 18</span>
+</div>
+<div class="w-full bg-surface-variant h-0.5 mt-1">
+<div class="bg-secondary h-full w-0 shadow-[0_0_8px_#00ffcc]"></div>
+</div>
+</div>
+<div class="surface-container rounded-none p-5 border border-outline-variant/30 flex flex-col gap-2 relative overflow-hidden">
+<span class="font-label text-[10px] uppercase text-on-surface-variant tracking-widest">Waiting List</span>
+<div class="flex items-center gap-2">
+<span class="font-headline font-bold text-4xl text-on-surface">0</span>
+<span class="material-symbols-outlined text-outline-variant" data-icon="hourglass_empty">hourglass_empty</span>
+</div>
+<span class="font-label text-[10px] text-on-surface-variant italic">No pending requests</span>
+</div>
+</section>
+<!-- Empty State Illustration Placeholder -->
+<section class="flex flex-col items-center justify-center py-12 gap-6 opacity-80">
+<div class="relative">
+<div class="w-20 h-20 border border-dashed border-primary/40 flex items-center justify-center relative z-10">
+<span class="material-symbols-outlined text-4xl text-primary/60" data-icon="group_off">group_off</span>
+</div>
+</div>
+<div class="text-center">
+<h3 class="font-headline font-bold text-on-surface-variant uppercase text-sm tracking-widest mb-1">Waiting for Passengers</h3>
+<p class="font-body text-xs text-outline leading-relaxed max-w-[200px] mx-auto">Passengers will appear here once they use the service code above.</p>
+</div>
+</section>
+<!-- CTA Section (Squared) -->
+<section class="mt-4">
+<button class="w-full py-5 rounded-none bg-background border-2 border-primary text-primary font-headline font-extrabold uppercase tracking-[0.2em] neon-border-pink hover:bg-primary/5 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 relative overflow-hidden group">
+<span class="material-symbols-outlined text-2xl" data-icon="bolt">bolt</span>
+                Start Service
+            </button>
+<p class="text-center font-label text-[10px] text-outline mt-4 uppercase tracking-widest">Initialization sequence ready</p>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Squared) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-4 bg-surface-container-lowest border-t border-secondary/20 shadow-[0_-4px_20px_rgba(0,255,204,0.15)]">
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-colors active:translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label text-[10px] uppercase tracking-tighter mt-1">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary drop-shadow-[0_0_10px_rgba(0,255,204,0.7)] font-bold active:translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label text-[10px] uppercase tracking-tighter mt-1">Passengers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-colors active:translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+<span class="font-label text-[10px] uppercase tracking-tighter mt-1">Settings</span>
+</a>
+</nav>
+<script>
+        // Add random flickering effect to neon elements for retro-futuristic vibe
+        function flicker() {
+            const neons = document.querySelectorAll('.neon-text-pink, .neon-text-cyan');
+            neons.forEach(neon => {
+                if(Math.random() > 0.99) {
+                    neon.style.opacity = '0.6';
+                    setTimeout(() => neon.style.opacity = '1', 60);
+                }
+            });
+            requestAnimationFrame(flicker);
+        }
+        flicker();
+    </script>
+
+
+</body></html>

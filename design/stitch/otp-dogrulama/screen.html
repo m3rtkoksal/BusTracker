@@ -1,0 +1,243 @@
+<!DOCTYPE html><html class="dark" lang="tr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Neon Tokyo - OTP Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Inter:wght@400;500&amp;family=Space_Grotesk:wght@300;400;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#004d4d",
+                        "on-secondary": "#001a1a",
+                        "surface-container-high": "#1e1e30",
+                        "secondary": "#00ffcc",
+                        "error-container": "#3d0f0f",
+                        "on-surface-variant": "#a098b0",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "secondary-container": "#004d3d",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "surface": "#0f0f1a",
+                        "surface-container-low": "#111118",
+                        "tertiary-fixed": "#fff0c0",
+                        "secondary-fixed": "#c0fff4",
+                        "inverse-surface": "#e8e0f0",
+                        "tertiary-container": "#665200",
+                        "on-surface": "#e8e0f0",
+                        "on-secondary-container": "#c0fff4",
+                        "inverse-primary": "#8c0038",
+                        "inverse-on-surface": "#0a0a12",
+                        "error": "#ff4444",
+                        "surface-tint": "#ff2d78",
+                        "on-tertiary": "#1a1000",
+                        "background": "#0a0a12",
+                        "primary-fixed-dim": "#ff80aa",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "on-tertiary-fixed": "#1a1000",
+                        "on-primary": "#1a0010",
+                        "on-background": "#e8e0f0",
+                        "surface-container-highest": "#28283e",
+                        "surface-variant": "#1e1e30",
+                        "surface-container-lowest": "#0a0a12",
+                        "surface-bright": "#1a1a2e",
+                        "primary": "#ff2d78",
+                        "surface-container": "#141422",
+                        "on-error": "#1a0000",
+                        "on-primary-fixed": "#3d0020",
+                        "on-error-container": "#ffa0a0",
+                        "surface-dim": "#0f0f1a",
+                        "outline": "#5a5068",
+                        "on-tertiary-container": "#fff0c0",
+                        "primary-container": "#b3004e",
+                        "primary-fixed": "#ffe0ec",
+                        "on-secondary-fixed": "#001a1a",
+                        "tertiary": "#ffe04a",
+                        "on-primary-container": "#ffe0ec",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "outline-variant": "#302840"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .neon-glow-primary { text-shadow: 0 0 8px #ff2d78; }
+        .neon-glow-secondary { text-shadow: 0 0 8px #00ffcc; }
+        .neon-border-glow { 
+            box-shadow: 0 0 16px rgba(255, 45, 120, 0.2), inset 0 0 12px rgba(255, 45, 120, 0.1);
+            border-color: rgba(255, 45, 120, 0.4);
+        }
+        .btn-glow:hover { box-shadow: 0 0 20px rgba(255, 45, 120, 0.6); }
+        
+        .grid-bg {
+            background-image: linear-gradient(rgba(255, 45, 120, 0.05) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(255, 45, 120, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 10;
+            background: linear-gradient(0deg, rgba(0, 255, 204, 0) 0%, rgba(0, 255, 204, 0.05) 50%, rgba(0, 255, 204, 0) 100%);
+            position: fixed;
+            top: -100px;
+            pointer-events: none;
+            animation: scan 6s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: -100px; }
+            100% { top: 100%; }
+        }
+
+        .otp-input:focus {
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+            border-color: #00ffcc;
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen overflow-hidden">
+<div class="scanline"></div>
+<!-- Backdrop Content (Simulating deep blurred registration grid) -->
+<div class="fixed inset-0 grid-bg opacity-30 z-0"></div>
+<div class="fixed inset-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
+<h1 class="font-display font-black text-9xl tracking-tighter text-primary/10">SYSTEM_AUTH</h1>
+</div>
+<!-- Main Container -->
+<div class="relative z-10 flex flex-col min-h-screen">
+<!-- Header Metadata -->
+<div class="p-6 flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<span class="font-label text-[10px] text-secondary tracking-widest uppercase neon-glow-secondary">Secure_Channel_Active</span>
+<span class="font-label text-[10px] text-on-surface-variant/50 tracking-widest uppercase">Node: TK-990-SU</span>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-label text-[10px] text-tertiary tracking-widest uppercase neon-glow-tertiary" id="timer">TTL: 55s</span>
+<span class="font-label text-[10px] text-on-surface-variant/50 tracking-widest uppercase">Session: VER_0.94</span>
+</div>
+</div>
+<!-- Spacer -->
+<div class="flex-grow"></div>
+<!-- Bottom Sheet Wrapper -->
+<div class="w-full max-w-lg mx-auto transform transition-transform duration-500 ease-out">
+<div class="bg-surface-container-low/80 backdrop-blur-2xl border-t border-x border-primary/30 rounded-t-[2.5rem] px-8 pt-10 pb-12 neon-border-glow shadow-2xl relative overflow-hidden">
+<!-- Bottom Sheet Handle -->
+<div class="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-surface-container-highest rounded-full"></div>
+<!-- Animated Message Icon -->
+<div class="flex justify-center mb-8">
+<div class="relative group">
+<div class="absolute inset-0 bg-secondary/20 rounded-full blur-xl group-hover:bg-secondary/40 transition-all"></div>
+<div class="relative w-20 h-20 bg-surface-container-high border border-secondary/30 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-secondary neon-glow-secondary" style="font-variation-settings: 'FILL' 1;">mark_chat_unread</span>
+</div>
+</div>
+</div>
+<!-- Content Hierarchy -->
+<div class="text-center mb-10">
+<h2 class="font-headline font-bold text-3xl text-on-surface mb-3 tracking-tight">Kod Doğrulama</h2>
+<p class="font-body text-on-surface-variant text-sm max-w-[280px] mx-auto leading-relaxed">
+<span class="text-secondary/80 font-mono">+90 532 123 45 67</span> numarasına tek kullanımlık kod gönderdik.
+                    </p>
+</div>
+<!-- Segmented OTP Input -->
+<div class="flex justify-between gap-2 mb-10 max-w-xs mx-auto" id="otp-container" style="gap: 8px;">
+<input autocomplete="one-time-code" class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+<input class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+<input class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+<input class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+<input class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+<input class="otp-input w-12 h-14 rounded-xl text-center text-xl font-headline font-bold text-primary transition-all duration-200" maxlength="1" type="text">
+</div>
+<!-- Primary Action -->
+<button class="w-full py-5 bg-surface-container-high border border-primary/50 text-primary font-headline font-extrabold uppercase tracking-widest text-sm rounded-xl btn-glow flex items-center justify-center gap-3 transition-all active:scale-95 group overflow-hidden relative">
+<span class="relative z-10 neon-glow-primary">Onayla ve Oluştur</span>
+<span class="material-symbols-outlined relative z-10 text-xl group-hover:translate-x-1 transition-transform">bolt</span>
+<!-- Button inner shine effect -->
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+</button>
+<!-- Footer Text -->
+<div class="mt-8 text-center">
+<button class="text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant hover:text-secondary transition-colors group">
+                        Kodu tekrar gönder <span class="text-secondary/50 group-hover:text-secondary">(34s)</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative Corner Decals -->
+<div class="fixed bottom-0 left-0 p-4 pointer-events-none opacity-20 hidden md:block">
+<div class="w-24 h-24 border-l-2 border-b-2 border-primary/40 rounded-bl-3xl"></div>
+</div>
+<div class="fixed top-0 right-0 p-4 pointer-events-none opacity-20 hidden md:block">
+<div class="w-24 h-24 border-r-2 border-t-2 border-secondary/40 rounded-tr-3xl"></div>
+</div>
+<script>
+        // Micro-interactions for OTP Inputs
+        const inputs = document.querySelectorAll('.otp-input');
+        
+        inputs.forEach((input, index) => {
+            input.addEventListener('keyup', (e) => {
+                if (e.key >= 0 && e.key <= 9) {
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                } else if (e.key === 'Backspace') {
+                    if (index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                }
+            });
+
+            // Focus animation effect
+            input.addEventListener('focus', () => {
+                input.parentElement.style.gap = '12px';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.style.gap = '8px';
+            });
+        });
+
+        // Simple Countdown logic
+        let timeLeft = 120;
+        const timerEl = document.getElementById('timer');
+        const countdown = setInterval(() => {
+            if(timeLeft <= 0) clearInterval(countdown);
+            timeLeft--;
+            timerEl.textContent = `TTL: ${timeLeft}s`;
+            if(timeLeft < 30) timerEl.classList.add('text-error');
+        }, 1000);
+
+        // Visual feedback for successful input simulation
+        document.querySelector('button').addEventListener('click', () => {
+            const btnText = document.querySelector('button span.relative');
+            btnText.textContent = 'SYSTEM_VERIFYING...';
+            setTimeout(() => {
+                btnText.textContent = 'ACCESS_GRANTED';
+                btnText.classList.remove('text-primary');
+                btnText.classList.add('text-secondary');
+            }, 1500);
+        });
+    </script>
+
+
+</body></html>

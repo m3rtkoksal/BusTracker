@@ -6,13 +6,34 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A6DF1CCF2FC3394E008B17BC /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1C752FC33800008B17BC /* FirebaseCore */; };
+		A6DF1CD02FC3394E008B17BC /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1C762FC33800008B17BC /* FirebaseFirestore */; };
+		A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1CD22FC3394E008B17BC /* FirebaseAuth */; };
+		A6DF1D042FC34100008B17BC /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D052FC34100008B17BC /* FirebaseMessaging */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A6DF1C642FC33796008B17BC /* BusTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BusTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A6DF1D032FC34000008B17BC /* Exceptions for "BusTracker" folder in "BusTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				SimulatorLocations/SancaktepeAtaturk.gpx,
+			);
+			target = A6DF1C632FC33796008B17BC /* BusTracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A6DF1C662FC33796008B17BC /* BusTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A6DF1D032FC34000008B17BC /* Exceptions for "BusTracker" folder in "BusTracker" target */,
+			);
 			path = BusTracker;
 			sourceTree = "<group>";
 		};
@@ -23,6 +44,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6DF1D042FC34100008B17BC /* FirebaseMessaging in Frameworks */,
+				A6DF1CD02FC3394E008B17BC /* FirebaseFirestore in Frameworks */,
+				A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */,
+				A6DF1CCF2FC3394E008B17BC /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +90,10 @@
 			);
 			name = BusTracker;
 			packageProductDependencies = (
+				A6DF1C752FC33800008B17BC /* FirebaseCore */,
+				A6DF1C762FC33800008B17BC /* FirebaseFirestore */,
+				A6DF1CD22FC3394E008B17BC /* FirebaseAuth */,
+				A6DF1D052FC34100008B17BC /* FirebaseMessaging */,
 			);
 			productName = BusTracker;
 			productReference = A6DF1C642FC33796008B17BC /* BusTracker.app */;
@@ -94,6 +123,9 @@
 			);
 			mainGroup = A6DF1C5B2FC33795008B17BC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A6DF1C652FC33796008B17BC /* Products */;
 			projectDirPath = "";
@@ -246,6 +278,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 79G38KD48M;
@@ -254,6 +287,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BusTracker/Info.plist;
+				INFOPLIST_KEY_FirebaseAppDelegateProxyEnabled = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Servis aktifken uygulama arka plandayken de konumunuzu yolcularla paylaşmak için \"Her Zaman\" konum izni gereklidir.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Servis konumunuzu yolcularla paylaşmak için konum erişimi gereklidir.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -269,7 +306,8 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechbology.BusTracker;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechnology.BusTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -290,6 +328,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 79G38KD48M;
@@ -298,6 +337,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BusTracker/Info.plist;
+				INFOPLIST_KEY_FirebaseAppDelegateProxyEnabled = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Servis aktifken uygulama arka plandayken de konumunuzu yolcularla paylaşmak için \"Her Zaman\" konum izni gereklidir.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Servis konumunuzu yolcularla paylaşmak için konum erişimi gereklidir.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -313,7 +356,8 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechbology.BusTracker;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechnology.BusTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -351,6 +395,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A6DF1C752FC33800008B17BC /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		A6DF1C762FC33800008B17BC /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		A6DF1CD22FC3394E008B17BC /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		A6DF1D052FC34100008B17BC /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A6DF1C5C2FC33796008B17BC /* Project object */;
 }
