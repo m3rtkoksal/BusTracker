@@ -103,7 +103,7 @@ final class RegistrationFormViewModel: BaseViewModel {
             session.save(profile)
             await NotificationService.shared.requestPermissionAndRegister()
             await NotificationService.shared.saveTokenToProfile(
-                groupID: profile.groupID,
+                groupID: profile.groupID ?? "",
                 memberID: profile.memberID
             )
         } catch {

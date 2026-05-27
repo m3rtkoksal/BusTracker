@@ -7,6 +7,7 @@ struct DriverHomeView: BaseView {
     @Environment(LocationTracker.self) private var locationTracker
     @State var viewModel = DriverHomeViewModel()
     @State var tabBar = DriverTabBarController()
+    @State private var showMyServices = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -41,6 +42,10 @@ struct DriverHomeView: BaseView {
         .onAppear {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
         }
+        .sheet(isPresented: $showMyServices) {
+            MyServicesView()
+                .environment(session)
+        }
     }
 
     // MARK: - Top Bar
@@ -50,6 +55,9 @@ struct DriverHomeView: BaseView {
             Image(systemName: "square.grid.2x2")
                 .font(.title3)
                 .foregroundStyle(NeonTheme.onSurface)
+                .onTapGesture {
+                    showMyServices = true
+                }
             Spacer()
             if store.isTripActive {
                 HStack(spacing: 6) {

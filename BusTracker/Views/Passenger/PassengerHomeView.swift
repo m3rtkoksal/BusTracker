@@ -8,6 +8,7 @@ struct PassengerHomeView: BaseView {
     @State var viewModel = PassengerHomeViewModel()
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
+    @State private var showMyServices = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -54,6 +55,10 @@ struct PassengerHomeView: BaseView {
         .onChange(of: store.isTripActive) { wasActive, isActive in
             viewModel.onTripActiveChanged(wasActive: wasActive, isActive: isActive)
         }
+        .sheet(isPresented: $showMyServices) {
+            MyServicesView()
+                .environment(session)
+        }
     }
 
     // MARK: - Top Bar
@@ -63,6 +68,9 @@ struct PassengerHomeView: BaseView {
             Image(systemName: "square.grid.2x2")
                 .font(.title3)
                 .foregroundStyle(NeonTheme.onSurface)
+                .onTapGesture {
+                    showMyServices = true
+                }
 
             Spacer()
 

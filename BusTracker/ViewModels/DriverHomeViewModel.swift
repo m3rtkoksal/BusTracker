@@ -6,7 +6,7 @@ import UIKit
 #endif
 
 struct DriverPassengerStats {
-    let total: Int
+    let total: Int = 15          // Sabit maksimum kapasite
     let coming: Int
     let notComing: Int
     let unknown: Int
@@ -30,7 +30,6 @@ final class DriverHomeViewModel: BaseViewModel {
     func passengerStats(from members: [ShuttleMember]) -> DriverPassengerStats {
         let passengers = members.filter { $0.role == .passenger }
         return DriverPassengerStats(
-            total: passengers.count,
             coming: passengers.filter { $0.attendance == .coming }.count,
             notComing: passengers.filter { $0.attendance == .notComing }.count,
             unknown: passengers.filter { $0.attendance == .unknown }.count
@@ -56,16 +55,18 @@ final class DriverHomeViewModel: BaseViewModel {
     }
 
     func toggleTrip(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
-        guard let profile = session.profile else { return }
+        guard let profile = session.profile,
+              let groupID = profile.groupID else { return }
+        let driverName = profile.name
 
         if store.isTripActive {
-            await store.stopTrip(groupID: profile.groupID, driverName: profile.name, locationTracker: locationTracker)
+            await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
         } else {
             locationTracker.requestBackgroundPermission()
             do {
                 try await store.startTrip(
-                    groupID: profile.groupID,
-                    driverName: profile.name,
+                    groupID: groupID,
+                    driverName: driverName,
                     locationTracker: locationTracker
                 )
                 showSuccess("Servis başlatıldı. Yolcular bilgilendirildi.")
@@ -76,8 +77,11 @@ final class DriverHomeViewModel: BaseViewModel {
     }
 
     func signOut(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
-        if store.isTripActive, let profile = session.profile {
-            await store.stopTrip(groupID: profile.groupID, driverName: profile.name, locationTracker: locationTracker)
+        if store.isTripActive,
+           let profile = session.profile,
+           let groupID = profile.groupID {
+            let driverName = profile.name
+            await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
         }
         store.stopListening()
         await session.signOut()
@@ -90,3 +94,4 @@ final class DriverHomeViewModel: BaseViewModel {
 #endif
     }
 }
+

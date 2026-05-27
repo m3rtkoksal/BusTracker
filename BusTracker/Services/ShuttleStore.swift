@@ -177,6 +177,8 @@ final class ShuttleStore {
             name: trimmedDriver,
             phoneNumber: phone,
             role: .driver,
+            groupIDs: [groupID],
+            activeGroupIDs: [groupID],
             groupID: groupID,
             groupCode: code,
             groupName: trimmedName
@@ -231,6 +233,8 @@ final class ShuttleStore {
             name: trimmedName,
             phoneNumber: phone,
             role: .passenger,
+            groupIDs: [groupDoc.documentID],
+            activeGroupIDs: [groupDoc.documentID],
             groupID: groupDoc.documentID,
             groupCode: groupCode,
             groupName: groupName
@@ -335,6 +339,16 @@ final class ShuttleStore {
         response["name"] = name
         latestAttendanceResponses[memberID] = response
         applyAttendance(from: ["responses": latestAttendanceResponses])
+
+        // Yolcu "GELMİYORUM" seçerse, kendi biniş noktasını haritadan kaldır
+        if status == .notComing {
+            try? await db.collection("groups").document(groupID)
+                .collection("morningPickups").document(memberID)
+                .delete()
+
+            // Local state'ten de hemen çıkar
+            morningPickups.removeAll { $0.memberID == memberID }
+        }
     }
 
     private func handleLocationUpdate(_ location: CLLocation) async {
@@ -551,11 +565,32 @@ final class ShuttleStore {
             let name = data["name"] as? String,
             let phoneNumber = data["phoneNumber"] as? String,
             let roleRaw = data["role"] as? String,
-            let role = MemberRole(rawValue: roleRaw),
-            let groupID = data["groupID"] as? String,
-            let groupCode = data["groupCode"] as? String,
-            let groupName = data["groupName"] as? String
+            let role = MemberRole(rawValue: roleRaw)
         else { return nil }
+
+        // Support both old single-group format and new multi-group format
+        let groupIDs: [String]
+        let activeGroupIDs: [String]
+        let legacyGroupID: String?
+        let legacyGroupCode: String?
+        let legacyGroupName: String?
+
+        if let ids = data["groupIDs"] as? [String] {
+            groupIDs = ids
+            activeGroupIDs = data["activeGroupIDs"] as? [String] ?? ids
+            legacyGroupID = data["groupID"] as? String
+            legacyGroupCode = data["groupCode"] as? String
+            legacyGroupName = data["groupName"] as? String
+        } else if let groupID = data["groupID"] as? String {
+            // Old format migration
+            groupIDs = [groupID]
+            activeGroupIDs = [groupID]
+            legacyGroupID = groupID
+            legacyGroupCode = data["groupCode"] as? String
+            legacyGroupName = data["groupName"] as? String
+        } else {
+            return nil
+        }
 
         return UserProfile(
             userID: userID,
@@ -563,9 +598,11 @@ final class ShuttleStore {
             name: name,
             phoneNumber: phoneNumber,
             role: role,
-            groupID: groupID,
-            groupCode: groupCode,
-            groupName: groupName
+            groupIDs: groupIDs,
+            activeGroupIDs: activeGroupIDs,
+            groupID: legacyGroupID,
+            groupCode: legacyGroupCode,
+            groupName: legacyGroupName
         )
     }
 

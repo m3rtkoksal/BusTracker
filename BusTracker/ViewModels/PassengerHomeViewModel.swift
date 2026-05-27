@@ -56,7 +56,7 @@ final class PassengerHomeViewModel: BaseViewModel {
 
         do {
             try await store.setAttendance(
-                groupID: profile.groupID,
+                groupID: profile.groupID ?? "",
                 memberID: profile.memberID,
                 name: profile.name,
                 status: status
@@ -95,7 +95,7 @@ final class PassengerHomeViewModel: BaseViewModel {
 
         do {
             try await store.setMorningPickup(
-                groupID: profile.groupID,
+                groupID: profile.groupID ?? "",
                 memberID: profile.memberID,
                 name: profile.name,
                 coordinate: coordinate

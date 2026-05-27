@@ -6,9 +6,20 @@ struct UserProfile: Codable {
     let name: String
     let phoneNumber: String
     let role: MemberRole
-    let groupID: String
-    let groupCode: String
-    let groupName: String
+
+    // Yeni çoklu grup desteği
+    let groupIDs: [String]
+    let activeGroupIDs: [String]
+
+    // Geriye uyumluluk için (geçici)
+    let groupID: String?
+    let groupCode: String?
+    let groupName: String?
+
+    // Kolay erişim için
+    var primaryGroupID: String {
+        activeGroupIDs.first ?? groupIDs.first ?? groupID ?? ""
+    }
 }
 
 @MainActor

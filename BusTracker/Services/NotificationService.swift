@@ -45,9 +45,8 @@ final class NotificationService: NSObject {
 #endif
     }
 
-    func saveTokenToProfile(groupID: String, memberID: String) async {
-        guard let token = Messaging.messaging().fcmToken,
-              let userID = Auth.auth().currentUser?.uid else { return }
+    func saveTokenToProfile(token: String, groupID: String, memberID: String) async {
+        guard let userID = Auth.auth().currentUser?.uid else { return }
 
         let db = Firestore.firestore()
         try? await db.collection("users").document(userID).setData([
@@ -62,6 +61,11 @@ final class NotificationService: NSObject {
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
     }
+
+    func saveTokenToProfile(groupID: String, memberID: String) async {
+        guard let token = Messaging.messaging().fcmToken else { return }
+        await saveTokenToProfile(token: token, groupID: groupID, memberID: memberID)
+    }
 }
 
 extension NotificationService: UNUserNotificationCenterDelegate {
@@ -75,10 +79,17 @@ extension NotificationService: UNUserNotificationCenterDelegate {
 
 extension NotificationService: MessagingDelegate {
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        guard fcmToken != nil else { return }
+        // Ensure we received a valid token and update stored token if needed
+        guard let token = fcmToken else { return }
+        // Optionally, you could compare with Messaging.messaging().fcmToken, but saving on callback is fine
         Task { @MainActor in
+            // You might want to persist the token immediately to Firestore under the current user/group
             if let profile = UserSession.shared.profile {
-                await self.saveTokenToProfile(groupID: profile.groupID, memberID: profile.memberID)
+                if let groupID = profile.groupID as? String, let memberID = profile.memberID as? String {
+                    if let token = fcmToken ?? Messaging.messaging().fcmToken {
+                        await self.saveTokenToProfile(token: token, groupID: groupID, memberID: memberID)
+                    }
+                }
             }
         }
     }

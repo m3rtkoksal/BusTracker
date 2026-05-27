@@ -67,6 +67,7 @@ struct OTPVerificationView: View {
     let onSubmit: () -> Void
     var onResend: (() -> Void)?
     var onDismiss: () -> Void
+    var submitButtonTitle: String = "ONAYLA VE OLUŞTUR"
 
     @State private var ttlSeconds = 120
     @State private var resendCooldown = 34
@@ -239,9 +240,11 @@ struct OTPVerificationView: View {
                     ProgressView().tint(NeonTheme.primary)
                 } else {
                     HStack(spacing: 10) {
-                        Text("ONAYLA VE OLUŞTUR")
+                        Text(submitButtonTitle)
                             .tracking(1.5)
-                        Image(systemName: "bolt.fill")
+                        if submitButtonTitle == "ONAYLA VE OLUŞTUR" {
+                            Image(systemName: "bolt.fill")
+                        }
                     }
                     .foregroundStyle(NeonTheme.primary)
                     .shadow(color: NeonTheme.primary.opacity(0.5), radius: 6)

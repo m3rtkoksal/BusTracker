@@ -48,10 +48,20 @@ final class LoginViewModel: BaseViewModel {
             if let profile = try await store.fetchUserProfile(userID: userID) {
                 session.save(profile)
                 await NotificationService.shared.requestPermissionAndRegister()
-                await NotificationService.shared.saveTokenToProfile(
-                    groupID: profile.groupID,
-                    memberID: profile.memberID
-                )
+
+                let groupID = profile.groupID ?? profile.primaryGroupID
+
+                if !groupID.isEmpty {
+                    await NotificationService.shared.saveTokenToProfile(
+                        groupID: groupID,
+                        memberID: profile.memberID
+                    )
+                } else {
+                    showError("Profil bilgileri eksik. Lütfen tekrar giriş yapın.")
+                    try? authService.signOut()
+                    codeSent = false
+                    otpCode = ""
+                }
             } else {
                 showError("Bu numarayla kayıtlı hesap bulunamadı. Hesap oluşturun.")
                 try? authService.signOut()
@@ -84,115 +94,176 @@ struct LoginView: BaseView {
     }
 
     func content() -> some View {
-        VStack(spacing: 24) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.blue)
+        ZStack {
+            NeonBackgroundView()
+                .ignoresSafeArea()
 
-            Text(viewModel.codeSent ? "Doğrulama kodunu girin" : "Giriş yapın")
-                .font(.title3.bold())
+            ScrollView {
+                VStack(spacing: 32) {
+                    // Hero matching Android Login + iOS NeonRegistrationHero style
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(NeonTheme.secondary.opacity(0.12))
+                                .frame(width: 96, height: 96)
+                                .blur(radius: 24)
 
-            if viewModel.codeSent {
-                otpStep
-            } else {
-                phoneStep
-            }
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(NeonTheme.secondary.opacity(0.08))
+                                .frame(width: 80, height: 80)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .strokeBorder(NeonTheme.secondary.opacity(0.35), lineWidth: 1)
+                                }
 
-            Spacer()
+                            Image(systemName: "person.badge.key.fill")
+                                .font(.system(size: 34, weight: .medium))
+                                .foregroundStyle(NeonTheme.secondary)
+                                .shadow(color: NeonTheme.secondary.opacity(0.6), radius: 8)
+                        }
 
-            Button("Hesap oluştur", action: viewModel.onRegisterTapped)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(24)
-    }
+                        Text("Giriş Yap")
+                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .foregroundStyle(NeonTheme.onSurface)
 
-    private var phoneStep: some View {
-        VStack(spacing: 16) {
-            PhoneFormField(title: "Telefon", text: $viewModel.phone)
-
-            Button {
-                Task { await viewModel.sendCode(authService: authService) }
-            } label: {
-                if authService.isLoading {
-                    ProgressView().frame(maxWidth: .infinity)
-                } else {
-                    Text("Kod Gönder").frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!viewModel.canSendCode || authService.isLoading)
-        }
-    }
-
-    private var otpStep: some View {
-        VStack(spacing: 16) {
-            Text("\(viewModel.formattedPhone) numarasına kod gönderildi.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            FormField(title: "Doğrulama kodu", text: $viewModel.otpCode, prompt: "6 haneli kod", keyboard: .numberPad)
-
-            Button {
-                Task { await viewModel.login(authService: authService, store: store, session: session) }
-            } label: {
-                Text("Giriş Yap").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!viewModel.canLogin || authService.isLoading || viewModel.isLoading)
-
-            Button("Numarayı değiştir", action: viewModel.resetPhoneEntry)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-#if canImport(UIKit)
-struct FormField: View {
-    let title: String
-    @Binding var text: String
-    let prompt: String
-    var keyboard: UIKeyboardType = .default
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.medium))
-            TextField(prompt, text: $text)
-                .keyboardType(keyboard)
-                .textFieldStyle(.roundedBorder)
-        }
-    }
-}
-
-struct PhoneFormField: View {
-    let title: String
-    @Binding var text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.medium))
-            HStack(spacing: 6) {
-                Text("+90")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                TextField("5321234567", text: $text)
-                    .keyboardType(.phonePad)
-                    .textContentType(.telephoneNumber)
-                    .onChange(of: text) { _, newValue in
-                        text = Self.normalizeLocalDigits(newValue)
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(NeonTheme.onSurfaceVariant.opacity(0.3))
+                                .frame(width: 32, height: 1)
+                            Text("Mevcut hesabınıza telefon numaranızla giriş yapın.")
+                                .font(.subheadline)
+                                .foregroundStyle(NeonTheme.onSurfaceVariant)
+                                .multilineTextAlignment(.center)
+                            Rectangle()
+                                .fill(NeonTheme.onSurfaceVariant.opacity(0.3))
+                                .frame(width: 32, height: 1)
+                        }
+                        .padding(.horizontal, 8)
                     }
+                    .padding(.top, 12)
+
+                    // Glass form card
+                    NeonGlassCard(accent: NeonTheme.secondary) {
+                        VStack(spacing: 20) {
+                            // Phone input with +90 (Android style)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Telefon")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(NeonTheme.onSurface)
+
+                                HStack(spacing: 10) {
+                                    Text("+90")
+                                        .font(.body.weight(.medium))
+                                        .foregroundStyle(NeonTheme.secondary)
+
+                                    TextField("532 123 45 67", text: $viewModel.phone)
+                                        .keyboardType(.phonePad)
+                                        .textContentType(.telephoneNumber)
+                                        .font(.body)
+                                        .foregroundStyle(NeonTheme.onSurface)
+                                        .onChange(of: viewModel.phone) { _, newValue in
+                                            viewModel.phone = Self.normalizeLocalDigits(newValue)
+                                        }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(NeonTheme.surfaceBright.opacity(0.85))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(NeonTheme.outline.opacity(0.4), lineWidth: 1)
+                                )
+                            }
+
+                            Text("Hesabınız varsa doğrulama kodu ile giriş yapabilirsiniz.")
+                                .font(.caption)
+                                .foregroundStyle(NeonTheme.onSurfaceVariant)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Main action button - filled "yeşil" (secondary) background like before,
+                            // refined thin text, high contrast black text on bright fill
+                            Button {
+                                Task { await viewModel.sendCode(authService: authService) }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if authService.isLoading {
+                                        ProgressView()
+                                            .tint(.black)
+                                    } else {
+                                        Text("GİRİŞ YAP")
+                                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                                            .tracking(1.5)
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                    }
+                                }
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(NeonTheme.secondary)
+                            )
+                            .shadow(color: NeonTheme.secondary.opacity(0.4), radius: 12, y: 4)
+                            .scaleEffect(1.0)
+                            .disabled(!viewModel.canSendCode || authService.isLoading)
+                            .opacity(viewModel.canSendCode ? 1 : 0.55)
+                        }
+                        .padding(24)
+                    }
+
+                    // Bottom link
+                    Button(action: viewModel.onRegisterTapped) {
+                        HStack(spacing: 4) {
+                            Text("Hesabın yok mu?")
+                                .foregroundStyle(NeonTheme.onSurfaceVariant)
+                            Text("Hesap oluştur")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(NeonTheme.secondary)
+                        }
+                        .font(.subheadline)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 4)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 7)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color(.systemGray4), lineWidth: 0.5)
-            )
+        }
+        .overlay {
+            // Beautiful OTP sheet overlay (same as registration)
+            if viewModel.codeSent {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            // optional: allow tap outside to cancel OTP
+                            // viewModel.resetPhoneEntry()
+                        }
+
+                    OTPVerificationView(
+                        formattedPhone: viewModel.formattedPhone,
+                        otpCode: $viewModel.otpCode,
+                        isLoading: authService.isLoading || viewModel.isLoading,
+                        onSubmit: {
+                            Task {
+                                await viewModel.login(authService: authService, store: store, session: session)
+                            }
+                        },
+                        onResend: {
+                            Task { await viewModel.sendCode(authService: authService) }
+                        },
+                        onDismiss: { viewModel.resetPhoneEntry() },
+                        submitButtonTitle: "ONAYLA"
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.codeSent)
+            }
         }
     }
 
@@ -206,36 +277,6 @@ struct PhoneFormField: View {
         return String(digits.prefix(10))
     }
 }
-#else
-struct FormField: View {
-    let title: String
-    @Binding var text: String
-    let prompt: String
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.medium))
-            TextField(prompt, text: $text).textFieldStyle(.roundedBorder)
-        }
-    }
-}
 
-struct PhoneFormField: View {
-    let title: String
-    @Binding var text: String
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.medium))
-            HStack(spacing: 6) {
-                Text("+90").foregroundStyle(.secondary)
-                TextField("5321234567", text: $text)
-                    .onChange(of: text) { _, newValue in
-                        text = String(newValue.filter(\.isNumber).prefix(10))
-                    }
-            }
-            .textFieldStyle(.roundedBorder)
-        }
-    }
-}
-#endif

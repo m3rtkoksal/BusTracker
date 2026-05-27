@@ -56,10 +56,16 @@ struct ContentView: View {
             if let profile = try await store.fetchUserProfile(userID: userID) {
                 session.save(profile)
                 await NotificationService.shared.requestPermissionAndRegister()
-                await NotificationService.shared.saveTokenToProfile(
-                    groupID: profile.groupID,
-                    memberID: profile.memberID
-                )
+                // Only attempt to save the token if we have a valid group and member ID
+                let effectiveGroupID = profile.groupID ?? profile.primaryGroupID
+                let memberID = profile.memberID
+
+                if !effectiveGroupID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    await NotificationService.shared.saveTokenToProfile(
+                        groupID: effectiveGroupID,
+                        memberID: memberID
+                    )
+                }
             }
         } catch {
             // Kayıt veya geçici ağ hatasında oturumu kapatma; LoginView kendi hata akışını yönetir.
