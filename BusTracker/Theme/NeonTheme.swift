@@ -13,6 +13,49 @@ enum NeonTheme {
     static let primary = Color(hex: 0xFF2D78)
     static let secondary = Color(hex: 0x00FFCC)
     static let outline = Color(hex: 0x5A5068)
+
+    static let driverChrome = RoleChrome.driver
+    static let passengerChrome = RoleChrome.passenger
+}
+
+/// Navbar ve tab bar — sürücü (pembe) / yolcu (turkuaz) ayrımı.
+struct RoleChrome: Sendable {
+    let navBarBackground: Color
+    let navBarDivider: Color
+    let navBarDividerShadow: Color
+    let tabBarBackground: Color
+    let tabBarDivider: Color
+    let tabBarDividerShadow: Color
+    let tabInactive: Color
+    let tabSelected: Color
+    let tabMapSelected: Color
+    let statusAccent: Color
+
+    static let driver = RoleChrome(
+        navBarBackground: Color(hex: 0x140C12),
+        navBarDivider: NeonTheme.primary.opacity(0.5),
+        navBarDividerShadow: NeonTheme.primary.opacity(0.22),
+        tabBarBackground: Color(hex: 0x181018),
+        tabBarDivider: NeonTheme.primary.opacity(0.38),
+        tabBarDividerShadow: NeonTheme.primary.opacity(0.2),
+        tabInactive: NeonTheme.outline,
+        tabSelected: NeonTheme.secondary,
+        tabMapSelected: NeonTheme.primary,
+        statusAccent: NeonTheme.secondary
+    )
+
+    static let passenger = RoleChrome(
+        navBarBackground: Color(hex: 0x0C1418),
+        navBarDivider: NeonTheme.secondary.opacity(0.5),
+        navBarDividerShadow: NeonTheme.secondary.opacity(0.22),
+        tabBarBackground: Color(hex: 0x101A1E),
+        tabBarDivider: NeonTheme.secondary.opacity(0.38),
+        tabBarDividerShadow: NeonTheme.secondary.opacity(0.2),
+        tabInactive: NeonTheme.outline,
+        tabSelected: Color(hex: 0x00FFCC),
+        tabMapSelected: Color(hex: 0x5CE1FF),
+        statusAccent: NeonTheme.secondary
+    )
 }
 
 extension Color {

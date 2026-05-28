@@ -49,22 +49,6 @@ final class LocationTracker: NSObject {
         }
     }
 
-    func requestWhenInUseForPassenger() {
-        #if targetEnvironment(simulator)
-        deliverLocation(MapDefaults.simulatorPinnedLocation)
-        return
-        #endif
-
-        switch manager.authorizationStatus {
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse, .authorizedAlways:
-            manager.requestLocation()
-        default:
-            break
-        }
-    }
-
     func requestBackgroundPermission() {
         switch manager.authorizationStatus {
         case .notDetermined:

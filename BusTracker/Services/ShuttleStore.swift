@@ -39,6 +39,8 @@ final class ShuttleStore {
     private var activeTripGroupID: String?
     private var activeTripDriverName: String?
     private var lastLocationUploadAt: Date?
+    private var tripAutoStopTask: Task<Void, Never>?
+    private(set) var plannedTripEndAt: Date?
 
     private var todayKey: String {
         let formatter = DateFormatter()
@@ -122,6 +124,9 @@ final class ShuttleStore {
         morningPickups = []
         locationUploadTask?.cancel()
         locationUploadTask = nil
+        tripAutoStopTask?.cancel()
+        tripAutoStopTask = nil
+        plannedTripEndAt = nil
         isTripActive = false
     }
 
@@ -135,9 +140,9 @@ final class ShuttleStore {
     }
 
     func createGroup(name: String, driverName: String) async throws -> UserProfile {
+        try await FirebaseSession.shared.ensureAuthenticated()
         guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
-        let phone = user.phoneNumber ?? AuthService.shared.displayPhoneNumber
-        guard let phone else { throw ShuttleStoreError.invalidInput("Telefon numarası bulunamadı.") }
+        let appleUserID = try requireAppleUserID(from: user)
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDriver = driverName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -166,7 +171,7 @@ final class ShuttleStore {
         try await groupRef.collection("members").document(memberID).setData([
             "userID": user.uid,
             "name": trimmedDriver,
-            "phoneNumber": phone,
+            "appleUserID": appleUserID,
             "role": MemberRole.driver.rawValue,
             "joinedAt": FieldValue.serverTimestamp()
         ])
@@ -175,7 +180,7 @@ final class ShuttleStore {
             userID: user.uid,
             memberID: memberID,
             name: trimmedDriver,
-            phoneNumber: phone,
+            appleUserID: appleUserID,
             role: .driver,
             groupIDs: [groupID],
             activeGroupIDs: [groupID],
@@ -189,9 +194,9 @@ final class ShuttleStore {
     }
 
     func joinGroup(code: String, passengerName: String) async throws -> UserProfile {
+        try await FirebaseSession.shared.ensureAuthenticated()
         guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
-        let phone = user.phoneNumber ?? AuthService.shared.displayPhoneNumber
-        guard let phone else { throw ShuttleStoreError.invalidInput("Telefon numarası bulunamadı.") }
+        let appleUserID = try requireAppleUserID(from: user)
 
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let trimmedName = passengerName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -222,7 +227,7 @@ final class ShuttleStore {
         try await groupDoc.reference.collection("members").document(memberID).setData([
             "userID": user.uid,
             "name": trimmedName,
-            "phoneNumber": phone,
+            "appleUserID": appleUserID,
             "role": MemberRole.passenger.rawValue,
             "joinedAt": FieldValue.serverTimestamp()
         ])
@@ -231,7 +236,7 @@ final class ShuttleStore {
             userID: user.uid,
             memberID: memberID,
             name: trimmedName,
-            phoneNumber: phone,
+            appleUserID: appleUserID,
             role: .passenger,
             groupIDs: [groupDoc.documentID],
             activeGroupIDs: [groupDoc.documentID],
@@ -244,9 +249,20 @@ final class ShuttleStore {
         return profile
     }
 
-    func startTrip(groupID: String, driverName: String, locationTracker: LocationTracker) async throws {
+    func startTrip(
+        groupID: String,
+        driverName: String,
+        durationHours: Double,
+        locationTracker: LocationTracker
+    ) async throws {
         guard !isTripActive else { return }
+        guard durationHours > 0 else {
+            throw ShuttleStoreError.invalidInput("Servis süresi seçin.")
+        }
         try await FirebaseSession.shared.ensureAuthenticated()
+
+        let endsAt = Date().addingTimeInterval(durationHours * 3600)
+        plannedTripEndAt = endsAt
 
         try await db.collection("groups").document(groupID)
             .collection("attendance").document(todayKey).delete()
@@ -262,6 +278,8 @@ final class ShuttleStore {
             "type": "started",
             "date": todayKey,
             "driverName": driverName,
+            "durationHours": durationHours,
+            "plannedEndAt": Timestamp(date: endsAt),
             "createdAt": FieldValue.serverTimestamp()
         ])
 
@@ -271,6 +289,8 @@ final class ShuttleStore {
                 "isActive": true,
                 "driverName": driverName,
                 "tripDate": todayKey,
+                "plannedEndAt": Timestamp(date: endsAt),
+                "durationHours": durationHours,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
 
@@ -296,9 +316,19 @@ final class ShuttleStore {
             )
             lastLocationUploadAt = Date()
         }
+
+        scheduleTripAutoStop(
+            groupID: groupID,
+            driverName: driverName,
+            endsAt: endsAt,
+            locationTracker: locationTracker
+        )
     }
 
     func stopTrip(groupID: String, driverName: String, locationTracker: LocationTracker) async {
+        tripAutoStopTask?.cancel()
+        tripAutoStopTask = nil
+        plannedTripEndAt = nil
         isTripActive = false
         activeTripGroupID = nil
         activeTripDriverName = nil
@@ -314,8 +344,72 @@ final class ShuttleStore {
             .setData([
                 "isActive": false,
                 "driverName": driverName,
+                "plannedEndAt": FieldValue.delete(),
+                "durationHours": FieldValue.delete(),
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
+    }
+
+    /// Uygulama açıldığında süresi dolmuş aktif servisi kapatır.
+    func reconcileActiveTripIfExpired(
+        groupID: String,
+        driverName: String,
+        locationTracker: LocationTracker
+    ) async {
+        guard isTripActive else { return }
+        if let endsAt = plannedTripEndAt, endsAt <= Date() {
+            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            return
+        }
+
+        try? await FirebaseSession.shared.ensureAuthenticated()
+        let doc = try? await db.collection("groups").document(groupID)
+            .collection("live").document("current")
+            .getDocument()
+        guard
+            let data = doc?.data(),
+            let isActive = data["isActive"] as? Bool,
+            isActive,
+            let timestamp = data["plannedEndAt"] as? Timestamp
+        else { return }
+
+        let endsAt = timestamp.dateValue()
+        plannedTripEndAt = endsAt
+        if endsAt <= Date() {
+            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            return
+        }
+
+        scheduleTripAutoStop(
+            groupID: groupID,
+            driverName: driverName,
+            endsAt: endsAt,
+            locationTracker: locationTracker
+        )
+    }
+
+    private func scheduleTripAutoStop(
+        groupID: String,
+        driverName: String,
+        endsAt: Date,
+        locationTracker: LocationTracker
+    ) {
+        tripAutoStopTask?.cancel()
+        let delay = max(0, endsAt.timeIntervalSinceNow)
+        tripAutoStopTask = Task { @MainActor in
+            if delay > 0 {
+                try? await Task.sleep(for: .seconds(delay))
+            }
+            guard !Task.isCancelled, isTripActive, activeTripGroupID == groupID else { return }
+            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+        }
+    }
+
+    private func requireAppleUserID(from user: User) throws -> String {
+        guard let appleUserID = AuthService.resolveAppleUserID(from: user) else {
+            throw ShuttleStoreError.invalidInput("Apple hesap kimliği bulunamadı.")
+        }
+        return appleUserID
     }
 
     func setAttendance(groupID: String, memberID: String, name: String, status: AttendanceStatus) async throws {
@@ -393,7 +487,7 @@ final class ShuttleStore {
         try await db.collection("users").document(profile.userID).setData([
             "memberID": profile.memberID,
             "name": profile.name,
-            "phoneNumber": profile.phoneNumber,
+            "appleUserID": profile.appleUserID,
             "role": profile.role.rawValue,
             "groupID": profile.groupID,
             "groupCode": profile.groupCode,
@@ -591,10 +685,13 @@ final class ShuttleStore {
         guard
             let memberID = data["memberID"] as? String,
             let name = data["name"] as? String,
-            let phoneNumber = data["phoneNumber"] as? String,
             let roleRaw = data["role"] as? String,
             let role = MemberRole(rawValue: roleRaw)
         else { return nil }
+
+        let appleUserID = (data["appleUserID"] as? String)
+            ?? (data["phoneNumber"] as? String).map { "legacy:\($0)" }
+        guard let appleUserID else { return nil }
 
         // Support both old single-group format and new multi-group format
         let groupIDs: [String]
@@ -624,7 +721,7 @@ final class ShuttleStore {
             userID: userID,
             memberID: memberID,
             name: name,
-            phoneNumber: phoneNumber,
+            appleUserID: appleUserID,
             role: role,
             groupIDs: groupIDs,
             activeGroupIDs: activeGroupIDs,

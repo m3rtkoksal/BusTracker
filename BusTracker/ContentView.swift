@@ -10,10 +10,17 @@ struct ContentView: View {
         case register, login
     }
 
+    private var isAuthenticatedWithProfile: Bool {
+        session.profile != nil && authService.isSignedIn
+    }
+
     var body: some View {
         Group {
-            if let profile = session.profile {
+            if isAuthenticatedWithProfile, let profile = session.profile {
                 homeView(for: profile)
+                    .task {
+                        await NotificationService.shared.requestPermissionIfNeeded()
+                    }
             } else {
                 switch authMode {
                 case .register:
@@ -21,6 +28,11 @@ struct ContentView: View {
                 case .login:
                     LoginView { authMode = .register }
                 }
+            }
+        }
+        .task(id: authService.isSignedIn) {
+            if !authService.isSignedIn, session.profile != nil {
+                session.clearLocalProfile()
             }
         }
     }

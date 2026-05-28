@@ -3,8 +3,12 @@ import SwiftUI
 @main
 struct BusTrackerApp: App {
 #if os(iOS) || os(visionOS)
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 #endif
+
+    init() {
+        _ = FirebaseAppConfigurator.activated
+    }
 
     @State private var session = UserSession.shared
     @State private var authService = AuthService.shared

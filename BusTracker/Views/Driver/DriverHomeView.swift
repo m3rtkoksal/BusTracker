@@ -43,6 +43,33 @@ struct DriverHomeView: BaseView {
         .onAppear {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
         }
+        .overlay {
+            if viewModel.showTripDurationSheet {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.showTripDurationSheet = false }
+
+                    TripDurationBottomSheet(
+                        selectedHours: $viewModel.selectedTripDurationHours,
+                        isLoading: store.isLoading,
+                        onConfirm: {
+                            Task {
+                                await viewModel.confirmStartTrip(
+                                    store: store,
+                                    session: session,
+                                    locationTracker: locationTracker
+                                )
+                            }
+                        },
+                        onDismiss: { viewModel.showTripDurationSheet = false }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.showTripDurationSheet)
+            }
+        }
         .sheet(isPresented: $showMyServices) {
             MyServicesView()
                 .environment(session)
@@ -52,40 +79,27 @@ struct DriverHomeView: BaseView {
     // MARK: - Top Bar
 
     private var driverTopBar: some View {
-        HStack {
-            Image(systemName: "square.grid.2x2")
-                .font(.title3)
-                .foregroundStyle(NeonTheme.onSurface)
-                .onTapGesture {
-                    showMyServices = true
-                }
-            Spacer()
+        RoleNavBar(chrome: NeonTheme.driverChrome, onMenuTap: { showMyServices = true }) {
             if store.isTripActive {
                 HStack(spacing: 6) {
-                    pulseDot
+                    Circle()
+                        .fill(NeonTheme.driverChrome.statusAccent)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: NeonTheme.driverChrome.statusAccent.opacity(0.8), radius: 4)
                     Text("AKTİF")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(2)
-                        .foregroundStyle(NeonTheme.secondary)
+                        .foregroundStyle(NeonTheme.driverChrome.statusAccent)
                 }
             }
-        }
-        .frame(height: 56)
-        .padding(.horizontal, 24)
-        .background(NeonTheme.background.opacity(0.95))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NeonTheme.primary.opacity(0.3))
-                .frame(height: 1)
-                .shadow(color: NeonTheme.primary.opacity(0.1), radius: 6)
         }
     }
 
     private var pulseDot: some View {
         Circle()
-            .fill(NeonTheme.secondary)
+            .fill(store.isTripActive ? NeonTheme.driverChrome.statusAccent : NeonTheme.outline)
             .frame(width: 8, height: 8)
-            .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 4)
+            .shadow(color: store.isTripActive ? NeonTheme.driverChrome.statusAccent.opacity(0.8) : .clear, radius: 4)
     }
 
     // MARK: - Passengers Tab
@@ -358,7 +372,13 @@ struct DriverHomeView: BaseView {
     private var tripControlSection: some View {
         VStack(spacing: 12) {
             Button {
-                Task { await viewModel.toggleTrip(store: store, session: session, locationTracker: locationTracker) }
+                Task {
+                    await viewModel.handleTripControlTap(
+                        store: store,
+                        session: session,
+                        locationTracker: locationTracker
+                    )
+                }
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: store.isTripActive ? "stop.fill" : "bolt.fill")
@@ -379,13 +399,23 @@ struct DriverHomeView: BaseView {
             }
             .buttonStyle(.plain)
 
-            Text(store.isTripActive ? "Konum paylaşılıyor" : "Başlatma hazır")
+            Text(tripStatusCaption)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.outline)
                 .frame(maxWidth: .infinity)
         }
         .padding(.top, 4)
+    }
+
+    private var tripStatusCaption: String {
+        if store.isTripActive {
+            if let end = store.plannedTripEndAt {
+                return "Bitiş: \(end.formatted(date: .omitted, time: .shortened))"
+            }
+            return "Konum paylaşılıyor"
+        }
+        return "Başlatınca süre seçilir"
     }
 
     private var locationWarning: some View {
@@ -433,6 +463,8 @@ struct DriverHomeView: BaseView {
                     if let name = profile?.name {
                         settingsRow(title: "Adınız", value: name, action: nil)
                     }
+
+                    NotificationSettingsRow()
 
                     Button {
                         viewModel.requestSignOut {

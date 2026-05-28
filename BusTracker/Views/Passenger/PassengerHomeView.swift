@@ -4,7 +4,6 @@ import SwiftUI
 struct PassengerHomeView: BaseView {
     @Environment(ShuttleStore.self) private var store
     @Environment(UserSession.self) private var session
-    @Environment(LocationTracker.self) private var locationTracker
     @Environment(AuthService.self) private var authService
     @State var viewModel = PassengerHomeViewModel()
     @State var tabBar = PassengerTabBarController()
@@ -48,7 +47,6 @@ struct PassengerHomeView: BaseView {
         .onAppear {
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
-            locationTracker.requestWhenInUseForPassenger()
         }
         .onChange(of: store.morningPickups.count) { _, _ in
             viewModel.loadSavedPickup(from: store, session: session)
@@ -65,41 +63,23 @@ struct PassengerHomeView: BaseView {
     // MARK: - Top Bar
 
     private var passengerTopBar: some View {
-        HStack {
-            Image(systemName: "square.grid.2x2")
-                .font(.title3)
-                .foregroundStyle(NeonTheme.onSurface)
-                .onTapGesture {
-                    showMyServices = true
-                }
-
-            Spacer()
-
+        RoleNavBar(chrome: NeonTheme.passengerChrome, onMenuTap: { showMyServices = true }) {
             if store.isTripActive {
                 liveBadge
             }
-        }
-        .frame(height: 56)
-        .padding(.horizontal, 24)
-        .background(NeonTheme.background.opacity(0.95))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NeonTheme.secondary.opacity(0.25))
-                .frame(height: 1)
-                .shadow(color: NeonTheme.secondary.opacity(0.1), radius: 6)
         }
     }
 
     private var liveBadge: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(NeonTheme.secondary)
+                .fill(NeonTheme.passengerChrome.statusAccent)
                 .frame(width: 8, height: 8)
-                .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 4)
+                .shadow(color: NeonTheme.passengerChrome.statusAccent.opacity(0.8), radius: 4)
             Text("CANLI")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(2)
-                .foregroundStyle(NeonTheme.secondary)
+                .foregroundStyle(NeonTheme.passengerChrome.statusAccent)
         }
     }
 
@@ -253,7 +233,6 @@ struct PassengerHomeView: BaseView {
                 driverLocation: store.driverLocation,
                 selectedCoordinate: $viewModel.draftPickupCoordinate,
                 savedPickup: savedMorningPickup,
-                userLocation: locationTracker.currentLocation?.coordinate,
                 cameraPosition: $mapPosition,
                 isActive: tabBar.selectedTab == .map
             )
@@ -323,6 +302,8 @@ struct PassengerHomeView: BaseView {
                     if let groupName = profile?.groupName {
                         settingsRow(title: "Servis", value: groupName, action: nil)
                     }
+
+                    NotificationSettingsRow()
 
                     Button {
                         viewModel.requestSignOut {
@@ -608,9 +589,6 @@ struct PassengerHomeView: BaseView {
         if let driver = store.driverLocation?.coordinate {
             coordinates.append(driver)
         }
-        if let user = locationTracker.currentLocation?.coordinate {
-            coordinates.append(user)
-        }
 
         guard let first = coordinates.first else {
             withAnimation { mapPosition = .region(MapDefaults.homeRegion) }
@@ -658,5 +636,4 @@ struct PassengerHomeView: BaseView {
     PassengerHomeView()
         .environment(ShuttleStore())
         .environment(UserSession.shared)
-        .environment(LocationTracker())
 }

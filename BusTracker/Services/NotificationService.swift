@@ -1,4 +1,5 @@
 import FirebaseAuth
+import FirebaseCore
 import FirebaseFirestore
 import FirebaseMessaging
 import Foundation
@@ -10,7 +11,14 @@ final class NotificationService: NSObject {
     static let shared = NotificationService()
 
     private(set) var isPermissionGranted = false
+    private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
     private var didConfigure = false
+
+    struct AuthorizationSnapshot {
+        let status: UNAuthorizationStatus
+        let label: String
+        let isEnabled: Bool
+    }
 
     private override init() {
         super.init()
@@ -18,9 +26,21 @@ final class NotificationService: NSObject {
 
     func configure() {
         guard !didConfigure else { return }
+        guard FirebaseApp.app() != nil else {
+            print("⚠️ [BusTracker] NotificationService.configure — Firebase henüz yok")
+            return
+        }
         didConfigure = true
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
+    }
+
+    /// Auth hazır olduktan sonra AppDelegate'ten çağrılır.
+    func setAPNSToken(_ deviceToken: Data) {
+        guard FirebaseApp.app() != nil else { return }
+        if Messaging.messaging().apnsToken != deviceToken {
+            Messaging.messaging().apnsToken = deviceToken
+        }
     }
 
     func requestPermissionAndRegister() async {
@@ -33,6 +53,59 @@ final class NotificationService: NSObject {
             }
         } catch {
             isPermissionGranted = false
+        }
+    }
+
+    func authorizationSnapshot() async -> AuthorizationSnapshot {
+        configure()
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        authorizationStatus = status
+        isPermissionGranted = status == .authorized || status == .provisional || status == .ephemeral
+        return AuthorizationSnapshot(
+            status: status,
+            label: label(for: status),
+            isEnabled: isPermissionGranted
+        )
+    }
+
+    func refreshStatus() async {
+        _ = await authorizationSnapshot()
+    }
+
+    /// Daha önce sorulmadıysa sistem bildirim diyaloğunu gösterir.
+    func requestPermissionIfNeeded() async {
+        configure()
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        print("📋 [Shuttle Live] Bildirim izni durumu: \(status.rawValue) (0=sorulmadı, 1=reddedildi, 2=açık)")
+        switch status {
+        case .notDetermined:
+            await requestPermissionAndRegister()
+        case .authorized, .provisional, .ephemeral:
+            isPermissionGranted = true
+            authorizationStatus = status
+            await registerForRemoteNotifications()
+        default:
+            isPermissionGranted = false
+            authorizationStatus = status
+            print("📋 [Shuttle Live] Bildirim daha önce reddedilmiş — Ayarlar'dan açılabilir")
+        }
+    }
+
+    func openSystemSettings() {
+#if os(iOS) || os(visionOS)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+#endif
+    }
+
+    private func label(for status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: "Henüz izin istenmedi"
+        case .denied: "Kapalı — sistem ayarlarından açın"
+        case .authorized: "Açık"
+        case .provisional: "Açık (geçici)"
+        case .ephemeral: "Açık"
+        @unknown default: "Bilinmiyor"
         }
     }
 

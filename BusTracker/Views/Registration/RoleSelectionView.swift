@@ -37,7 +37,7 @@ struct RoleSelectionView: BaseView {
                     HStack(spacing: 4) {
                         Text("Zaten hesabım var —")
                             .foregroundStyle(NeonTheme.onSurfaceVariant)
-                        Text("Giriş yap")
+                        Text("Apple ile giriş yap")
                             .fontWeight(.semibold)
                             .foregroundStyle(NeonTheme.secondary)
                     }

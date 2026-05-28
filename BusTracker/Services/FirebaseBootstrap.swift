@@ -29,10 +29,14 @@ enum FirebaseManager {
            let options = FirebaseOptions(contentsOfFile: filePath) {
             FirebaseApp.configure(options: options)
         } else {
+            print("⚠️ [BusTracker] GoogleService-Info.plist bundle'da yok, varsayılan configure deneniyor")
             FirebaseApp.configure()
         }
 
-        guard FirebaseApp.app() != nil else { return }
+        guard FirebaseApp.app() != nil else {
+            print("❌ [BusTracker] FirebaseApp.configure sonrası app nil")
+            return
+        }
 
         var settings = FirestoreSettings()
         settings.cacheSettings = PersistentCacheSettings()

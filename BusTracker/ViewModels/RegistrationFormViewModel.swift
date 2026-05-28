@@ -5,11 +5,8 @@ import SwiftUI
 final class RegistrationFormViewModel: BaseViewModel {
     let role: MemberRole
 
-    var phone = ""
     var name = ""
     var serviceField = ""
-    var otpCode = ""
-    var showOTPVerification = false
 
     init(role: MemberRole) {
         self.role = role
@@ -59,27 +56,12 @@ final class RegistrationFormViewModel: BaseViewModel {
     }
 
     var canSubmit: Bool {
-        guard phone.filter(\.isNumber).count >= 10,
-              !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         let trimmed = serviceField.trimmingCharacters(in: .whitespacesAndNewlines)
         return role == .driver ? !trimmed.isEmpty : serviceField.count >= 4
     }
 
-    var formattedPhone: String {
-        AuthService.displayFormat(AuthService.formatPhone(phone))
-    }
-
-    func beginAccountCreation(authService: AuthService) async {
-        do {
-            try await authService.sendOTP(rawPhone: phone)
-            otpCode = ""
-            showOTPVerification = true
-        } catch {
-            showError(error.localizedDescription)
-        }
-    }
-
-    func verifyAndCreateAccount(
+    func createAccount(
         authService: AuthService,
         store: ShuttleStore,
         session: UserSession
@@ -88,8 +70,13 @@ final class RegistrationFormViewModel: BaseViewModel {
         defer { authService.setCompletingRegistration(false) }
 
         do {
-            try await authService.verifyOTP(code: otpCode)
-            showOTPVerification = false
+            await NotificationService.shared.requestPermissionIfNeeded()
+            let appleResult = try await authService.signInWithApple()
+
+            if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let suggested = appleResult.displayName {
+                name = suggested
+            }
 
             let profile: UserProfile
             if role == .driver {
@@ -101,16 +88,27 @@ final class RegistrationFormViewModel: BaseViewModel {
             }
 
             session.save(profile)
-            await NotificationService.shared.requestPermissionAndRegister()
+            await NotificationService.shared.requestPermissionIfNeeded()
             await NotificationService.shared.saveTokenToProfile(
                 groupID: profile.groupID ?? "",
                 memberID: profile.memberID
             )
+        } catch let error as AppleSignInError {
+            if case .cancelled = error { return }
+            showError(userFacingMessage(for: error))
         } catch {
-            showError(error.localizedDescription)
+            showError(userFacingMessage(for: error))
             if session.profile == nil {
                 try? authService.signOut()
             }
         }
+    }
+
+    private func userFacingMessage(for error: Error) -> String {
+        AuthErrorMessage.log(error, context: "registration")
+        if let authError = error as? AuthServiceError {
+            return authError.localizedDescription
+        }
+        return AuthErrorMessage.message(for: error)
     }
 }

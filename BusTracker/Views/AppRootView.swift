@@ -34,6 +34,7 @@ struct AppRootView: View {
         await firebaseSession.bootstrap()
         guard firebaseSession.isReady else { return }
 
+        await AuthSessionReconciler.reconcile(session: session, authService: authService)
         await loadSignedInUserIfNeeded()
         isBootstrapped = true
     }
@@ -48,12 +49,17 @@ struct AppRootView: View {
 
         guard authService.isSignedIn,
               !authService.isCompletingRegistration,
-              let userID = authService.currentUserID else { return }
+              let userID = authService.currentUserID else {
+            if session.profile != nil {
+                session.clearLocalProfile()
+            }
+            return
+        }
 
         do {
             if let profile = try await store.fetchUserProfile(userID: userID) {
                 session.save(profile)
-                await NotificationService.shared.requestPermissionAndRegister()
+                await NotificationService.shared.requestPermissionIfNeeded()
 
                 let effectiveGroupID = profile.groupID ?? profile.primaryGroupID
                 let memberID = profile.memberID
@@ -64,9 +70,15 @@ struct AppRootView: View {
                         memberID: memberID
                     )
                 }
+            } else {
+                print("⚠️ [Shuttle Live] Firestore'da profil yok — oturum kapatılıyor")
+                try? authService.signOut()
+                session.clearLocalProfile()
             }
         } catch {
-            // Profil alınamazsa giriş ekranına düşürülür.
+            print("⚠️ [Shuttle Live] Firestore profili yüklenemedi — oturum kapatılıyor")
+            try? authService.signOut()
+            session.clearLocalProfile()
         }
     }
 }
@@ -88,7 +100,7 @@ private struct FirebaseBootstrapErrorView: View {
                 Text("Firebase Console kontrol listesi:")
                     .font(.caption.weight(.semibold))
                 Text("1. Firestore Database oluşturulmuş olmalı")
-                Text("2. Authentication → Phone etkin olmalı")
+                Text("2. Authentication → Apple etkin olmalı")
                 Text("3. Push Notifications (APNs) yapılandırılmalı")
             }
             .font(.caption)

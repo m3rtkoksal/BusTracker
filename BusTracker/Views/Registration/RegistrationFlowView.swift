@@ -16,6 +16,9 @@ struct RegistrationFlowView: View {
                 RegistrationFormView(role: role, onBack: { path.removeLast() })
             }
         }
+        .task {
+            await NotificationService.shared.requestPermissionIfNeeded()
+        }
     }
 }
 

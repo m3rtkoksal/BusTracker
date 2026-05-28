@@ -6,7 +6,6 @@ struct PassengerLiveMap: View {
     let driverLocation: DriverLocation?
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
     var savedPickup: MorningPickup?
-    var userLocation: CLLocationCoordinate2D?
     var cameraPosition: Binding<MapCameraPosition>?
     var isActive: Bool = true
 
@@ -23,8 +22,7 @@ struct PassengerLiveMap: View {
     private var annotationSignature: String {
         let driver = driverLocation.map { "\($0.latitude),\($0.longitude)" } ?? "-"
         let pickup = displayPickup.map { "\($0.latitude),\($0.longitude)" } ?? "-"
-        let user = userLocation.map { "\($0.latitude),\($0.longitude)" } ?? "-"
-        return "\(driver)|\(pickup)|\(user)"
+        return "\(driver)|\(pickup)"
     }
 
     var body: some View {
@@ -41,8 +39,6 @@ struct PassengerLiveMap: View {
                         pickupMarker
                     }
                 }
-
-                UserAnnotation()
             }
             .mapStyle(.hybrid(elevation: .realistic))
             .onTapGesture { location in
@@ -111,7 +107,6 @@ struct PassengerLiveMap: View {
         var coordinates: [CLLocationCoordinate2D] = []
         if let pickup = displayPickup { coordinates.append(pickup) }
         if let driver = driverLocation?.coordinate { coordinates.append(driver) }
-        if let user = userLocation { coordinates.append(user) }
 
         let region: MKCoordinateRegion
         if coordinates.isEmpty {
@@ -192,7 +187,6 @@ struct PassengerLiveMap: View {
             driverName: "Ahmet"
         ),
         selectedCoordinate: .constant(nil),
-        savedPickup: nil,
-        userLocation: nil
+        savedPickup: nil
     )
 }

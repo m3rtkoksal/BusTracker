@@ -17,98 +17,60 @@ struct RegistrationFormView: BaseView {
     }
 
     func content() -> some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(spacing: 24) {
-                    NeonRegistrationHero(
-                        icon: viewModel.heroIcon,
-                        title: viewModel.heroTitle,
-                        subtitle: viewModel.heroSubtitle,
-                        accent: viewModel.accent
-                    )
+        ScrollView {
+            VStack(spacing: 24) {
+                NeonRegistrationHero(
+                    icon: viewModel.heroIcon,
+                    title: viewModel.heroTitle,
+                    subtitle: viewModel.heroSubtitle,
+                    accent: viewModel.accent
+                )
 
-                    NeonGlassCard(accent: viewModel.accent) {
-                        VStack(spacing: 20) {
-                            NeonFormField(title: "Adınız", text: $viewModel.name, prompt: viewModel.namePrompt)
-                            NeonPhoneFormField(title: "Telefon", text: $viewModel.phone)
-                            NeonFormField(
-                                title: viewModel.serviceFieldTitle,
-                                text: $viewModel.serviceField,
-                                prompt: viewModel.serviceFieldPrompt
-                            )
+                NeonGlassCard(accent: viewModel.accent) {
+                    VStack(spacing: 20) {
+                        NeonFormField(title: "Adınız", text: $viewModel.name, prompt: viewModel.namePrompt)
+                        NeonFormField(
+                            title: viewModel.serviceFieldTitle,
+                            text: $viewModel.serviceField,
+                            prompt: viewModel.serviceFieldPrompt
+                        )
 
-                            Text(viewModel.footerCaption)
-                                .font(.caption)
-                                .foregroundStyle(NeonTheme.onSurfaceVariant)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(viewModel.footerCaption)
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.onSurfaceVariant)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                            createButton
-                        }
-                        .padding(24)
+                        Text("Kayıt için Apple hesabınız kullanılır; telefon numarası istenmez.")
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.onSurfaceVariant)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        createButton
                     }
-
-                    RegistrationBackButton(action: onBack)
+                    .padding(24)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
-            }
 
-            if viewModel.showOTPVerification {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.35)
-                        .ignoresSafeArea()
-                        .onTapGesture { dismissOTP() }
-
-                    OTPVerificationView(
-                        formattedPhone: viewModel.formattedPhone,
-                        otpCode: $viewModel.otpCode,
-                        isLoading: store.isLoading || authService.isLoading,
-                        onSubmit: {
-                            Task {
-                                await viewModel.verifyAndCreateAccount(
-                                    authService: authService,
-                                    store: store,
-                                    session: session
-                                )
-                            }
-                        },
-                        onResend: {
-                            Task { await viewModel.beginAccountCreation(authService: authService) }
-                        },
-                        onDismiss: dismissOTP
-                    )
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                RegistrationBackButton(action: onBack)
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
         }
-        .animation(.easeInOut(duration: 0.28), value: viewModel.showOTPVerification)
-    }
-
-    private func dismissOTP() {
-        viewModel.showOTPVerification = false
-        viewModel.otpCode = ""
     }
 
     private var createButton: some View {
-        Button {
-            Task { await viewModel.beginAccountCreation(authService: authService) }
-        } label: {
-            Group {
-                if store.isLoading || authService.isLoading {
-                    ProgressView().tint(NeonTheme.onSurface)
-                } else {
-                    HStack(spacing: 8) {
-                        Text("HESABI OLUŞTUR")
-                            .tracking(1.2)
-                        Image(systemName: "arrow.up.right")
-                    }
-                }
+        SignInWithAppleButton(
+            title: "Apple ile Kayıt Ol",
+            isLoading: store.isLoading || authService.isLoading || viewModel.isLoading
+        ) {
+            Task {
+                await viewModel.createAccount(
+                    authService: authService,
+                    store: store,
+                    session: session
+                )
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(NeonPrimaryButtonStyle(tint: viewModel.accent))
-        .disabled(!viewModel.canSubmit || store.isLoading || authService.isLoading)
+        .disabled(!viewModel.canSubmit || store.isLoading || authService.isLoading || viewModel.isLoading)
         .opacity(viewModel.canSubmit ? 1 : 0.5)
     }
 }

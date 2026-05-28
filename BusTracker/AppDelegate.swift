@@ -1,46 +1,46 @@
 #if os(iOS) || os(visionOS)
 import FirebaseAuth
+import FirebaseCore
 import FirebaseMessaging
 import UIKit
 
+/// FirebaseAppDelegateProxyEnabled = true — Auth/Messaging APNs, `didRegister` swizzler + interceptor ile alınır.
 @objc(AppDelegate)
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    @objc func application(
+    func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        FirebaseAuthLaunch.start(in: application)
-        application.registerForRemoteNotifications()
+        FirebaseManager.configureIfNeeded()
+
+        if FirebaseApp.app() == nil {
+            print("❌ [BusTracker] FirebaseApp.configure() başarısız")
+        } else {
+            print("✅ [BusTracker] Firebase Core yapılandırıldı")
+        }
+
+        FirebaseAuthLaunch.start(in: application) {
+            // registerForRemoteNotifications, Auth hazır olduktan sonra FirebaseAuthLaunch içinde çağrılır
+        }
         return true
     }
 
-    @objc func application(
+    /// Yalnızca FCM / yerel izleme — Auth token'ı swizzler interceptor'ına bırakılır (`setAPNSToken` çağrılmaz).
+    func application(
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        guard FirebaseAuthLaunch.isReady else { return }
-        Auth.auth().setAPNSToken(deviceToken, type: .unknown)
-        Messaging.messaging().apnsToken = deviceToken
+        FirebaseAuthLaunch.storeDeviceToken(deviceToken)
+        NotificationService.shared.setAPNSToken(deviceToken)
     }
 
-    @objc(application:didReceiveRemoteNotification:fetchCompletionHandler:)
     func application(
         _ application: UIApplication,
-        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+        didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        guard FirebaseAuthLaunch.isReady else {
-            completionHandler(.noData)
-            return
-        }
-        if Auth.auth().canHandleNotification(userInfo) {
-            completionHandler(.noData)
-            return
-        }
-        completionHandler(.noData)
+        print("⚠️ [BusTracker] APNs kaydı başarısız: \(error.localizedDescription)")
     }
 
-    @objc(application:openURL:options:)
     func application(
         _ app: UIApplication,
         open url: URL,

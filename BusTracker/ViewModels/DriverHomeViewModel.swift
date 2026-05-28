@@ -6,7 +6,7 @@ import UIKit
 #endif
 
 struct DriverPassengerStats {
-    let total: Int = 15          // Sabit maksimum kapasite
+    let total: Int = 15
     let coming: Int
     let notComing: Int
     let unknown: Int
@@ -20,6 +20,9 @@ struct DriverPassengerStats {
 @MainActor
 @Observable
 final class DriverHomeViewModel: BaseViewModel {
+    var showTripDurationSheet = false
+    var selectedTripDurationHours = 2.0
+
     func configure(session: UserSession) {
         title = session.profile?.groupName ?? "Servis"
         navigationBarStyle = .neonDriver
@@ -39,8 +42,16 @@ final class DriverHomeViewModel: BaseViewModel {
     func onAppear(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) {
         configure(session: session)
         locationTracker.requestPermission()
-        if let groupID = session.profile?.groupID {
+        if let groupID = session.profile?.groupID,
+           let driverName = session.profile?.name {
             store.startListening(groupID: groupID)
+            Task {
+                await store.reconcileActiveTripIfExpired(
+                    groupID: groupID,
+                    driverName: driverName,
+                    locationTracker: locationTracker
+                )
+            }
         }
     }
 
@@ -54,18 +65,16 @@ final class DriverHomeViewModel: BaseViewModel {
         )
     }
 
-    // MARK: - Hesap Silme (App Store 5.1.1(v) için gerekli)
     func requestDeleteAccount(onConfirm: @escaping () -> Void) {
         showConfirm(
             title: "Hesabı Sil",
-            message: "Hesabınızı ve tüm verilerinizi (profil, servis yönetimi, yolcu kayıtları vb.) kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+            message: "Hesabınızı ve tüm verilerinizi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
             confirmTitle: "Hesabı Kalıcı Olarak Sil",
             destructive: true,
             onConfirm: onConfirm
         )
     }
 
-    /// Kullanıcının hesabını siler (sürücü).
     func deleteAccount(store: ShuttleStore, session: UserSession, authService: AuthService) async {
         guard let profile = session.profile else { return }
 
@@ -73,15 +82,15 @@ final class DriverHomeViewModel: BaseViewModel {
         defer { isLoading = false }
 
         do {
-            // 1. Kullanıcı ve ilgili verileri sil
             try await store.deleteUserData(profile: profile)
-
-            // 2. Firebase Auth kullanıcısını sil
             try await authService.deleteCurrentUser()
 
-            // 3. Oturumu temizle
             if store.isTripActive {
-                await store.stopTrip(groupID: profile.groupID ?? "", driverName: profile.name, locationTracker: LocationTracker())
+                await store.stopTrip(
+                    groupID: profile.groupID ?? "",
+                    driverName: profile.name,
+                    locationTracker: LocationTracker()
+                )
             }
             store.stopListening()
             await session.signOut()
@@ -92,25 +101,40 @@ final class DriverHomeViewModel: BaseViewModel {
         }
     }
 
-    func toggleTrip(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
+    func handleTripControlTap(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
         guard let profile = session.profile,
               let groupID = profile.groupID else { return }
         let driverName = profile.name
 
         if store.isTripActive {
             await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            showSuccess("Servis durduruldu.")
         } else {
-            locationTracker.requestBackgroundPermission()
-            do {
-                try await store.startTrip(
-                    groupID: groupID,
-                    driverName: driverName,
-                    locationTracker: locationTracker
-                )
-                showSuccess("Servis başlatıldı. Yolcular bilgilendirildi.")
-            } catch {
-                showError(error.localizedDescription)
-            }
+            showTripDurationSheet = true
+        }
+    }
+
+    func confirmStartTrip(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
+        guard let profile = session.profile,
+              let groupID = profile.groupID else { return }
+        let driverName = profile.name
+
+        showTripDurationSheet = false
+        locationTracker.requestBackgroundPermission()
+
+        do {
+            try await store.startTrip(
+                groupID: groupID,
+                driverName: driverName,
+                durationHours: selectedTripDurationHours,
+                locationTracker: locationTracker
+            )
+            let hoursLabel = selectedTripDurationHours == floor(selectedTripDurationHours)
+                ? "\(Int(selectedTripDurationHours)) saat"
+                : "\(selectedTripDurationHours) saat"
+            showSuccess("Servis başlatıldı. \(hoursLabel) sonra otomatik duracak.")
+        } catch {
+            showError(error.localizedDescription)
         }
     }
 
@@ -118,8 +142,7 @@ final class DriverHomeViewModel: BaseViewModel {
         if store.isTripActive,
            let profile = session.profile,
            let groupID = profile.groupID {
-            let driverName = profile.name
-            await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            await store.stopTrip(groupID: groupID, driverName: profile.name, locationTracker: locationTracker)
         }
         store.stopListening()
         await session.signOut()
@@ -132,4 +155,3 @@ final class DriverHomeViewModel: BaseViewModel {
 #endif
     }
 }
-
