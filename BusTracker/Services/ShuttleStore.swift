@@ -402,6 +402,34 @@ final class ShuttleStore {
         ], merge: true)
     }
 
+    /// Kullanıcının hesabıyla ilgili verileri Firestore'dan siler.
+    /// Not: Auth kullanıcısını silmek için AuthService.deleteCurrentUser() çağrılmalıdır.
+    func deleteUserData(profile: UserProfile) async throws {
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        let userID = profile.userID
+        let memberID = profile.memberID
+
+        // 1. users koleksiyonundaki belgeyi sil
+        try await db.collection("users").document(userID).delete()
+
+        // 2. Kullanıcının dahil olduğu gruplardaki member kaydını sil
+        let groupsToCheck = (profile.groupIDs + [profile.groupID].compactMap { $0 }).filter { !$0.isEmpty }
+
+        for groupID in Set(groupsToCheck) {
+            // Member kaydını sil
+            try await db.collection("groups").document(groupID)
+                .collection("members").document(memberID).delete()
+
+            // Kullanıcının morningPickup kaydını sil (varsa)
+            try await db.collection("groups").document(groupID)
+                .collection("morningPickups").document(memberID).delete()
+        }
+
+        // Not: Attendance kayıtlarını tamamen temizlemek güvenlik kuralları nedeniyle
+        // Cloud Function ile daha güvenli yapılır. Şimdilik ana veriler siliniyor.
+    }
+
     private func mergeMembers(_ fetched: [ShuttleMember]) {
         let attendanceByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.attendance) })
         members = fetched.map { member in

@@ -159,6 +159,16 @@ final class AuthService {
         verifiedPhoneNumber = nil
     }
 
+    /// Mevcut kullanıcının Firebase Auth hesabını siler.
+    /// Güvenlik için çağrıdan önce yeniden doğrulama (OTP) yapılmış olmalıdır.
+    func deleteCurrentUser() async throws {
+        await waitUntilReady()
+        guard let user = Auth.auth().currentUser else {
+            throw AuthServiceError.notSignedIn
+        }
+        try await user.delete()
+    }
+
     func setCompletingRegistration(_ value: Bool) {
         isCompletingRegistration = value
     }

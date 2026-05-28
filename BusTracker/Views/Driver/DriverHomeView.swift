@@ -5,6 +5,7 @@ struct DriverHomeView: BaseView {
     @Environment(ShuttleStore.self) private var store
     @Environment(UserSession.self) private var session
     @Environment(LocationTracker.self) private var locationTracker
+    @Environment(AuthService.self) private var authService
     @State var viewModel = DriverHomeViewModel()
     @State var tabBar = DriverTabBarController()
     @State private var showMyServices = false
@@ -420,41 +421,85 @@ struct DriverHomeView: BaseView {
     // MARK: - Settings Tab
 
     private var settingsTab: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if let code = profile?.groupCode {
-                    settingsRow(title: "Servis Kodu", value: code) {
-                        viewModel.copyGroupCode(code)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let code = profile?.groupCode {
+                        settingsRow(title: "Servis Kodu", value: code) {
+                            viewModel.copyGroupCode(code)
+                        }
                     }
-                }
 
-                if let name = profile?.name {
-                    settingsRow(title: "Adınız", value: name, action: nil)
-                }
+                    if let name = profile?.name {
+                        settingsRow(title: "Adınız", value: name, action: nil)
+                    }
 
-                Button {
-                    viewModel.requestSignOut {
-                        Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                    Button {
+                        viewModel.requestSignOut {
+                            Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                            Text("Çıkış Yap")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                        .foregroundStyle(Color(hex: 0xFF4444))
+                        .padding(16)
+                        .background(NeonTheme.surfaceContainer)
+                        .overlay {
+                            Rectangle()
+                                .strokeBorder(Color(hex: 0xFF4444).opacity(0.3), lineWidth: 1)
+                        }
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Çıkış Yap")
-                            .fontWeight(.semibold)
-                        Spacer()
-                    }
-                    .foregroundStyle(Color(hex: 0xFF4444))
-                    .padding(16)
-                    .background(NeonTheme.surfaceContainer)
-                    .overlay {
-                        Rectangle()
-                            .strokeBorder(Color(hex: 0xFF4444).opacity(0.3), lineWidth: 1)
-                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .padding(24)
             }
-            .padding(24)
+
+            settingsDeleteAccountFooter
         }
+    }
+
+    private var settingsDeleteAccountFooter: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(NeonTheme.outline.opacity(0.25))
+                .frame(height: 1)
+
+            deleteAccountButton
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+        }
+        .background(NeonTheme.background)
+    }
+
+    private var deleteAccountButton: some View {
+        Button {
+            viewModel.requestDeleteAccount {
+                Task {
+                    await viewModel.deleteAccount(
+                        store: store,
+                        session: session,
+                        authService: authService
+                    )
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: "trash")
+                Text("Hesabı Sil")
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .foregroundStyle(.white)
+            .padding(16)
+            .background(Color(hex: 0xFF4444))
+        }
+        .buttonStyle(.plain)
     }
 
     private func settingsRow(title: String, value: String, action: (() -> Void)?) -> some View {

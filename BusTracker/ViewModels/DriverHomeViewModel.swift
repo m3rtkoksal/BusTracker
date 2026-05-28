@@ -54,6 +54,44 @@ final class DriverHomeViewModel: BaseViewModel {
         )
     }
 
+    // MARK: - Hesap Silme (App Store 5.1.1(v) için gerekli)
+    func requestDeleteAccount(onConfirm: @escaping () -> Void) {
+        showConfirm(
+            title: "Hesabı Sil",
+            message: "Hesabınızı ve tüm verilerinizi (profil, servis yönetimi, yolcu kayıtları vb.) kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+            confirmTitle: "Hesabı Kalıcı Olarak Sil",
+            destructive: true,
+            onConfirm: onConfirm
+        )
+    }
+
+    /// Kullanıcının hesabını siler (sürücü).
+    func deleteAccount(store: ShuttleStore, session: UserSession, authService: AuthService) async {
+        guard let profile = session.profile else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // 1. Kullanıcı ve ilgili verileri sil
+            try await store.deleteUserData(profile: profile)
+
+            // 2. Firebase Auth kullanıcısını sil
+            try await authService.deleteCurrentUser()
+
+            // 3. Oturumu temizle
+            if store.isTripActive {
+                await store.stopTrip(groupID: profile.groupID ?? "", driverName: profile.name, locationTracker: LocationTracker())
+            }
+            store.stopListening()
+            await session.signOut()
+
+            showSuccess("Hesabınız başarıyla silindi.")
+        } catch {
+            showError("Hesap silinirken bir hata oluştu: \(error.localizedDescription)")
+        }
+    }
+
     func toggleTrip(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
         guard let profile = session.profile,
               let groupID = profile.groupID else { return }

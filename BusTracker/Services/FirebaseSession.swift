@@ -14,6 +14,7 @@ final class FirebaseSession {
 
     func bootstrap() async {
         guard !isReady else { return }
+        error = nil
 
         FirebaseManager.configureIfNeeded()
 

@@ -14,14 +14,12 @@ struct BusTrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            FirebaseGateView {
-                ContentView()
-            }
-            .environment(session)
-            .environment(authService)
-            .environment(firebaseSession)
-            .environment(store)
-            .environment(locationTracker)
+            AppRootView()
+                .environment(session)
+                .environment(authService)
+                .environment(firebaseSession)
+                .environment(store)
+                .environment(locationTracker)
         }
     }
 }

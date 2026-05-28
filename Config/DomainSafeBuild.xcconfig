@@ -1,0 +1,6 @@
+// DomainSafeBuild.xcconfig
+// Fixes "SetOwnerAndGroup failed" error on corporate domain Macs (SARDES etc.)
+// by forcing safe local ownership during Archive / Install phases.
+
+INSTALL_OWNER = $(USER)
+INSTALL_GROUP = staff
