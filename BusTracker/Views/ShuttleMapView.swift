@@ -13,6 +13,14 @@ struct ShuttleMapView: View {
         cameraPosition ?? $internalPosition
     }
 
+    private var annotationSignature: String {
+        let driver = driverLocation.map { "\($0.latitude),\($0.longitude),\($0.updatedAt.timeIntervalSince1970)" } ?? "-"
+        let pickups = morningPickups
+            .map { "\($0.memberID):\($0.latitude),\($0.longitude)" }
+            .joined(separator: ";")
+        return "\(driver)|\(pickups)"
+    }
+
     var body: some View {
         Map(position: activePosition) {
             if let driverLocation {
@@ -22,15 +30,20 @@ struct ShuttleMapView: View {
             }
 
             ForEach(morningPickups) { pickup in
-                Annotation(pickup.name, coordinate: pickup.coordinate) {
+                Annotation("", coordinate: pickup.coordinate) {
                     pickupMarker(for: pickup)
                 }
             }
         }
         .mapStyle(mapStyle)
-        .onAppear { fitCamera(animated: false) }
-        .onChange(of: driverLocation?.updatedAt) { _, _ in fitCamera() }
-        .onChange(of: morningPickups.count) { _, _ in fitCamera() }
+        .onAppear {
+            fitCamera(animated: false)
+            scheduleAnnotationRefresh()
+        }
+        .onChange(of: annotationSignature) { _, _ in
+            fitCamera(animated: false)
+            scheduleAnnotationRefresh()
+        }
     }
 
     private var driverMarker: some View {
@@ -61,52 +74,82 @@ struct ShuttleMapView: View {
     }
 
     func fitCamera(animated: Bool = true) {
+        let region = fittedRegion()
+        applyRegion(region, animated: animated)
+    }
+
+    private func fittedRegion() -> MKCoordinateRegion {
         var coordinates: [CLLocationCoordinate2D] = morningPickups.map(\.coordinate)
         if let driverLocation {
             coordinates.append(driverLocation.coordinate)
         }
 
         guard let first = coordinates.first else {
-            activePosition.wrappedValue = .region(MapDefaults.homeRegion)
-            return
+            return MapDefaults.homeRegion
         }
 
-        let region: MKCoordinateRegion
         if coordinates.count == 1 {
-            region = MKCoordinateRegion(
+            return MKCoordinateRegion(
                 center: first,
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             )
-        } else {
-            var minLat = first.latitude
-            var maxLat = first.latitude
-            var minLng = first.longitude
-            var maxLng = first.longitude
-
-            for coordinate in coordinates {
-                minLat = min(minLat, coordinate.latitude)
-                maxLat = max(maxLat, coordinate.latitude)
-                minLng = min(minLng, coordinate.longitude)
-                maxLng = max(maxLng, coordinate.longitude)
-            }
-
-            region = MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: (minLat + maxLat) / 2,
-                    longitude: (minLng + maxLng) / 2
-                ),
-                span: MKCoordinateSpan(
-                    latitudeDelta: max(0.02, (maxLat - minLat) * 1.4),
-                    longitudeDelta: max(0.02, (maxLng - minLng) * 1.4)
-                )
-            )
         }
 
+        var minLat = first.latitude
+        var maxLat = first.latitude
+        var minLng = first.longitude
+        var maxLng = first.longitude
+
+        for coordinate in coordinates {
+            minLat = min(minLat, coordinate.latitude)
+            maxLat = max(maxLat, coordinate.latitude)
+            minLng = min(minLng, coordinate.longitude)
+            maxLng = max(maxLng, coordinate.longitude)
+        }
+
+        return MKCoordinateRegion(
+            center: CLLocationCoordinate2D(
+                latitude: (minLat + maxLat) / 2,
+                longitude: (minLng + maxLng) / 2
+            ),
+            span: MKCoordinateSpan(
+                latitudeDelta: max(0.02, (maxLat - minLat) * 1.4),
+                longitudeDelta: max(0.02, (maxLng - minLng) * 1.4)
+            )
+        )
+    }
+
+    private func applyRegion(_ region: MKCoordinateRegion, animated: Bool) {
         if animated {
             withAnimation { activePosition.wrappedValue = .region(region) }
         } else {
             activePosition.wrappedValue = .region(region)
         }
+    }
+
+    /// MapKit bazen annotation'ları kamera hareket edene kadar çizmez; kısa bir yenileme turu uygular.
+    private func scheduleAnnotationRefresh() {
+        Task { @MainActor in
+            let target = fittedRegion()
+            applyRegion(target, animated: false)
+            try? await Task.sleep(for: .milliseconds(120))
+
+            activePosition.wrappedValue = .automatic
+            try? await Task.sleep(for: .milliseconds(150))
+
+            applyRegion(target, animated: false)
+            try? await Task.sleep(for: .milliseconds(50))
+            nudgeCameraToRefreshAnnotations()
+            try? await Task.sleep(for: .milliseconds(50))
+            applyRegion(target, animated: false)
+        }
+    }
+
+    private func nudgeCameraToRefreshAnnotations() {
+        guard var region = activePosition.wrappedValue.region else { return }
+        region.center.latitude += 0.00008
+        region.center.longitude += 0.00008
+        activePosition.wrappedValue = .region(region)
     }
 
     func zoom(by factor: Double) {

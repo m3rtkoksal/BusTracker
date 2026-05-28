@@ -433,16 +433,7 @@ final class ShuttleStore {
         response["name"] = name
         latestAttendanceResponses[memberID] = response
         applyAttendance(from: ["responses": latestAttendanceResponses])
-
-        // Yolcu "GELMİYORUM" seçerse, kendi biniş noktasını haritadan kaldır
-        if status == .notComing {
-            try? await db.collection("groups").document(groupID)
-                .collection("morningPickups").document(memberID)
-                .delete()
-
-            // Local state'ten de hemen çıkar
-            morningPickups.removeAll { $0.memberID == memberID }
-        }
+        // Gelmiyorum: biniş noktası silinmez; sürücü haritasında katılıma göre gizlenir.
     }
 
     private func handleLocationUpdate(_ location: CLLocation) async {
@@ -609,6 +600,19 @@ final class ShuttleStore {
         }
     }
 
+    private static func doubleValue(_ value: Any?) -> Double? {
+        switch value {
+        case let double as Double:
+            double
+        case let number as NSNumber:
+            number.doubleValue
+        case let int as Int:
+            Double(int)
+        default:
+            nil
+        }
+    }
+
     private static func parseAttendanceResponses(from data: [String: Any]) -> [String: [String: Any]] {
         guard let raw = data["responses"] else { return [:] }
         if let typed = raw as? [String: [String: Any]] { return typed }
@@ -636,11 +640,11 @@ final class ShuttleStore {
 
     private static func morningPickup(from document: QueryDocumentSnapshot) -> MorningPickup? {
         let data = document.data()
+        let memberID = (data["memberID"] as? String) ?? document.documentID
         guard
-            let memberID = data["memberID"] as? String,
             let name = data["name"] as? String,
-            let latitude = data["latitude"] as? Double,
-            let longitude = data["longitude"] as? Double
+            let latitude = doubleValue(data["latitude"]),
+            let longitude = doubleValue(data["longitude"])
         else { return nil }
 
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
@@ -656,8 +660,8 @@ final class ShuttleStore {
     private static func driverLocation(from snapshot: DocumentSnapshot?) -> DriverLocation? {
         guard
             let data = snapshot?.data(),
-            let latitude = data["latitude"] as? Double,
-            let longitude = data["longitude"] as? Double,
+            let latitude = doubleValue(data["latitude"]),
+            let longitude = doubleValue(data["longitude"]),
             let isActive = data["isActive"] as? Bool,
             isActive
         else { return nil }

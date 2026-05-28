@@ -445,7 +445,11 @@ struct DriverHomeView: BaseView {
 
     private var passengerMorningPickups: [MorningPickup] {
         let passengerIDs = Set(passengers.map(\.id))
-        return store.morningPickups.filter { passengerIDs.contains($0.memberID) }
+        return store.morningPickups.filter { pickup in
+            guard passengerIDs.contains(pickup.memberID) else { return false }
+            let attendance = passengers.first { $0.id == pickup.memberID }?.attendance
+            return attendance != .notComing
+        }
     }
 
     // MARK: - Settings Tab

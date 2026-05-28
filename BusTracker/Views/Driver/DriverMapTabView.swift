@@ -38,6 +38,15 @@ struct DriverMapTabView: View {
                     .padding(.bottom, 12)
             }
         }
+        .onAppear {
+            fitCamera()
+        }
+        .onChange(of: driverLocation?.updatedAt) { _, _ in
+            fitCamera()
+        }
+        .onChange(of: morningPickups.map(\.memberID).joined()) { _, _ in
+            fitCamera()
+        }
     }
 
     private var topOverlay: some View {

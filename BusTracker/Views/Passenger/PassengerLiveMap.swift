@@ -160,19 +160,35 @@ struct PassengerLiveMap: View {
         }
     }
 
-    /// MapKit sometimes skips annotation layout until the camera moves slightly.
+    /// MapKit bazen annotation'ları kamera hareket edene kadar çizmez.
     private func scheduleAnnotationRefresh() {
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(80))
+            let target = fittedRegionForAnnotations()
+            applyRegion(target, animated: false)
+            try? await Task.sleep(for: .milliseconds(120))
+
+            activePosition.wrappedValue = .automatic
+            try? await Task.sleep(for: .milliseconds(150))
+
+            applyRegion(target, animated: false)
+            try? await Task.sleep(for: .milliseconds(50))
             nudgeCameraToRefreshAnnotations()
             try? await Task.sleep(for: .milliseconds(50))
-            fitAllAnnotations(animated: false)
+            applyRegion(target, animated: false)
         }
+    }
+
+    private func fittedRegionForAnnotations() -> MKCoordinateRegion {
+        var coordinates: [CLLocationCoordinate2D] = []
+        if let pickup = displayPickup { coordinates.append(pickup) }
+        if let driver = driverLocation?.coordinate { coordinates.append(driver) }
+        return coordinates.isEmpty ? MapDefaults.homeRegion : makeRegion(containing: coordinates)
     }
 
     private func nudgeCameraToRefreshAnnotations() {
         guard var region = activePosition.wrappedValue.region else { return }
-        region.center.longitude += 0.00002
+        region.center.latitude += 0.00008
+        region.center.longitude += 0.00008
         activePosition.wrappedValue = .region(region)
     }
 }
