@@ -7,6 +7,7 @@ final class RegistrationFormViewModel: BaseViewModel {
 
     var name = ""
     var serviceField = ""
+    var serviceFieldError: String?
 
     init(role: MemberRole) {
         self.role = role
@@ -56,9 +57,36 @@ final class RegistrationFormViewModel: BaseViewModel {
     }
 
     var canSubmit: Bool {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        let trimmed = serviceField.trimmingCharacters(in: .whitespacesAndNewlines)
-        return role == .driver ? !trimmed.isEmpty : serviceField.count >= 4
+        Self.isRegistrationFormComplete(name: name, serviceField: serviceField, role: role)
+    }
+
+    func updateServiceField(_ value: String) {
+        serviceField = role == .passenger ? value.uppercased() : value
+        serviceFieldError = nil
+    }
+
+    /// Apple kayıt öncesi yerel doğrulama; hata servis alanı altında gösterilir.
+    func validateBeforeAppleSignIn() -> Bool {
+        serviceFieldError = nil
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            showError("Kayıt için adınızı girin.")
+            return false
+        }
+        let trimmedService = serviceField.trimmingCharacters(in: .whitespacesAndNewlines)
+        if role == .passenger {
+            if trimmedService.isEmpty {
+                serviceFieldError = "Servis kodu girmedin."
+                return false
+            }
+            if trimmedService.count < 4 {
+                serviceFieldError = "Servis kodu en az 4 karakter olmalı."
+                return false
+            }
+        } else if trimmedService.isEmpty {
+            serviceFieldError = "Servis adı girmedin."
+            return false
+        }
+        return true
     }
 
     func createAccount(
@@ -66,6 +94,8 @@ final class RegistrationFormViewModel: BaseViewModel {
         store: ShuttleStore,
         session: UserSession
     ) async {
+        guard canSubmit else { return }
+
         authService.setCompletingRegistration(true)
         defer { authService.setCompletingRegistration(false) }
 
@@ -76,6 +106,16 @@ final class RegistrationFormViewModel: BaseViewModel {
             if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                let suggested = appleResult.displayName {
                 name = suggested
+            }
+
+            if role == .passenger {
+                do {
+                    try await store.validatePassengerGroupCode(serviceField)
+                } catch let error as ShuttleStoreError {
+                    serviceFieldError = serviceFieldErrorMessage(for: error)
+                    try? authService.signOut()
+                    return
+                }
             }
 
             let profile: UserProfile
@@ -95,13 +135,53 @@ final class RegistrationFormViewModel: BaseViewModel {
             )
         } catch let error as AppleSignInError {
             if case .cancelled = error { return }
-            showError(userFacingMessage(for: error))
+            if !applyPassengerServiceFieldError(error) {
+                showError(userFacingMessage(for: error))
+            }
+            if session.profile == nil {
+                try? authService.signOut()
+            }
         } catch {
-            showError(userFacingMessage(for: error))
+            if !applyPassengerServiceFieldError(error) {
+                showError(userFacingMessage(for: error))
+            }
             if session.profile == nil {
                 try? authService.signOut()
             }
         }
+    }
+
+    static func isRegistrationFormComplete(
+        name: String,
+        serviceField: String,
+        role: MemberRole
+    ) -> Bool {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        let trimmedService = serviceField.trimmingCharacters(in: .whitespacesAndNewlines)
+        if role == .driver {
+            return !trimmedService.isEmpty
+        }
+        return trimmedService.count >= 4
+    }
+
+    private func serviceFieldErrorMessage(for error: ShuttleStoreError) -> String {
+        switch error {
+        case .groupNotFound:
+            return error.errorDescription ?? "Bu servis kodu bulunamadı."
+        case .invalidInput(let message):
+            return message
+        case .alreadyInGroup:
+            return error.errorDescription ?? "Zaten bir servise kayıtlısınız."
+        case .notAuthenticated:
+            return error.errorDescription ?? "Giriş yapmanız gerekiyor."
+        }
+    }
+
+    @discardableResult
+    private func applyPassengerServiceFieldError(_ error: Error) -> Bool {
+        guard role == .passenger, let storeError = error as? ShuttleStoreError else { return false }
+        serviceFieldError = serviceFieldErrorMessage(for: storeError)
+        return true
     }
 
     private func userFacingMessage(for error: Error) -> String {

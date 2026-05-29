@@ -31,8 +31,11 @@ struct RegistrationFormView: BaseView {
                         NeonFormField(title: "Adınız", text: $viewModel.name, prompt: viewModel.namePrompt)
                         NeonFormField(
                             title: viewModel.serviceFieldTitle,
-                            text: $viewModel.serviceField,
-                            prompt: viewModel.serviceFieldPrompt
+                            text: serviceFieldBinding,
+                            prompt: viewModel.serviceFieldPrompt,
+                            keyboard: role == .passenger ? .asciiCapable : .default,
+                            textInputAutocapitalization: role == .passenger ? .characters : .words,
+                            errorText: viewModel.serviceFieldError
                         )
 
                         Text(viewModel.footerCaption)
@@ -57,11 +60,23 @@ struct RegistrationFormView: BaseView {
         }
     }
 
+    private var serviceFieldBinding: Binding<String> {
+        Binding(
+            get: { viewModel.serviceField },
+            set: { viewModel.updateServiceField($0) }
+        )
+    }
+
+    private var canTapAppleSignIn: Bool {
+        !store.isLoading && !authService.isLoading && !viewModel.isLoading
+    }
+
     private var createButton: some View {
         SignInWithAppleButton(
             title: "Apple ile Kayıt Ol",
             isLoading: store.isLoading || authService.isLoading || viewModel.isLoading
         ) {
+            guard viewModel.validateBeforeAppleSignIn() else { return }
             Task {
                 await viewModel.createAccount(
                     authService: authService,
@@ -70,8 +85,8 @@ struct RegistrationFormView: BaseView {
                 )
             }
         }
-        .disabled(!viewModel.canSubmit || store.isLoading || authService.isLoading || viewModel.isLoading)
-        .opacity(viewModel.canSubmit ? 1 : 0.5)
+        .disabled(!canTapAppleSignIn)
+        .opacity(canTapAppleSignIn ? 1 : 0.5)
     }
 }
 

@@ -12,7 +12,7 @@ enum ShuttleStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notAuthenticated: "Giriş yapmanız gerekiyor."
-        case .groupNotFound: "Bu kodla eşleşen servis bulunamadı."
+        case .groupNotFound: "Bu servis kodu bulunamadı."
         case .alreadyInGroup: "Zaten bir servise kayıtlısınız."
         case .invalidInput(let message): message
         }
@@ -213,6 +213,24 @@ final class ShuttleStore {
         return profile
     }
 
+    /// Yolcu kaydı: kod Firestore'da var mı (Apple oturumu açıldıktan sonra).
+    func validatePassengerGroupCode(_ code: String) async throws {
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if trimmedCode.isEmpty {
+            throw ShuttleStoreError.invalidInput("Servis kodu girmedin.")
+        }
+        if trimmedCode.count < 4 {
+            throw ShuttleStoreError.invalidInput("Servis kodu en az 4 karakter olmalı.")
+        }
+        let snapshot = try await db.collection("groups")
+            .whereField("code", isEqualTo: trimmedCode)
+            .limit(to: 1)
+            .getDocuments()
+        if snapshot.documents.isEmpty {
+            throw ShuttleStoreError.groupNotFound
+        }
+    }
+
     func joinGroup(code: String, passengerName: String) async throws -> UserProfile {
         try await FirebaseSession.shared.ensureAuthenticated()
         guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
@@ -279,6 +297,11 @@ final class ShuttleStore {
         guard durationHours > 0 else {
             throw ShuttleStoreError.invalidInput("Servis süresi seçin.")
         }
+        guard locationTracker.canDriverStartTrip else {
+            throw ShuttleStoreError.invalidInput(
+                "Servisi başlatmak için Ayarlar'dan \"Her zaman\" konum iznini açmanız gerekir."
+            )
+        }
         try await FirebaseSession.shared.ensureAuthenticated()
 
         let endsAt = Date().addingTimeInterval(durationHours * 3600)
@@ -323,7 +346,6 @@ final class ShuttleStore {
         lastLocationUploadAt = nil
         lastAppendedRoutePoint = nil
 
-        locationTracker.requestBackgroundPermission()
         locationTracker.onLocationUpdate = { [weak self] location in
             Task { @MainActor in
                 await self?.handleLocationUpdate(location)

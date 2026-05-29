@@ -4,6 +4,7 @@ import SwiftUI
 struct TripDurationBottomSheet: View {
     @Binding var selectedHours: Double
     let isLoading: Bool
+    let canStartTrip: Bool
     let onConfirm: () -> Void
     let onDismiss: () -> Void
 
@@ -51,12 +52,16 @@ struct TripDurationBottomSheet: View {
                 .foregroundStyle(NeonTheme.onSurface)
                 .padding(.bottom, 8)
 
-            Text("Konum paylaşımı seçilen süre sonunda otomatik durur ve servis kapanır.")
-                .font(.subheadline)
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 20)
+            Text(
+                canStartTrip
+                    ? "Sefer boyunca konumunuz yolculara paylaşılır. Paylaşım süre sonunda otomatik durur."
+                    : "\"Her zaman\" konum izni olmadan servis başlatılamaz. Önce İZİN VER adımlarını tamamlayın."
+            )
+            .font(.subheadline)
+            .foregroundStyle(canStartTrip ? NeonTheme.onSurfaceVariant : Color(hex: 0xFF4444))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 20)
 
             durationGrid
                 .padding(.bottom, 20)
@@ -83,7 +88,8 @@ struct TripDurationBottomSheet: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(NeonTheme.primary.opacity(0.5), lineWidth: 1)
             }
-            .disabled(isLoading)
+            .disabled(isLoading || !canStartTrip)
+            .opacity(canStartTrip ? 1 : 0.45)
             .buttonStyle(.plain)
             .padding(.bottom, 8)
         }
@@ -178,6 +184,7 @@ struct TripDurationBottomSheet: View {
         TripDurationBottomSheet(
             selectedHours: .constant(2),
             isLoading: false,
+            canStartTrip: true,
             onConfirm: {},
             onDismiss: {}
         )

@@ -44,6 +44,27 @@ struct DriverHomeView: BaseView {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
         }
         .overlay {
+            if viewModel.showAlwaysLocationGuide {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.showAlwaysLocationGuide = false }
+
+                    DriverAlwaysLocationGuideSheet(
+                        waitingForSettingsReturn: false,
+                        onRequestPermission: {
+                            locationTracker.requestDriverAlwaysPermissionIfNeeded()
+                        },
+                        onOpenSettings: { locationTracker.openAppSettings() },
+                        onDismiss: { viewModel.showAlwaysLocationGuide = false }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.showAlwaysLocationGuide)
+            }
+        }
+        .overlay {
             if viewModel.showTripDurationSheet {
                 ZStack(alignment: .bottom) {
                     Color.black.opacity(0.45)
@@ -53,6 +74,7 @@ struct DriverHomeView: BaseView {
                     TripDurationBottomSheet(
                         selectedHours: $viewModel.selectedTripDurationHours,
                         isLoading: store.isLoading,
+                        canStartTrip: locationTracker.canDriverStartTrip,
                         onConfirm: {
                             Task {
                                 await viewModel.confirmStartTrip(
@@ -70,6 +92,14 @@ struct DriverHomeView: BaseView {
                 .animation(.easeInOut(duration: 0.28), value: viewModel.showTripDurationSheet)
             }
         }
+        .onChange(of: locationTracker.authorizationStatus) { _, _ in
+            viewModel.onDriverLocationAuthorizationUpdated(locationTracker: locationTracker)
+        }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            viewModel.onDriverLocationAuthorizationUpdated(locationTracker: locationTracker)
+        }
+#endif
         .sheet(isPresented: $showMyServices) {
             MyServicesView()
                 .environment(session)
@@ -372,6 +402,12 @@ struct DriverHomeView: BaseView {
     private var tripControlSection: some View {
         VStack(spacing: 12) {
             Button {
+                locationTracker.refreshAuthorizationStatus()
+                if !store.isTripActive, !locationTracker.canDriverStartTrip {
+                    viewModel.requestDriverAlwaysPermission(locationTracker: locationTracker)
+                    locationTracker.requestDriverAlwaysPermissionIfNeeded()
+                    return
+                }
                 Task {
                     await viewModel.handleTripControlTap(
                         store: store,
@@ -426,22 +462,43 @@ struct DriverHomeView: BaseView {
     }
 
     private var backgroundLocationWarning: some View {
-        Text("Arka planda konum paylaşımı için Ayarlar'dan \"Her Zaman\" iznini seçin.")
-            .font(.caption)
-            .foregroundStyle(Color(hex: 0xFFE04A))
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Arka planda konum paylaşımı için \"Her zaman\" iznini açın.")
+                .font(.caption)
+                .foregroundStyle(Color(hex: 0xFFE04A))
+            Button("Her zaman iznini aç") {
+                viewModel.requestDriverAlwaysPermission(locationTracker: locationTracker)
+                locationTracker.requestDriverAlwaysPermissionIfNeeded()
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(NeonTheme.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Map Tab
 
+    private var mapDriverLocation: DriverLocation? {
+        resolveDriverMapLocation(
+            firestoreLocation: store.driverLocation,
+            deviceLocation: locationTracker.effectiveLocation,
+            driverName: profile?.name ?? "Sürücü"
+        )
+    }
+
     private var mapTab: some View {
         DriverMapTabView(
-            driverLocation: store.driverLocation,
+            driverLocation: mapDriverLocation,
             driverRoute: store.driverRoute,
             morningPickups: passengerMorningPickups,
             stats: stats,
             isTripActive: store.isTripActive
         )
+        .onAppear {
+            if locationTracker.hasWhenInUseAuthorization {
+                locationTracker.requestDriverSingleLocation()
+            }
+        }
     }
 
     private var passengerMorningPickups: [MorningPickup] {

@@ -1,6 +1,10 @@
 import CoreLocation
 import Foundation
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 @MainActor
 @Observable
 final class LocationTracker: NSObject {
@@ -10,12 +14,39 @@ final class LocationTracker: NSObject {
 
     var onLocationUpdate: ((CLLocation) -> Void)?
 
+    /// Sürücü: yalnızca "Her zaman" ile arka plan paylaşımı.
     var needsAlwaysAuthorization: Bool {
         authorizationStatus == .authorizedWhenInUse
     }
 
-    var isAuthorizedForTracking: Bool {
-        authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
+    var hasWhenInUseAuthorization: Bool {
+        switch authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Her kontrol öncesi canlı okunur (izin penceresi kapandıktan hemen sonra güncellenir).
+    var canDriverStartTrip: Bool {
+        let live = manager.authorizationStatus
+        if authorizationStatus != live {
+            authorizationStatus = live
+        }
+        return live == .authorizedAlways
+    }
+
+    /// Sistem izin penceresi kapandıktan sonra kısa süre gecikme olabilir.
+    func waitForDriverAlwaysAuthorization(maxWaitSeconds: Double = 2.0) async -> Bool {
+        let steps = Int(maxWaitSeconds * 10)
+        for _ in 0..<steps {
+            refreshAuthorizationStatus()
+            if canDriverStartTrip { return true }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        refreshAuthorizationStatus()
+        return canDriverStartTrip
     }
 
     private let manager = CLLocationManager()
@@ -34,12 +65,22 @@ final class LocationTracker: NSObject {
         #endif
     }
 
-    func setSimulatedLocation(_ location: CLLocation) {
-        currentLocation = location
+    func refreshAuthorizationStatus() {
+        authorizationStatus = manager.authorizationStatus
     }
 
-    func requestPermission() {
-        switch manager.authorizationStatus {
+    /// Giriş / kayıt sonrası tüm kullanıcılar: "Uygulama kullanılırken".
+    func requestWhenInUsePermissionIfNeeded() {
+        refreshAuthorizationStatus()
+        if authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        }
+    }
+
+    /// Sürücü sefer başlatma: "Her zaman" izni.
+    func requestDriverAlwaysPermissionIfNeeded() {
+        refreshAuthorizationStatus()
+        switch authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse:
@@ -49,9 +90,10 @@ final class LocationTracker: NSObject {
         }
     }
 
-    /// Passenger-friendly: request only when-in-use + fetch one location update (no background).
+    /// Yolcu haritası: yalnızca when-in-use + tek konum.
     func requestPassengerSingleLocation() {
-        switch manager.authorizationStatus {
+        refreshAuthorizationStatus()
+        switch authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
@@ -61,15 +103,24 @@ final class LocationTracker: NSObject {
         }
     }
 
-    func requestBackgroundPermission() {
-        switch manager.authorizationStatus {
+    /// Sürücü haritası (servis öncesi): cihaz konumunu haritada göstermek için tek okuma.
+    func requestDriverSingleLocation() {
+        refreshAuthorizationStatus()
+        switch authorizationStatus {
         case .notDetermined:
-            manager.requestAlwaysAuthorization()
-        case .authorizedWhenInUse:
-            manager.requestAlwaysAuthorization()
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            manager.requestLocation()
         default:
             break
         }
+    }
+
+    func openAppSettings() {
+#if canImport(UIKit)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+#endif
     }
 
     func startTracking() {
@@ -79,8 +130,9 @@ final class LocationTracker: NSObject {
         return
         #endif
 
-        guard isAuthorizedForTracking else {
-            requestBackgroundPermission()
+        refreshAuthorizationStatus()
+        guard authorizationStatus == .authorizedAlways else {
+            requestDriverAlwaysPermissionIfNeeded()
             return
         }
 
@@ -97,6 +149,15 @@ final class LocationTracker: NSObject {
         #endif
     }
 
+    func stopTracking() {
+        isTracking = false
+        onLocationUpdate = nil
+        manager.stopUpdatingLocation()
+#if os(iOS)
+        manager.allowsBackgroundLocationUpdates = false
+#endif
+    }
+
     private func deliverLocation(_ location: CLLocation) {
         #if targetEnvironment(simulator)
         let resolved = MapDefaults.simulatorPinnedLocation
@@ -106,15 +167,6 @@ final class LocationTracker: NSObject {
         currentLocation = location
         onLocationUpdate?(location)
         #endif
-    }
-
-    func stopTracking() {
-        isTracking = false
-        onLocationUpdate = nil
-        manager.stopUpdatingLocation()
-#if os(iOS)
-        manager.allowsBackgroundLocationUpdates = false
-#endif
     }
 
     private func applyBackgroundSettingsIfNeeded() {
@@ -130,10 +182,10 @@ extension LocationTracker: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             authorizationStatus = manager.authorizationStatus
-            if isTracking, isAuthorizedForTracking {
+            if isTracking, authorizationStatus == .authorizedAlways {
                 applyBackgroundSettingsIfNeeded()
                 manager.startUpdatingLocation()
-            } else if isAuthorizedForTracking {
+            } else if hasWhenInUseAuthorization {
                 manager.requestLocation()
             }
         }

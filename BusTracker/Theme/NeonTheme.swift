@@ -13,6 +13,7 @@ enum NeonTheme {
     static let primary = Color(hex: 0xFF2D78)
     static let secondary = Color(hex: 0x00FFCC)
     static let outline = Color(hex: 0x5A5068)
+    static let error = Color(hex: 0xFF5252)
     /// Harita: sürücü canlı konum pini
     static let mapDriverPin = Color(hex: 0x4DA3FF)
     /// Harita: yolcu biniş pini
@@ -146,6 +147,10 @@ struct NeonFormField: View {
     @Binding var text: String
     let prompt: String
     var keyboard: UIKeyboardType = .default
+    var textInputAutocapitalization: TextInputAutocapitalization? = .words
+    var errorText: String? = nil
+
+    private var hasError: Bool { errorText != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -154,7 +159,7 @@ struct NeonFormField: View {
                 .foregroundStyle(NeonTheme.onSurface)
             TextField(prompt, text: $text)
                 .keyboardType(keyboard)
-                .textInputAutocapitalization(.words)
+                .textInputAutocapitalization(textInputAutocapitalization)
                 .autocorrectionDisabled()
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -165,8 +170,16 @@ struct NeonFormField: View {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(NeonTheme.outline.opacity(0.5), lineWidth: 1)
+                        .strokeBorder(
+                            hasError ? NeonTheme.error.opacity(0.7) : NeonTheme.outline.opacity(0.5),
+                            lineWidth: 1
+                        )
                 }
+            if let errorText {
+                Text(errorText)
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.error)
+            }
         }
     }
 }

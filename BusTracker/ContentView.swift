@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
+    @Environment(LocationTracker.self) private var locationTracker
 
     @State private var authMode: AuthMode = .register
 
@@ -35,6 +36,17 @@ struct ContentView: View {
                 session.clearLocalProfile()
             }
         }
+        .task(id: locationPermissionTaskID) {
+            locationTracker.requestWhenInUsePermissionIfNeeded()
+        }
+    }
+
+    /// Giriş, kayıt veya ana ekran: Android ile aynı — when-in-use isteği.
+    private var locationPermissionTaskID: String {
+        if isAuthenticatedWithProfile, let memberID = session.profile?.memberID {
+            return "signed-\(memberID)"
+        }
+        return "auth-\(authMode)"
     }
 
     @ViewBuilder

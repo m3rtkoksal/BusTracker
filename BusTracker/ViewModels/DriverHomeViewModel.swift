@@ -26,6 +26,8 @@ struct DriverPassengerStats {
 @Observable
 final class DriverHomeViewModel: BaseViewModel {
     var showTripDurationSheet = false
+    var showAlwaysLocationGuide = false
+    var pendingTripDurationSheetAfterAlways = false
     var selectedTripDurationHours = 2.0
 
     func configure(session: UserSession) {
@@ -46,7 +48,10 @@ final class DriverHomeViewModel: BaseViewModel {
 
     func onAppear(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) {
         configure(session: session)
-        locationTracker.requestPermission()
+        locationTracker.refreshAuthorizationStatus()
+        if locationTracker.hasWhenInUseAuthorization {
+            locationTracker.requestDriverSingleLocation()
+        }
         if let groupID = session.profile?.groupID,
            let driverName = session.profile?.name {
             store.startListening(groupID: groupID)
@@ -114,7 +119,37 @@ final class DriverHomeViewModel: BaseViewModel {
         if store.isTripActive {
             await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
             showSuccess("Servis durduruldu.")
-        } else {
+            return
+        }
+
+        locationTracker.refreshAuthorizationStatus()
+        guard locationTracker.canDriverStartTrip else {
+            pendingTripDurationSheetAfterAlways = true
+            showAlwaysLocationGuide = true
+            return
+        }
+        showTripDurationSheet = true
+    }
+
+    func requestDriverAlwaysPermission(locationTracker: LocationTracker) {
+        locationTracker.refreshAuthorizationStatus()
+        if locationTracker.canDriverStartTrip {
+            showAlwaysLocationGuide = false
+            return
+        }
+        pendingTripDurationSheetAfterAlways = true
+        showAlwaysLocationGuide = true
+    }
+
+    func onDriverLocationAuthorizationUpdated(locationTracker: LocationTracker) {
+        locationTracker.refreshAuthorizationStatus()
+        if locationTracker.hasWhenInUseAuthorization {
+            locationTracker.requestDriverSingleLocation()
+        }
+        guard locationTracker.canDriverStartTrip else { return }
+        showAlwaysLocationGuide = false
+        if pendingTripDurationSheetAfterAlways, !showTripDurationSheet {
+            pendingTripDurationSheetAfterAlways = false
             showTripDurationSheet = true
         }
     }
@@ -124,8 +159,19 @@ final class DriverHomeViewModel: BaseViewModel {
               let groupID = profile.groupID else { return }
         let driverName = profile.name
 
+        let hasAlways = await locationTracker.waitForDriverAlwaysAuthorization()
+        guard hasAlways else {
+            pendingTripDurationSheetAfterAlways = true
+            showAlwaysLocationGuide = true
+            showError(
+                "Servisi başlatmak için \"Her zaman\" konum izni zorunludur. Ayarlar'dan izin verin."
+            )
+            return
+        }
+
+        showAlwaysLocationGuide = false
+        pendingTripDurationSheetAfterAlways = false
         showTripDurationSheet = false
-        locationTracker.requestBackgroundPermission()
 
         do {
             try await store.startTrip(
