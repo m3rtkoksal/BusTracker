@@ -22,12 +22,6 @@ struct PassengerLiveMap: View {
         selectedCoordinate ?? savedPickup?.coordinate
     }
 
-    private var annotationSignature: String {
-        let driver = driverLocation.map { "\($0.latitude),\($0.longitude)" } ?? "-"
-        let pickup = displayPickup.map { "\($0.latitude),\($0.longitude)" } ?? "-"
-        return "\(driver)|\(pickup)"
-    }
-
     var body: some View {
         MapReader { proxy in
             Map(position: activePosition) {
@@ -60,6 +54,7 @@ struct PassengerLiveMap: View {
             }
             .mapStyle(.hybrid(elevation: .realistic))
             .onTapGesture { location in
+                guard isActive else { return }
                 guard let coordinate = proxy.convert(location, from: .local) else { return }
                 selectedCoordinate = coordinate
                 if autoFitOnAppear {
@@ -70,18 +65,6 @@ struct PassengerLiveMap: View {
         .onAppear {
             guard autoFitOnAppear else { return }
             fitAllAnnotations(animated: false)
-            scheduleAnnotationRefresh()
-        }
-        .onChange(of: isActive) { _, active in
-            guard active else { return }
-            guard autoFitOnAppear else { return }
-            fitAllAnnotations(animated: false)
-            scheduleAnnotationRefresh()
-        }
-        .onChange(of: annotationSignature) { _, _ in
-            guard autoFitOnAppear else { return }
-            fitAllAnnotations(animated: false)
-            scheduleAnnotationRefresh()
         }
     }
 
@@ -181,38 +164,6 @@ struct PassengerLiveMap: View {
         } else {
             activePosition.wrappedValue = .region(region)
         }
-    }
-
-    /// MapKit bazen annotation'ları kamera hareket edene kadar çizmez.
-    private func scheduleAnnotationRefresh() {
-        Task { @MainActor in
-            let target = fittedRegionForAnnotations()
-            applyRegion(target, animated: false)
-            try? await Task.sleep(for: .milliseconds(120))
-
-            activePosition.wrappedValue = .automatic
-            try? await Task.sleep(for: .milliseconds(150))
-
-            applyRegion(target, animated: false)
-            try? await Task.sleep(for: .milliseconds(50))
-            nudgeCameraToRefreshAnnotations()
-            try? await Task.sleep(for: .milliseconds(50))
-            applyRegion(target, animated: false)
-        }
-    }
-
-    private func fittedRegionForAnnotations() -> MKCoordinateRegion {
-        var coordinates: [CLLocationCoordinate2D] = []
-        if let pickup = displayPickup { coordinates.append(pickup) }
-        if let driver = driverLocation?.coordinate { coordinates.append(driver) }
-        return coordinates.isEmpty ? MapDefaults.homeRegion : makeRegion(containing: coordinates)
-    }
-
-    private func nudgeCameraToRefreshAnnotations() {
-        guard var region = activePosition.wrappedValue.region else { return }
-        region.center.latitude += 0.00008
-        region.center.longitude += 0.00008
-        activePosition.wrappedValue = .region(region)
     }
 }
 

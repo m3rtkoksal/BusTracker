@@ -10,8 +10,10 @@ struct PassengerHomeView: BaseView {
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
     @State private var showMyServices = false
-    @State private var hasInitialCenteredOnPassenger = false
     @State private var pendingCenterOnPassenger = false
+    @State private var hasInitializedMapCamera = false
+    @State private var mapSnapshotDriverLocation: DriverLocation?
+    @State private var mapSnapshotDriverRoute: [CLLocationCoordinate2D] = []
 
     private var profile: UserProfile? { session.profile }
 
@@ -33,14 +35,21 @@ struct PassengerHomeView: BaseView {
                 passengerTopBar
             }
 
-            Group {
-                switch tabBar.selectedTab {
-                case .service:
+            ZStack {
+                mapTab
+                    .zIndex(0)
+                    .allowsHitTesting(tabBar.selectedTab == .map)
+
+                if tabBar.selectedTab == .service {
                     serviceTab
-                case .map:
-                    mapTab
-                case .settings:
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(NeonTheme.background)
+                        .zIndex(1)
+                } else if tabBar.selectedTab == .settings {
                     settingsTab
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(NeonTheme.background)
+                        .zIndex(1)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -51,11 +60,14 @@ struct PassengerHomeView: BaseView {
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
         }
-        .onChange(of: tabBar.selectedTab) { _, tab in
-            guard tab == .map else { return }
-            guard !hasInitialCenteredOnPassenger else { return }
-            hasInitialCenteredOnPassenger = true
-            centerOnMyLocation()
+        .onChange(of: tabBar.selectedTab) { oldTab, tab in
+            if oldTab == .map {
+                mapSnapshotDriverLocation = store.driverLocation
+                mapSnapshotDriverRoute = store.driverRoute
+            }
+            guard tab == .map, !hasInitializedMapCamera else { return }
+            hasInitializedMapCamera = true
+            focusMapOnPickup(animated: false)
         }
         .onChange(of: locationTracker.effectiveLocation?.coordinate.latitude ?? 0) { _, _ in
             guard tabBar.selectedTab == .map else { return }
@@ -80,18 +92,42 @@ struct PassengerHomeView: BaseView {
         applyPassengerLocationIfAvailable()
     }
 
+    private func openMapFocusedOnPickup() {
+        tabBar.select(.map)
+        hasInitializedMapCamera = true
+        focusMapOnPickup(animated: false)
+    }
+
+    /// Harita sekmesine dönünce kayıtlı / taslak biniş noktasına odaklan.
+    private func focusMapOnPickup(animated: Bool) {
+        viewModel.loadSavedPickup(from: store, session: session)
+
+        guard let pickup = viewModel.draftPickupCoordinate ?? savedMorningPickup?.coordinate else {
+            centerOnMyLocation()
+            return
+        }
+
+        var coordinates = [pickup]
+        if store.isTripActive, let driver = store.driverLocation?.coordinate {
+            let pickupLocation = CLLocation(latitude: pickup.latitude, longitude: pickup.longitude)
+            let driverLocation = CLLocation(latitude: driver.latitude, longitude: driver.longitude)
+            if pickupLocation.distance(from: driverLocation) <= 20_000 {
+                coordinates.append(driver)
+            }
+        }
+
+        applyMapRegion(for: coordinates, animated: animated)
+    }
+
     private func applyPassengerLocationIfAvailable() {
         guard let coord = locationTracker.effectiveLocation?.coordinate else { return }
         pendingCenterOnPassenger = false
         viewModel.draftPickupCoordinate = coord
-        withAnimation {
-            mapPosition = .region(
-                MKCoordinateRegion(
-                    center: coord,
-                    span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-                )
-            )
-        }
+        let region = MKCoordinateRegion(
+            center: coord,
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )
+        setMapRegion(region, animated: true)
     }
 
     // MARK: - Top Bar
@@ -232,7 +268,7 @@ struct PassengerHomeView: BaseView {
             }
 
             Button {
-                tabBar.select(.map)
+                openMapFocusedOnPickup()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "map")
@@ -264,8 +300,8 @@ struct PassengerHomeView: BaseView {
     private var mapTab: some View {
         ZStack {
             PassengerLiveMap(
-                driverLocation: store.driverLocation,
-                driverRoute: store.driverRoute,
+                driverLocation: tabBar.selectedTab == .map ? store.driverLocation : mapSnapshotDriverLocation,
+                driverRoute: tabBar.selectedTab == .map ? store.driverRoute : mapSnapshotDriverRoute,
                 isTripActive: store.isTripActive,
                 selectedCoordinate: $viewModel.draftPickupCoordinate,
                 savedPickup: savedMorningPickup,
@@ -611,11 +647,11 @@ struct PassengerHomeView: BaseView {
         guard var region = mapPosition.region else { return }
         region.span.latitudeDelta = min(0.5, max(0.005, region.span.latitudeDelta * factor))
         region.span.longitudeDelta = min(0.5, max(0.005, region.span.longitudeDelta * factor))
-        withAnimation { mapPosition = .region(region) }
+        setMapRegion(region, animated: true)
     }
 
     private func fitMapCamera() {
-        fitAllAnnotations(animated: true)
+        focusMapOnPickup(animated: true)
     }
 
     private func fitAllAnnotations(animated: Bool) {
@@ -623,18 +659,25 @@ struct PassengerHomeView: BaseView {
         if let pickup = viewModel.draftPickupCoordinate ?? savedMorningPickup?.coordinate {
             coordinates.append(pickup)
         }
-        if let driver = store.driverLocation?.coordinate {
+        if store.isTripActive, let driver = store.driverLocation?.coordinate {
             coordinates.append(driver)
         }
-
-        guard let first = coordinates.first else {
-            withAnimation { mapPosition = .region(MapDefaults.homeRegion) }
+        guard !coordinates.isEmpty else {
+            setMapRegion(MapDefaults.homeRegion, animated: animated)
             return
         }
+        applyMapRegion(for: coordinates, animated: animated)
+    }
+
+    private func applyMapRegion(for coordinates: [CLLocationCoordinate2D], animated: Bool) {
+        guard let first = coordinates.first else { return }
 
         let region: MKCoordinateRegion
         if coordinates.count == 1 {
-            region = MKCoordinateRegion(center: first, span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02))
+            region = MKCoordinateRegion(
+                center: first,
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            )
         } else {
             var minLat = first.latitude, maxLat = first.latitude
             var minLng = first.longitude, maxLng = first.longitude
@@ -647,17 +690,35 @@ struct PassengerHomeView: BaseView {
             region = MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2),
                 span: MKCoordinateSpan(
-                    latitudeDelta: max(0.015, (maxLat - minLat) * 1.6),
-                    longitudeDelta: max(0.015, (maxLng - minLng) * 1.6)
+                    latitudeDelta: min(0.06, max(0.015, (maxLat - minLat) * 1.6)),
+                    longitudeDelta: min(0.06, max(0.015, (maxLng - minLng) * 1.6))
                 )
             )
         }
 
+        setMapRegion(region, animated: animated)
+    }
+
+    private func setMapRegion(_ region: MKCoordinateRegion, animated: Bool) {
+        if let current = mapPosition.region, regionsAreSimilar(current, region) {
+            return
+        }
         if animated {
-            withAnimation { mapPosition = .region(region) }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                mapPosition = .region(region)
+            }
         } else {
             mapPosition = .region(region)
         }
+    }
+
+    private func regionsAreSimilar(_ lhs: MKCoordinateRegion, _ rhs: MKCoordinateRegion) -> Bool {
+        let centerThreshold = 0.00015
+        let spanThreshold = 0.0015
+        return abs(lhs.center.latitude - rhs.center.latitude) < centerThreshold
+            && abs(lhs.center.longitude - rhs.center.longitude) < centerThreshold
+            && abs(lhs.span.latitudeDelta - rhs.span.latitudeDelta) < spanThreshold
+            && abs(lhs.span.longitudeDelta - rhs.span.longitudeDelta) < spanThreshold
     }
 
     private func attendanceColor(_ status: AttendanceStatus) -> Color {
