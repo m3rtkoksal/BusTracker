@@ -437,6 +437,7 @@ struct DriverHomeView: BaseView {
     private var mapTab: some View {
         DriverMapTabView(
             driverLocation: store.driverLocation,
+            driverRoute: store.driverRoute,
             morningPickups: passengerMorningPickups,
             stats: stats,
             isTripActive: store.isTripActive

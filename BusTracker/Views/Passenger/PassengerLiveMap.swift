@@ -4,10 +4,13 @@ import SwiftUI
 
 struct PassengerLiveMap: View {
     let driverLocation: DriverLocation?
+    var driverRoute: [CLLocationCoordinate2D] = []
+    var isTripActive: Bool = false
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
     var savedPickup: MorningPickup?
     var cameraPosition: Binding<MapCameraPosition>?
     var isActive: Bool = true
+    var autoFitOnAppear: Bool = true
 
     @State private var internalPosition: MapCameraPosition = MapDefaults.homeMapPosition
 
@@ -28,6 +31,21 @@ struct PassengerLiveMap: View {
     var body: some View {
         MapReader { proxy in
             Map(position: activePosition) {
+                if DriverRouteDisplay.shouldDrawPolyline(
+                    route: driverRoute,
+                    driverLocation: driverLocation,
+                    isTripActive: isTripActive
+                ) {
+                    MapPolyline(
+                        coordinates: DriverRouteDisplay.polylineCoordinates(
+                            route: driverRoute,
+                            driverLocation: driverLocation,
+                            isTripActive: isTripActive
+                        )
+                    )
+                    .stroke(NeonTheme.secondary.opacity(0.75), lineWidth: 4)
+                }
+
                 if let driverLocation {
                     Annotation(driverLocation.driverName, coordinate: driverLocation.coordinate) {
                         driverMarker
@@ -44,19 +62,24 @@ struct PassengerLiveMap: View {
             .onTapGesture { location in
                 guard let coordinate = proxy.convert(location, from: .local) else { return }
                 selectedCoordinate = coordinate
-                fitAllAnnotations(animated: true)
+                if autoFitOnAppear {
+                    fitAllAnnotations(animated: true)
+                }
             }
         }
         .onAppear {
+            guard autoFitOnAppear else { return }
             fitAllAnnotations(animated: false)
             scheduleAnnotationRefresh()
         }
         .onChange(of: isActive) { _, active in
             guard active else { return }
+            guard autoFitOnAppear else { return }
             fitAllAnnotations(animated: false)
             scheduleAnnotationRefresh()
         }
         .onChange(of: annotationSignature) { _, _ in
+            guard autoFitOnAppear else { return }
             fitAllAnnotations(animated: false)
             scheduleAnnotationRefresh()
         }
@@ -65,15 +88,15 @@ struct PassengerLiveMap: View {
     private var driverMarker: some View {
         ZStack {
             Circle()
-                .fill(NeonTheme.secondary.opacity(0.15))
+                .fill(NeonTheme.mapDriverPin.opacity(0.15))
                 .frame(width: 56, height: 56)
             Circle()
-                .stroke(NeonTheme.secondary.opacity(0.25), lineWidth: 1)
+                .stroke(NeonTheme.mapDriverPin.opacity(0.25), lineWidth: 1)
                 .frame(width: 56, height: 56)
             Image(systemName: "location.north.fill")
                 .font(.system(size: 28))
-                .foregroundStyle(NeonTheme.secondary)
-                .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 8)
+                .foregroundStyle(NeonTheme.mapDriverPin)
+                .shadow(color: NeonTheme.mapDriverPin.opacity(0.8), radius: 8)
         }
     }
 
@@ -81,8 +104,8 @@ struct PassengerLiveMap: View {
         VStack(spacing: 2) {
             Image(systemName: "mappin.circle.fill")
                 .font(.title2)
-                .foregroundStyle(NeonTheme.primary)
-                .shadow(color: NeonTheme.primary.opacity(0.6), radius: 6)
+                .foregroundStyle(NeonTheme.mapPickupPin)
+                .shadow(color: NeonTheme.mapPickupPin.opacity(0.6), radius: 6)
             Text("Biniş")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NeonTheme.onSurface)

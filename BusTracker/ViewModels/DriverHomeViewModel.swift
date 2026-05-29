@@ -11,9 +11,14 @@ struct DriverPassengerStats {
     let notComing: Int
     let unknown: Int
 
+    /// Gelmiyorum dışındaki tüm yolcular (geliyorum + belirtmedi).
+    var capacityOccupied: Int {
+        coming + unknown
+    }
+
     var comingProgress: Double {
         guard total > 0 else { return 0 }
-        return Double(coming) / Double(total)
+        return Double(capacityOccupied) / Double(total)
     }
 }
 

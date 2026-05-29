@@ -13,6 +13,10 @@ enum NeonTheme {
     static let primary = Color(hex: 0xFF2D78)
     static let secondary = Color(hex: 0x00FFCC)
     static let outline = Color(hex: 0x5A5068)
+    /// Harita: sürücü canlı konum pini
+    static let mapDriverPin = Color(hex: 0x4DA3FF)
+    /// Harita: yolcu biniş pini
+    static let mapPickupPin = Color(hex: 0xFF4444)
 
     static let driverChrome = RoleChrome.driver
     static let passengerChrome = RoleChrome.passenger

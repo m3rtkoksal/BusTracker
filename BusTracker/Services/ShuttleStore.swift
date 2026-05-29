@@ -24,6 +24,7 @@ enum ShuttleStoreError: LocalizedError {
 final class ShuttleStore {
     var members: [ShuttleMember] = []
     var driverLocation: DriverLocation?
+    var driverRoute: [CLLocationCoordinate2D] = []
     var morningPickups: [MorningPickup] = []
     var isTripActive = false
     var isLoading = false
@@ -32,6 +33,7 @@ final class ShuttleStore {
     private var db: Firestore { Firestore.firestore() }
     private var membersListener: ListenerRegistration?
     private var locationListener: ListenerRegistration?
+    private var routeListener: ListenerRegistration?
     private var attendanceListener: ListenerRegistration?
     private var morningPickupsListener: ListenerRegistration?
     private var locationUploadTask: Task<Void, Never>?
@@ -39,7 +41,9 @@ final class ShuttleStore {
     private var activeTripGroupID: String?
     private var activeTripDriverName: String?
     private var lastLocationUploadAt: Date?
+    private var lastAppendedRoutePoint: CLLocationCoordinate2D?
     private var tripAutoStopTask: Task<Void, Never>?
+    private static let minRoutePointDistanceMeters: CLLocationDistance = 20
     private(set) var plannedTripEndAt: Date?
 
     private var todayKey: String {
@@ -88,6 +92,18 @@ final class ShuttleStore {
                     }
                 }
 
+            routeListener = db.collection("groups").document(groupID).collection("live").document("route")
+                .addSnapshotListener { [weak self] snapshot, error in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        if let error {
+                            self.errorMessage = error.localizedDescription
+                            return
+                        }
+                        self.driverRoute = Self.routePoints(from: snapshot?.data())
+                    }
+                }
+
             attendanceListener = db.collection("groups").document(groupID)
                 .collection("attendance").document(todayKey)
                 .addSnapshotListener { [weak self] snapshot, _ in
@@ -115,13 +131,17 @@ final class ShuttleStore {
     func stopListening() {
         membersListener?.remove()
         locationListener?.remove()
+        routeListener?.remove()
         attendanceListener?.remove()
         morningPickupsListener?.remove()
         membersListener = nil
         locationListener = nil
+        routeListener = nil
         attendanceListener = nil
         morningPickupsListener = nil
         morningPickups = []
+        driverRoute = []
+        lastAppendedRoutePoint = nil
         locationUploadTask?.cancel()
         locationUploadTask = nil
         tripAutoStopTask?.cancel()
@@ -289,15 +309,19 @@ final class ShuttleStore {
                 "isActive": true,
                 "driverName": driverName,
                 "tripDate": todayKey,
+                "approachSessionKey": UUID().uuidString,
                 "plannedEndAt": Timestamp(date: endsAt),
                 "durationHours": durationHours,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
 
+        try await resetDriverRoute(groupID: groupID)
+
         isTripActive = true
         activeTripGroupID = groupID
         activeTripDriverName = driverName
         lastLocationUploadAt = nil
+        lastAppendedRoutePoint = nil
 
         locationTracker.requestBackgroundPermission()
         locationTracker.onLocationUpdate = { [weak self] location in
@@ -333,6 +357,7 @@ final class ShuttleStore {
         activeTripGroupID = nil
         activeTripDriverName = nil
         lastLocationUploadAt = nil
+        lastAppendedRoutePoint = nil
         locationUploadTask?.cancel()
         locationUploadTask = nil
         locationTracker.onLocationUpdate = nil
@@ -472,6 +497,70 @@ final class ShuttleStore {
                 "tripDate": todayKey,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
+
+        if isActive {
+            try await appendRoutePoint(groupID: groupID, coordinate: location.coordinate)
+        }
+    }
+
+    private func resetDriverRoute(groupID: String) async throws {
+        driverRoute = []
+        lastAppendedRoutePoint = nil
+        try await db.collection("groups").document(groupID)
+            .collection("live").document("route")
+            .setData([
+                "tripDate": todayKey,
+                "points": []
+            ])
+    }
+
+    private func appendRoutePoint(groupID: String, coordinate: CLLocationCoordinate2D) async throws {
+        if let last = lastAppendedRoutePoint {
+            let from = CLLocation(latitude: last.latitude, longitude: last.longitude)
+            let to = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            if from.distance(from: to) < Self.minRoutePointDistanceMeters {
+                return
+            }
+        }
+
+        lastAppendedRoutePoint = coordinate
+        driverRoute.append(coordinate)
+
+        try await db.collection("groups").document(groupID)
+            .collection("live").document("route")
+            .setData([
+                "tripDate": todayKey,
+                "points": FieldValue.arrayUnion([
+                    [
+                        "latitude": coordinate.latitude,
+                        "longitude": coordinate.longitude
+                    ]
+                ])
+            ], merge: true)
+    }
+
+    private static func routePoints(from data: [String: Any]?) -> [CLLocationCoordinate2D] {
+        guard let rawPoints = data?["points"] as? [[String: Any]] else { return [] }
+        return rawPoints.compactMap { point -> CLLocationCoordinate2D? in
+            guard let lat = numericValue(point["latitude"]),
+                  let lng = numericValue(point["longitude"]) else { return nil }
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        }
+    }
+
+    private static func numericValue(_ value: Any?) -> Double? {
+        switch value {
+        case let number as NSNumber:
+            return number.doubleValue
+        case let double as Double:
+            return double
+        case let float as Float:
+            return Double(float)
+        case let int as Int:
+            return Double(int)
+        default:
+            return nil
+        }
     }
 
     private func saveUserDocument(_ profile: UserProfile) async throws {

@@ -49,6 +49,18 @@ final class LocationTracker: NSObject {
         }
     }
 
+    /// Passenger-friendly: request only when-in-use + fetch one location update (no background).
+    func requestPassengerSingleLocation() {
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            manager.requestLocation()
+        default:
+            break
+        }
+    }
+
     func requestBackgroundPermission() {
         switch manager.authorizationStatus {
         case .notDetermined:

@@ -1,0 +1,12 @@
+{
+  "name": "bustracker",
+  "private": true,
+  "scripts": {
+    "firebase": "firebase",
+    "firebase:login": "firebase login",
+    "firebase:deploy": "firebase deploy --only functions"
+  },
+  "devDependencies": {
+    "firebase-tools": "^14.0.0"
+  }
+}

@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ShuttleMapView: View {
     let driverLocation: DriverLocation?
+    var driverRoute: [CLLocationCoordinate2D] = []
+    var isTripActive: Bool = false
     var morningPickups: [MorningPickup] = []
     var mapStyle: MapStyle = .standard(elevation: .realistic)
     var cameraPosition: Binding<MapCameraPosition>?
@@ -23,6 +25,21 @@ struct ShuttleMapView: View {
 
     var body: some View {
         Map(position: activePosition) {
+            if DriverRouteDisplay.shouldDrawPolyline(
+                route: driverRoute,
+                driverLocation: driverLocation,
+                isTripActive: isTripActive
+            ) {
+                MapPolyline(
+                    coordinates: DriverRouteDisplay.polylineCoordinates(
+                        route: driverRoute,
+                        driverLocation: driverLocation,
+                        isTripActive: isTripActive
+                    )
+                )
+                .stroke(NeonTheme.secondary.opacity(0.75), lineWidth: 4)
+            }
+
             if let driverLocation {
                 Annotation(driverLocation.driverName, coordinate: driverLocation.coordinate) {
                     driverMarker
@@ -49,12 +66,12 @@ struct ShuttleMapView: View {
     private var driverMarker: some View {
         ZStack {
             Circle()
-                .fill(NeonTheme.secondary.opacity(0.15))
+                .fill(NeonTheme.mapDriverPin.opacity(0.15))
                 .frame(width: 56, height: 56)
             Image(systemName: "location.north.fill")
                 .font(.system(size: 28))
-                .foregroundStyle(NeonTheme.secondary)
-                .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 8)
+                .foregroundStyle(NeonTheme.mapDriverPin)
+                .shadow(color: NeonTheme.mapDriverPin.opacity(0.8), radius: 8)
         }
     }
 
@@ -62,8 +79,8 @@ struct ShuttleMapView: View {
         VStack(spacing: 2) {
             Image(systemName: "mappin.circle.fill")
                 .font(.title2)
-                .foregroundStyle(NeonTheme.primary)
-                .shadow(color: NeonTheme.primary.opacity(0.6), radius: 6)
+                .foregroundStyle(NeonTheme.mapPickupPin)
+                .shadow(color: NeonTheme.mapPickupPin.opacity(0.6), radius: 6)
             Text(pickup.name)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NeonTheme.onSurface)
@@ -157,6 +174,31 @@ struct ShuttleMapView: View {
         region.span.latitudeDelta = min(0.5, max(0.005, region.span.latitudeDelta * factor))
         region.span.longitudeDelta = min(0.5, max(0.005, region.span.longitudeDelta * factor))
         withAnimation { activePosition.wrappedValue = .region(region) }
+    }
+}
+
+enum DriverRouteDisplay {
+    static func polylineCoordinates(
+        route: [CLLocationCoordinate2D],
+        driverLocation: DriverLocation?,
+        isTripActive: Bool
+    ) -> [CLLocationCoordinate2D] {
+        guard isTripActive, let live = driverLocation?.coordinate else {
+            return route
+        }
+        if route.isEmpty {
+            return [live, live]
+        }
+        return route + [live]
+    }
+
+    static func shouldDrawPolyline(
+        route: [CLLocationCoordinate2D],
+        driverLocation: DriverLocation?,
+        isTripActive: Bool
+    ) -> Bool {
+        guard isTripActive else { return false }
+        return driverLocation != nil || !route.isEmpty
     }
 }
 

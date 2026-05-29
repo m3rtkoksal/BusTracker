@@ -5,10 +5,13 @@ struct PassengerHomeView: BaseView {
     @Environment(ShuttleStore.self) private var store
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
+    @Environment(LocationTracker.self) private var locationTracker
     @State var viewModel = PassengerHomeViewModel()
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
     @State private var showMyServices = false
+    @State private var hasInitialCenteredOnPassenger = false
+    @State private var pendingCenterOnPassenger = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -48,6 +51,17 @@ struct PassengerHomeView: BaseView {
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
         }
+        .onChange(of: tabBar.selectedTab) { _, tab in
+            guard tab == .map else { return }
+            guard !hasInitialCenteredOnPassenger else { return }
+            hasInitialCenteredOnPassenger = true
+            centerOnMyLocation()
+        }
+        .onChange(of: locationTracker.effectiveLocation?.coordinate.latitude ?? 0) { _, _ in
+            guard tabBar.selectedTab == .map else { return }
+            guard pendingCenterOnPassenger else { return }
+            applyPassengerLocationIfAvailable()
+        }
         .onChange(of: store.morningPickups.count) { _, _ in
             viewModel.loadSavedPickup(from: store, session: session)
         }
@@ -57,6 +71,26 @@ struct PassengerHomeView: BaseView {
         .sheet(isPresented: $showMyServices) {
             MyServicesView()
                 .environment(session)
+        }
+    }
+
+    private func centerOnMyLocation() {
+        pendingCenterOnPassenger = true
+        locationTracker.requestPassengerSingleLocation()
+        applyPassengerLocationIfAvailable()
+    }
+
+    private func applyPassengerLocationIfAvailable() {
+        guard let coord = locationTracker.effectiveLocation?.coordinate else { return }
+        pendingCenterOnPassenger = false
+        viewModel.draftPickupCoordinate = coord
+        withAnimation {
+            mapPosition = .region(
+                MKCoordinateRegion(
+                    center: coord,
+                    span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+                )
+            )
         }
     }
 
@@ -231,10 +265,13 @@ struct PassengerHomeView: BaseView {
         ZStack {
             PassengerLiveMap(
                 driverLocation: store.driverLocation,
+                driverRoute: store.driverRoute,
+                isTripActive: store.isTripActive,
                 selectedCoordinate: $viewModel.draftPickupCoordinate,
                 savedPickup: savedMorningPickup,
                 cameraPosition: $mapPosition,
-                isActive: tabBar.selectedTab == .map
+                isActive: tabBar.selectedTab == .map,
+                autoFitOnAppear: false
             )
             .ignoresSafeArea()
 
@@ -451,7 +488,7 @@ struct PassengerHomeView: BaseView {
         VStack(spacing: 8) {
             mapControlButton(icon: "plus") { zoomMap(by: 0.7) }
             mapControlButton(icon: "minus") { zoomMap(by: 1.35) }
-            mapControlButton(icon: "location.fill", highlighted: true) { fitMapCamera() }
+            mapControlButton(icon: "location.fill", highlighted: true) { centerOnMyLocation() }
         }
     }
 

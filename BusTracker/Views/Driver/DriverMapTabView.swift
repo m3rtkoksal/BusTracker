@@ -4,6 +4,7 @@ import SwiftUI
 
 struct DriverMapTabView: View {
     let driverLocation: DriverLocation?
+    var driverRoute: [CLLocationCoordinate2D] = []
     let morningPickups: [MorningPickup]
     let stats: DriverPassengerStats
     let isTripActive: Bool
@@ -18,6 +19,8 @@ struct DriverMapTabView: View {
         ZStack {
             ShuttleMapView(
                 driverLocation: driverLocation,
+                driverRoute: driverRoute,
+                isTripActive: isTripActive,
                 morningPickups: morningPickups,
                 mapStyle: .hybrid(elevation: .realistic),
                 cameraPosition: $mapPosition
@@ -164,9 +167,10 @@ struct DriverMapTabView: View {
         HStack(spacing: 8) {
             bentoCard(
                 title: "KAPASİTE",
-                value: "\(stats.coming)",
+                value: "\(stats.capacityOccupied)",
                 suffix: "/ \(stats.total)",
-                valueColor: NeonTheme.primary
+                valueColor: NeonTheme.primary,
+                footnote: stats.unknown > 0 ? "\(stats.unknown) belirtmedi" : nil
             )
             bentoCard(
                 title: "DURAKLAR",
