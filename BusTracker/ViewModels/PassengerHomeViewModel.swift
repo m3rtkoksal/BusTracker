@@ -72,28 +72,29 @@ final class PassengerHomeViewModel: BaseViewModel {
         )
     }
 
-    /// Kullanıcının hesabını siler.
-    /// Güvenlik için yeniden telefon doğrulaması (OTP) yapması önerilir.
     func deleteAccount(store: ShuttleStore, session: UserSession, authService: AuthService) async {
         guard let profile = session.profile else { return }
 
         isLoading = true
         defer { isLoading = false }
 
-        do {
-            // 1. Kullanıcı verilerini sil (Firestore)
-            try await store.deleteUserData(profile: profile)
+        let userID = profile.userID
 
-            // 2. Firebase Auth kullanıcısını sil (önce re-auth önerilir)
-            try await authService.deleteCurrentUser()
+        await store.deleteUserData(profile: profile)
+        let profileDeleted = await store.isUserProfileDeleted(userID: userID)
+        let authRemoved = await authService.removeAccountIfPossible()
 
-            // 3. Yerel oturumu temizle
-            store.stopListening()
-            await session.signOut()
+        store.stopListening()
+        await session.signOut()
 
+        presentDeleteAccountResult(profileDeleted: profileDeleted, authRemoved: authRemoved)
+    }
+
+    private func presentDeleteAccountResult(profileDeleted: Bool, authRemoved: Bool) {
+        if profileDeleted || authRemoved {
             showSuccess("Hesabınız başarıyla silindi.")
-        } catch {
-            showError("Hesap silinirken bir hata oluştu: \(error.localizedDescription)")
+        } else {
+            showError("Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.")
         }
     }
 

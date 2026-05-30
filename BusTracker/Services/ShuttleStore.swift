@@ -159,6 +159,14 @@ final class ShuttleStore {
         return Self.userProfile(from: data, userID: userID)
     }
 
+    func isUserProfileDeleted(userID: String) async -> Bool {
+        do {
+            return try await fetchUserProfile(userID: userID) == nil
+        } catch {
+            return false
+        }
+    }
+
     func createGroup(name: String, driverName: String) async throws -> UserProfile {
         try await FirebaseSession.shared.ensureAuthenticated()
         guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
@@ -287,6 +295,73 @@ final class ShuttleStore {
         return profile
     }
 
+    /// Kayıtlı yolcu: servis kodu ile ek servise katılır ve o servisi aktif yapar.
+    func joinAdditionalGroup(code: String, currentProfile: UserProfile) async throws -> UserProfile {
+        try await FirebaseSession.shared.ensureAuthenticated()
+        guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
+        guard currentProfile.role == .passenger else {
+            throw ShuttleStoreError.invalidInput("Yalnızca yolcu hesabı servis ekleyebilir.")
+        }
+
+        let appleUserID = try requireAppleUserID(from: user)
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard trimmedCode.count >= 4 else {
+            throw ShuttleStoreError.invalidInput("Servis kodu en az 4 karakter olmalı.")
+        }
+
+        var existingGroupIDs = currentProfile.groupIDs
+        if existingGroupIDs.isEmpty, let legacy = currentProfile.groupID, !legacy.isEmpty {
+            existingGroupIDs = [legacy]
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        let snapshot = try await db.collection("groups")
+            .whereField("code", isEqualTo: trimmedCode)
+            .limit(to: 1)
+            .getDocuments()
+
+        guard let groupDoc = snapshot.documents.first else {
+            throw ShuttleStoreError.groupNotFound
+        }
+
+        let newGroupID = groupDoc.documentID
+        if existingGroupIDs.contains(newGroupID) {
+            throw ShuttleStoreError.invalidInput("Bu servise zaten kayıtlısınız.")
+        }
+
+        let groupData = groupDoc.data()
+        let groupName = groupData["name"] as? String ?? "Servis"
+        let groupCode = groupData["code"] as? String ?? trimmedCode
+        let passengerName = currentProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        try await groupDoc.reference.collection("members").document(user.uid).setData([
+            "userID": user.uid,
+            "name": passengerName,
+            "appleUserID": appleUserID,
+            "role": MemberRole.passenger.rawValue,
+            "joinedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+
+        let mergedGroupIDs = existingGroupIDs + [newGroupID]
+        let profile = UserProfile(
+            userID: user.uid,
+            memberID: user.uid,
+            name: passengerName,
+            appleUserID: appleUserID,
+            role: .passenger,
+            groupIDs: mergedGroupIDs,
+            activeGroupIDs: [newGroupID],
+            groupID: newGroupID,
+            groupCode: groupCode,
+            groupName: groupName
+        )
+
+        try await saveUserDocument(profile)
+        return profile
+    }
+
     func startTrip(
         groupID: String,
         driverName: String,
@@ -306,16 +381,6 @@ final class ShuttleStore {
 
         let endsAt = Date().addingTimeInterval(durationHours * 3600)
         plannedTripEndAt = endsAt
-
-        try await db.collection("groups").document(groupID)
-            .collection("attendance").document(todayKey).delete()
-
-        latestAttendanceResponses = [:]
-        members = members.map { member in
-            var updated = member
-            if member.role == .passenger { updated.attendance = .unknown }
-            return updated
-        }
 
         try await db.collection("groups").document(groupID).collection("tripEvents").addDocument(data: [
             "type": "started",
@@ -395,6 +460,15 @@ final class ShuttleStore {
                 "durationHours": FieldValue.delete(),
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
+
+        try? await resetTodayAttendance(groupID: groupID)
+    }
+
+    private func resetTodayAttendance(groupID: String) async throws {
+        try await db.collection("groups").document(groupID)
+            .collection("attendance").document(todayKey).delete()
+        latestAttendanceResponses = [:]
+        resetPassengerAttendance()
     }
 
     /// Uygulama açıldığında süresi dolmuş aktif servisi kapatır.
@@ -586,44 +660,54 @@ final class ShuttleStore {
     }
 
     private func saveUserDocument(_ profile: UserProfile) async throws {
-        try await db.collection("users").document(profile.userID).setData([
+        var payload: [String: Any] = [
             "memberID": profile.memberID,
             "name": profile.name,
             "appleUserID": profile.appleUserID,
             "role": profile.role.rawValue,
-            "groupID": profile.groupID,
-            "groupCode": profile.groupCode,
-            "groupName": profile.groupName,
+            "groupIDs": profile.groupIDs,
+            "activeGroupIDs": profile.activeGroupIDs,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ]
+        if let groupID = profile.groupID { payload["groupID"] = groupID }
+        if let groupCode = profile.groupCode { payload["groupCode"] = groupCode }
+        if let groupName = profile.groupName { payload["groupName"] = groupName }
+        try await db.collection("users").document(profile.userID).setData(payload, merge: true)
     }
 
-    /// Kullanıcının hesabıyla ilgili verileri Firestore'dan siler.
-    /// Not: Auth kullanıcısını silmek için AuthService.deleteCurrentUser() çağrılmalıdır.
-    func deleteUserData(profile: UserProfile) async throws {
-        try await FirebaseSession.shared.ensureAuthenticated()
+    /// Kullanıcının hesabıyla ilgili verileri Firestore'dan siler (kısmi hata olsa da devam eder).
+    /// Auth kullanıcısını silmek için `AuthService.removeAccountIfPossible()` çağrılmalıdır.
+    func deleteUserData(profile: UserProfile) async {
+        guard (try? await FirebaseSession.shared.ensureAuthenticated()) != nil else {
+            print("⚠️ [ShuttleStore] deleteUserData — oturum yok, Firestore silme atlandı")
+            return
+        }
 
         let userID = profile.userID
         let memberID = profile.memberID
-
-        // 1. users koleksiyonundaki belgeyi sil
-        try await db.collection("users").document(userID).delete()
-
-        // 2. Kullanıcının dahil olduğu gruplardaki member kaydını sil
         let groupsToCheck = (profile.groupIDs + [profile.groupID].compactMap { $0 }).filter { !$0.isEmpty }
 
-        for groupID in Set(groupsToCheck) {
-            // Member kaydını sil
-            try await db.collection("groups").document(groupID)
-                .collection("members").document(memberID).delete()
-
-            // Kullanıcının morningPickup kaydını sil (varsa)
-            try await db.collection("groups").document(groupID)
-                .collection("morningPickups").document(memberID).delete()
+        do {
+            try await db.collection("users").document(userID).delete()
+        } catch {
+            print("⚠️ [ShuttleStore] users/\(userID) silinemedi: \(error.localizedDescription)")
         }
 
-        // Not: Attendance kayıtlarını tamamen temizlemek güvenlik kuralları nedeniyle
-        // Cloud Function ile daha güvenli yapılır. Şimdilik ana veriler siliniyor.
+        for groupID in Set(groupsToCheck) {
+            do {
+                try await db.collection("groups").document(groupID)
+                    .collection("members").document(memberID).delete()
+            } catch {
+                print("⚠️ [ShuttleStore] members/\(memberID) @ \(groupID): \(error.localizedDescription)")
+            }
+
+            do {
+                try await db.collection("groups").document(groupID)
+                    .collection("morningPickups").document(memberID).delete()
+            } catch {
+                print("⚠️ [ShuttleStore] morningPickups/\(memberID) @ \(groupID): \(error.localizedDescription)")
+            }
+        }
     }
 
     private func mergeMembers(_ fetched: [ShuttleMember]) {

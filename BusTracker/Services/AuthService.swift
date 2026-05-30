@@ -101,13 +101,87 @@ final class AuthService {
         appleUserID = nil
     }
 
-    func deleteCurrentUser() async throws {
+    /// Firebase Auth hesabını siler. Zaten silinmişse `true` döner.
+    @discardableResult
+    func removeAccountIfPossible() async -> Bool {
         await waitUntilReady()
         guard let user = Auth.auth().currentUser else {
-            throw AuthServiceError.notSignedIn
+            clearSignedInState()
+            return true
         }
-        try await user.delete()
+
+        let firstAttempt = await deleteAuthUser(user)
+        if firstAttempt.succeeded {
+            return true
+        }
+
+#if os(iOS) || os(visionOS)
+        if firstAttempt.needsRecentLogin,
+           await reauthenticateWithAppleForAccountDeletion(),
+           let refreshedUser = Auth.auth().currentUser {
+            let secondAttempt = await deleteAuthUser(refreshedUser)
+            if secondAttempt.succeeded {
+                return true
+            }
+        }
+#endif
+
+        return Auth.auth().currentUser == nil
+    }
+
+    private struct DeleteAuthUserResult {
+        let succeeded: Bool
+        let needsRecentLogin: Bool
+    }
+
+    private func deleteAuthUser(_ user: User) async -> DeleteAuthUserResult {
+        do {
+            try await user.delete()
+            clearSignedInState()
+            return DeleteAuthUserResult(succeeded: true, needsRecentLogin: false)
+        } catch {
+            AuthErrorMessage.log(error, context: "deleteAccount")
+            if Auth.auth().currentUser == nil {
+                clearSignedInState()
+                return DeleteAuthUserResult(succeeded: true, needsRecentLogin: false)
+            }
+            let nsError = error as NSError
+            let needsRecentLogin = nsError.domain == AuthErrorDomain
+                && nsError.code == AuthErrorCode.requiresRecentLogin.rawValue
+            return DeleteAuthUserResult(succeeded: false, needsRecentLogin: needsRecentLogin)
+        }
+    }
+
+#if os(iOS) || os(visionOS)
+    private func reauthenticateWithAppleForAccountDeletion() async -> Bool {
+        do {
+            let result = try await appleSignIn.reauthenticate()
+            appleUserID = result.appleUserID
+            isSignedIn = Auth.auth().currentUser != nil
+            return true
+        } catch let error as AppleSignInError {
+            if case .cancelled = error { return false }
+            AuthErrorMessage.log(error, context: "reauthenticateForDelete")
+            return false
+        } catch {
+            AuthErrorMessage.log(error, context: "reauthenticateForDelete")
+            return false
+        }
+    }
+#endif
+
+    private func clearSignedInState() {
         appleUserID = nil
+        isSignedIn = false
+    }
+
+    func deleteCurrentUser() async throws {
+        let removed = await removeAccountIfPossible()
+        if !removed {
+            throw AuthServiceError.appleSignInFailed(
+                "Hesap silmek için güvenlik nedeniyle önce çıkış yapıp tekrar Apple ile giriş yapmanız gerekebilir."
+            )
+        }
     }
 
     func setCompletingRegistration(_ value: Bool) {

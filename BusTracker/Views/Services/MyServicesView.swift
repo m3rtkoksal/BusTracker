@@ -11,6 +11,11 @@ struct MyServicesView: View {
     }
 
     @State private var tripStartTime: Date? = nil
+    @State private var showAddServiceSheet = false
+    @State private var addServiceCode = ""
+    @State private var addServiceError: String?
+    @State private var isJoiningService = false
+    @State private var joinSuccessMessage: String?
 
     private func loadCurrentTripStartTime() {
         guard let activeGroup = profile?.primaryGroupID, !activeGroup.isEmpty else { return }
@@ -249,11 +254,10 @@ struct MyServicesView: View {
                             }
                         }
 
-                        // Add New Service Button
+                        // Add New Service Button (yolcu)
+                        if profile?.role == .passenger {
                         VStack(spacing: 16) {
-                            Button(action: {
-                                // TODO: Navigate to add new service flow
-                            }) {
+                            Button(action: openAddServiceSheet) {
                                 HStack(spacing: 12) {
                                     Image(systemName: "plus.circle.fill")
                                         .font(.system(size: 20))
@@ -275,12 +279,82 @@ struct MyServicesView: View {
                             .padding(.horizontal, 24)
                             .padding(.top, 16)
                         }
+                        }
                     }
                     .padding(.bottom, 40)
                 }
             }
         }
         .preferredColorScheme(.dark)
+        .overlay {
+            if showAddServiceSheet {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .onTapGesture { closeAddServiceSheet() }
+
+                    AddServiceSheet(
+                        serviceCode: Binding(
+                            get: { addServiceCode },
+                            set: { addServiceCode = $0.uppercased() }
+                        ),
+                        isLoading: isJoiningService,
+                        errorText: addServiceError,
+                        onJoin: { Task { await joinNewService() } },
+                        onDismiss: { closeAddServiceSheet() }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: showAddServiceSheet)
+            }
+        }
+        .alert("Başarılı", isPresented: Binding(
+            get: { joinSuccessMessage != nil },
+            set: { if !$0 { joinSuccessMessage = nil } }
+        )) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(joinSuccessMessage ?? "")
+        }
+    }
+
+    private func openAddServiceSheet() {
+        addServiceCode = ""
+        addServiceError = nil
+        showAddServiceSheet = true
+    }
+
+    private func closeAddServiceSheet() {
+        showAddServiceSheet = false
+        addServiceError = nil
+    }
+
+    private func joinNewService() async {
+        guard let profile else { return }
+        addServiceError = nil
+        isJoiningService = true
+        defer { isJoiningService = false }
+
+        do {
+            let updated = try await store.joinAdditionalGroup(
+                code: addServiceCode,
+                currentProfile: profile
+            )
+            session.save(updated)
+            store.stopListening()
+            store.startListening(groupID: updated.primaryGroupID)
+            await NotificationService.shared.saveTokenToProfile(
+                groupID: updated.primaryGroupID,
+                memberID: updated.memberID
+            )
+            closeAddServiceSheet()
+            joinSuccessMessage = "\(updated.groupName ?? "Servis") eklendi ve aktif yapıldı."
+        } catch let error as ShuttleStoreError {
+            addServiceError = error.errorDescription
+        } catch {
+            addServiceError = error.localizedDescription
+        }
     }
 }
 

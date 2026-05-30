@@ -26,12 +26,28 @@ struct AppleSignInResult {
 
 @MainActor
 final class AppleSignInCoordinator: NSObject {
+    private enum AuthorizationMode {
+        case signIn
+        case reauthenticate
+    }
+
     private var continuation: CheckedContinuation<AppleSignInResult, Error>?
     private var currentNonce: String?
+    private var authorizationMode: AuthorizationMode = .signIn
     private weak var presentationWindow: UIWindow?
 
     func signIn() async throws -> AppleSignInResult {
+        try await performAuthorization(mode: .signIn)
+    }
+
+    /// Hesap silme gibi hassas işlemler için Apple oturumunu yeniler.
+    func reauthenticate() async throws -> AppleSignInResult {
+        try await performAuthorization(mode: .reauthenticate)
+    }
+
+    private func performAuthorization(mode: AuthorizationMode) async throws -> AppleSignInResult {
         presentationWindow = Self.keyWindow()
+        authorizationMode = mode
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             let nonce = Self.randomNonce()
@@ -112,7 +128,15 @@ extension AppleSignInCoordinator: ASAuthorizationControllerDelegate {
             )
 
             do {
-                _ = try await Auth.auth().signIn(with: credential)
+                if authorizationMode == .reauthenticate {
+                    guard let user = Auth.auth().currentUser else {
+                        finish(.failure(AppleSignInError.missingCredential))
+                        return
+                    }
+                    _ = try await user.reauthenticate(with: credential)
+                } else {
+                    _ = try await Auth.auth().signIn(with: credential)
+                }
                 _ = try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
 
                 let displayName = Self.formattedName(from: appleIDCredential.fullName)

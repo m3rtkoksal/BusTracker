@@ -36,7 +36,7 @@ final class LoginViewModel: BaseViewModel {
                     try? authService.signOut()
                 }
             } else {
-                showError("Bu Apple hesabıyla kayıtlı profil bulunamadı. Hesap oluşturun.")
+                showError("Bu Apple hesabıyla kayıtlı profil bulunamadı. Hesabınız silinmiş olabilir; yeni hesap oluşturabilirsiniz.")
                 try? authService.signOut()
             }
         } catch let error as AppleSignInError {

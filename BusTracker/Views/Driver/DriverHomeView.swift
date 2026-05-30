@@ -577,7 +577,8 @@ struct DriverHomeView: BaseView {
                     await viewModel.deleteAccount(
                         store: store,
                         session: session,
-                        authService: authService
+                        authService: authService,
+                        locationTracker: locationTracker
                     )
                 }
             }

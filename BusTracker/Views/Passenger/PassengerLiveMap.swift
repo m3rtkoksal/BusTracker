@@ -11,6 +11,7 @@ struct PassengerLiveMap: View {
     var cameraPosition: Binding<MapCameraPosition>?
     var isActive: Bool = true
     var autoFitOnAppear: Bool = true
+    var onCameraRegionChange: ((MKCoordinateRegion) -> Void)?
 
     @State private var internalPosition: MapCameraPosition = MapDefaults.homeMapPosition
 
@@ -47,12 +48,15 @@ struct PassengerLiveMap: View {
                 }
 
                 if let coordinate = displayPickup {
-                    Annotation("Biniş noktası", coordinate: coordinate) {
+                    Annotation("", coordinate: coordinate) {
                         pickupMarker
                     }
                 }
             }
             .mapStyle(.hybrid(elevation: .realistic))
+            .onMapCameraChange(frequency: .onEnd) { context in
+                onCameraRegionChange?(context.region)
+            }
             .onTapGesture { location in
                 guard isActive else { return }
                 guard let coordinate = proxy.convert(location, from: .local) else { return }

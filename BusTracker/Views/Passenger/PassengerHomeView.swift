@@ -9,9 +9,12 @@ struct PassengerHomeView: BaseView {
     @State var viewModel = PassengerHomeViewModel()
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
+    @State private var lastKnownMapRegion = MapDefaults.homeRegion
     @State private var showMyServices = false
     @State private var pendingCenterOnPassenger = false
     @State private var hasInitializedMapCamera = false
+    /// Konum tuşu: false = bir sonraki basış birincil odak, true = bir sonraki basış alternatif odak.
+    @State private var mapFocusNextIsAlternate = false
     @State private var mapSnapshotDriverLocation: DriverLocation?
     @State private var mapSnapshotDriverRoute: [CLLocationCoordinate2D] = []
 
@@ -69,6 +72,9 @@ struct PassengerHomeView: BaseView {
                 mapSnapshotDriverLocation = store.driverLocation
                 mapSnapshotDriverRoute = store.driverRoute
             }
+            if tab == .map {
+                mapFocusNextIsAlternate = false
+            }
             guard tab == .map, !hasInitializedMapCamera else { return }
             hasInitializedMapCamera = true
             focusMapOnPickup(animated: false)
@@ -82,6 +88,9 @@ struct PassengerHomeView: BaseView {
             viewModel.loadSavedPickup(from: store, session: session)
         }
         .onChange(of: store.isTripActive) { wasActive, isActive in
+            if !isActive {
+                mapFocusNextIsAlternate = false
+            }
             viewModel.onTripActiveChanged(
                 wasActive: wasActive,
                 isActive: isActive,
@@ -123,10 +132,58 @@ struct PassengerHomeView: BaseView {
         }
     }
 
-    private func centerOnMyLocation() {
+    private func togglePassengerMapFocus() {
+        if mapFocusNextIsAlternate {
+            focusOnAlternateMapTarget(animated: true)
+            mapFocusNextIsAlternate = false
+        } else {
+            focusOnPrimaryMapTarget(animated: true)
+            mapFocusNextIsAlternate = true
+        }
+    }
+
+    /// İlk mod: haritada seçili biniş noktası; yoksa anlık konum.
+    private func focusOnPrimaryMapTarget(animated: Bool) {
+        if let coordinate = viewModel.draftPickupCoordinate {
+            centerMap(on: coordinate, animated: animated)
+            return
+        }
+        centerOnCurrentLocation(animated: animated)
+    }
+
+    /// İkinci mod: servis aktifse sürücü; değilse kayıtlı biniş veya anlık konum.
+    private func focusOnAlternateMapTarget(animated: Bool) {
+        if store.isTripActive, let driver = store.driverLocation?.coordinate {
+            centerMap(on: driver, animated: animated)
+            return
+        }
+        if let saved = savedMorningPickup?.coordinate {
+            centerMap(on: saved, animated: animated)
+            return
+        }
+        centerOnCurrentLocation(animated: animated)
+    }
+
+    private func centerOnCurrentLocation(animated: Bool) {
         pendingCenterOnPassenger = true
         locationTracker.requestPassengerSingleLocation()
-        applyPassengerLocationIfAvailable()
+        if let coordinate = locationTracker.effectiveLocation?.coordinate {
+            pendingCenterOnPassenger = false
+            centerMap(on: coordinate, animated: animated)
+        }
+    }
+
+    private func centerMap(on coordinate: CLLocationCoordinate2D, animated: Bool) {
+        let region = MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )
+        setMapRegion(region, animated: animated, force: true)
+    }
+
+    private func centerOnMyLocation() {
+        mapFocusNextIsAlternate = true
+        focusOnPrimaryMapTarget(animated: true)
     }
 
     private func openMapFocusedOnPickup() {
@@ -160,11 +217,7 @@ struct PassengerHomeView: BaseView {
         guard let coord = locationTracker.effectiveLocation?.coordinate else { return }
         pendingCenterOnPassenger = false
         viewModel.draftPickupCoordinate = coord
-        let region = MKCoordinateRegion(
-            center: coord,
-            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-        )
-        setMapRegion(region, animated: true)
+        centerMap(on: coord, animated: true)
     }
 
     // MARK: - Top Bar
@@ -264,9 +317,7 @@ struct PassengerHomeView: BaseView {
                 )
             }
 
-            Text(store.isTripActive
-                 ? "Seçiminiz sürücüye anında iletilir."
-                 : "Servis başlayınca seçim yapabilirsiniz.")
+            Text("Seçiminiz sürücüye kaydedilir. Servis bitince yeniden seçmeniz gerekir.")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(NeonTheme.outline)
@@ -340,7 +391,8 @@ struct PassengerHomeView: BaseView {
                 savedPickup: savedMorningPickup,
                 cameraPosition: $mapPosition,
                 isActive: tabBar.selectedTab == .map,
-                autoFitOnAppear: false
+                autoFitOnAppear: false,
+                onCameraRegionChange: { lastKnownMapRegion = $0 }
             )
             .ignoresSafeArea()
 
@@ -557,7 +609,12 @@ struct PassengerHomeView: BaseView {
         VStack(spacing: 8) {
             mapControlButton(icon: "plus") { zoomMap(by: 0.7) }
             mapControlButton(icon: "minus") { zoomMap(by: 1.35) }
-            mapControlButton(icon: "location.fill", highlighted: true) { centerOnMyLocation() }
+            mapControlButton(
+                icon: mapFocusNextIsAlternate ? "location.fill" : "location.north.line.fill",
+                highlighted: true
+            ) {
+                togglePassengerMapFocus()
+            }
         }
     }
 
@@ -644,17 +701,24 @@ struct PassengerHomeView: BaseView {
             }
         }
         .buttonStyle(.plain)
-        .disabled(viewModel.isUpdatingAttendance || !store.isTripActive)
-        .opacity(store.isTripActive ? 1 : 0.5)
+        .disabled(viewModel.isUpdatingAttendance)
+        .opacity(viewModel.isUpdatingAttendance ? 0.5 : 1)
     }
 
     // MARK: - Map helpers
 
+    private func resolvedMapRegion() -> MKCoordinateRegion {
+        if let region = mapPosition.region {
+            return region
+        }
+        return lastKnownMapRegion
+    }
+
     private func zoomMap(by factor: Double) {
-        guard var region = mapPosition.region else { return }
+        var region = resolvedMapRegion()
         region.span.latitudeDelta = min(0.5, max(0.005, region.span.latitudeDelta * factor))
         region.span.longitudeDelta = min(0.5, max(0.005, region.span.longitudeDelta * factor))
-        setMapRegion(region, animated: true)
+        setMapRegion(region, animated: true, force: true)
     }
 
     private func fitMapCamera() {
@@ -706,8 +770,9 @@ struct PassengerHomeView: BaseView {
         setMapRegion(region, animated: animated)
     }
 
-    private func setMapRegion(_ region: MKCoordinateRegion, animated: Bool) {
-        if let current = mapPosition.region, regionsAreSimilar(current, region) {
+    private func setMapRegion(_ region: MKCoordinateRegion, animated: Bool, force: Bool = false) {
+        lastKnownMapRegion = region
+        if !force, let current = mapPosition.region, regionsAreSimilar(current, region) {
             return
         }
         if animated {

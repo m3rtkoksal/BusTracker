@@ -85,29 +85,43 @@ final class DriverHomeViewModel: BaseViewModel {
         )
     }
 
-    func deleteAccount(store: ShuttleStore, session: UserSession, authService: AuthService) async {
+    func deleteAccount(
+        store: ShuttleStore,
+        session: UserSession,
+        authService: AuthService,
+        locationTracker: LocationTracker
+    ) async {
         guard let profile = session.profile else { return }
 
         isLoading = true
         defer { isLoading = false }
 
-        do {
-            try await store.deleteUserData(profile: profile)
-            try await authService.deleteCurrentUser()
+        let groupID = profile.primaryGroupID
+        if store.isTripActive, !groupID.isEmpty {
+            await store.stopTrip(
+                groupID: groupID,
+                driverName: profile.name,
+                locationTracker: locationTracker
+            )
+        }
 
-            if store.isTripActive {
-                await store.stopTrip(
-                    groupID: profile.groupID ?? "",
-                    driverName: profile.name,
-                    locationTracker: LocationTracker()
-                )
-            }
-            store.stopListening()
-            await session.signOut()
+        let userID = profile.userID
 
+        await store.deleteUserData(profile: profile)
+        let profileDeleted = await store.isUserProfileDeleted(userID: userID)
+        let authRemoved = await authService.removeAccountIfPossible()
+
+        store.stopListening()
+        await session.signOut()
+
+        presentDeleteAccountResult(profileDeleted: profileDeleted, authRemoved: authRemoved)
+    }
+
+    private func presentDeleteAccountResult(profileDeleted: Bool, authRemoved: Bool) {
+        if profileDeleted || authRemoved {
             showSuccess("Hesabınız başarıyla silindi.")
-        } catch {
-            showError("Hesap silinirken bir hata oluştu: \(error.localizedDescription)")
+        } else {
+            showError("Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.")
         }
     }
 
