@@ -7,7 +7,6 @@ struct TripStartedAttendanceSheet: View {
     let selectedNotComing: Bool
     let onSelectComing: () -> Void
     let onSelectNotComing: () -> Void
-    let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -52,11 +51,6 @@ struct TripStartedAttendanceSheet: View {
             Text("Seçiminiz sürücüye anında iletilir.")
                 .font(.caption)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
-
-            Button("Sonra", action: onDismiss)
-                .font(.footnote)
-                .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(0.7))
-                .padding(.top, 4)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 28)

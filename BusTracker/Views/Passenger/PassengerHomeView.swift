@@ -109,8 +109,7 @@ struct PassengerHomeView: BaseView {
                             Task {
                                 await viewModel.updateAttendance(status: .notComing, store: store, session: session)
                             }
-                        },
-                        onDismiss: { viewModel.dismissTripAttendanceSheet() }
+                        }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
