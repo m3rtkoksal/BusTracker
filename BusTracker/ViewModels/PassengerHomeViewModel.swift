@@ -78,6 +78,19 @@ final class PassengerHomeViewModel: BaseViewModel {
         isLoading = true
         defer { isLoading = false }
 
+#if os(iOS) || os(visionOS)
+        do {
+            try await authService.reauthenticateForAccountDeletion()
+        } catch let error as AppleSignInError {
+            if case .cancelled = error { return }
+            showError(error.localizedDescription)
+            return
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+#endif
+
         let userID = profile.userID
 
         await store.deleteUserData(profile: profile)

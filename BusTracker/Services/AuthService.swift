@@ -153,18 +153,31 @@ final class AuthService {
     }
 
 #if os(iOS) || os(visionOS)
-    private func reauthenticateWithAppleForAccountDeletion() async -> Bool {
+    /// Hesap silme öncesi Apple oturumunu yeniler.
+    func reauthenticateForAccountDeletion() async throws {
+        await waitUntilReady()
         do {
             let result = try await appleSignIn.reauthenticate()
             appleUserID = result.appleUserID
             isSignedIn = Auth.auth().currentUser != nil
+        } catch let error as AppleSignInError {
+            throw error
+        } catch {
+            AuthErrorMessage.log(error, context: "reauthenticateForDelete")
+            throw AuthServiceError.appleSignInFailed(AuthErrorMessage.message(for: error))
+        }
+    }
+#endif
+
+#if os(iOS) || os(visionOS)
+    private func reauthenticateWithAppleForAccountDeletion() async -> Bool {
+        do {
+            try await reauthenticateForAccountDeletion()
             return true
         } catch let error as AppleSignInError {
             if case .cancelled = error { return false }
-            AuthErrorMessage.log(error, context: "reauthenticateForDelete")
             return false
         } catch {
-            AuthErrorMessage.log(error, context: "reauthenticateForDelete")
             return false
         }
     }

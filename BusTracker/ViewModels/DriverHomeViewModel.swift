@@ -96,6 +96,19 @@ final class DriverHomeViewModel: BaseViewModel {
         isLoading = true
         defer { isLoading = false }
 
+#if os(iOS) || os(visionOS)
+        do {
+            try await authService.reauthenticateForAccountDeletion()
+        } catch let error as AppleSignInError {
+            if case .cancelled = error { return }
+            showError(error.localizedDescription)
+            return
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+#endif
+
         let groupID = profile.primaryGroupID
         if store.isTripActive, !groupID.isEmpty {
             await store.stopTrip(
