@@ -8,6 +8,10 @@ struct ShuttleMapView: View {
     var morningPickups: [MorningPickup] = []
     var mapStyle: MapStyle = .standard(elevation: .realistic)
     var cameraPosition: Binding<MapCameraPosition>?
+    /// Konum/pin güncellenince tüm pinlere zoom yapılmasın (sürücü haritası).
+    var autoFitCameraOnUpdate: Bool = false
+    /// Üst view konum/pin hazır olunca artırır; MapKit annotation yenilemesi tetiklenir.
+    var annotationRefreshNonce: Int = 0
 
     @State private var internalPosition: MapCameraPosition = MapDefaults.homeMapPosition
 
@@ -54,11 +58,18 @@ struct ShuttleMapView: View {
         }
         .mapStyle(mapStyle)
         .onAppear {
-            fitCamera(animated: false)
+            if autoFitCameraOnUpdate {
+                fitCamera(animated: false)
+            }
             scheduleAnnotationRefresh()
         }
         .onChange(of: annotationSignature) { _, _ in
-            fitCamera(animated: false)
+            if autoFitCameraOnUpdate {
+                fitCamera(animated: false)
+            }
+            scheduleAnnotationRefresh()
+        }
+        .onChange(of: annotationRefreshNonce) { _, _ in
             scheduleAnnotationRefresh()
         }
     }
@@ -144,29 +155,50 @@ struct ShuttleMapView: View {
         }
     }
 
-    /// MapKit bazen annotation'ları kamera hareket edene kadar çizmez; kısa bir yenileme turu uygular.
+    /// MapKit bazen annotation'ları kamera hareket edene kadar çizmez; mevcut zoom'u koruyarak yeniler.
     private func scheduleAnnotationRefresh() {
         Task { @MainActor in
-            let target = fittedRegion()
-            applyRegion(target, animated: false)
-            try? await Task.sleep(for: .milliseconds(120))
-
-            activePosition.wrappedValue = .automatic
-            try? await Task.sleep(for: .milliseconds(150))
-
-            applyRegion(target, animated: false)
-            try? await Task.sleep(for: .milliseconds(50))
-            nudgeCameraToRefreshAnnotations()
-            try? await Task.sleep(for: .milliseconds(50))
-            applyRegion(target, animated: false)
+            let target = autoFitCameraOnUpdate ? fittedRegion() : resolvedRegionForRefresh()
+            await runAnnotationRefreshCycle(preserving: target)
         }
     }
 
-    private func nudgeCameraToRefreshAnnotations() {
-        guard var region = activePosition.wrappedValue.region else { return }
-        region.center.latitude += 0.00008
-        region.center.longitude += 0.00008
-        activePosition.wrappedValue = .region(region)
+    private func resolvedRegionForRefresh() -> MKCoordinateRegion {
+        if let region = activePosition.wrappedValue.region {
+            return region
+        }
+        if let driverLocation {
+            return MKCoordinateRegion(
+                center: driverLocation.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            )
+        }
+        if let pickup = morningPickups.first {
+            return MKCoordinateRegion(
+                center: pickup.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            )
+        }
+        return MapDefaults.homeRegion
+    }
+
+    private func runAnnotationRefreshCycle(preserving target: MKCoordinateRegion) async {
+        applyRegion(target, animated: false)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        activePosition.wrappedValue = .automatic
+        try? await Task.sleep(for: .milliseconds(160))
+
+        applyRegion(target, animated: false)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        var nudged = target
+        nudged.center.latitude += 0.00006
+        nudged.center.longitude += 0.00006
+        applyRegion(nudged, animated: false)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        applyRegion(target, animated: false)
     }
 
     func zoom(by factor: Double) {

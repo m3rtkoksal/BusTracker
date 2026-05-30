@@ -59,6 +59,10 @@ struct PassengerHomeView: BaseView {
         .onAppear {
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
+            viewModel.presentTripAttendanceSheetIfNeeded(
+                isTripActive: store.isTripActive,
+                attendance: myAttendance
+            )
         }
         .onChange(of: tabBar.selectedTab) { oldTab, tab in
             if oldTab == .map {
@@ -78,7 +82,41 @@ struct PassengerHomeView: BaseView {
             viewModel.loadSavedPickup(from: store, session: session)
         }
         .onChange(of: store.isTripActive) { wasActive, isActive in
-            viewModel.onTripActiveChanged(wasActive: wasActive, isActive: isActive)
+            viewModel.onTripActiveChanged(
+                wasActive: wasActive,
+                isActive: isActive,
+                attendance: myAttendance
+            )
+        }
+        .overlay {
+            if viewModel.showTripStartedAttendanceSheet {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.dismissTripAttendanceSheet() }
+
+                    TripStartedAttendanceSheet(
+                        driverName: store.driverLocation?.driverName ?? "Sürücü",
+                        isLoading: viewModel.isUpdatingAttendance,
+                        selectedComing: viewModel.pendingAttendanceSelection == .coming,
+                        selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
+                        onSelectComing: {
+                            Task {
+                                await viewModel.updateAttendance(status: .coming, store: store, session: session)
+                            }
+                        },
+                        onSelectNotComing: {
+                            Task {
+                                await viewModel.updateAttendance(status: .notComing, store: store, session: session)
+                            }
+                        },
+                        onDismiss: { viewModel.dismissTripAttendanceSheet() }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.showTripStartedAttendanceSheet)
+            }
         }
         .sheet(isPresented: $showMyServices) {
             MyServicesView()
@@ -159,10 +197,6 @@ struct PassengerHomeView: BaseView {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 serviceHeaderSection
-
-                if viewModel.showTripStartedBanner {
-                    tripStartedBanner
-                }
 
                 attendanceSection
 
@@ -576,32 +610,6 @@ struct PassengerHomeView: BaseView {
         .disabled(viewModel.isSavingPickup || viewModel.draftPickupCoordinate == nil)
         .opacity(viewModel.draftPickupCoordinate == nil ? 0.45 : 1)
         .buttonStyle(.plain)
-    }
-
-    private var tripStartedBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "bell.badge.fill")
-                .foregroundStyle(NeonTheme.secondary)
-
-            Text("Servis yola çıktı!")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(NeonTheme.onSurface)
-
-            Spacer()
-
-            Button { viewModel.showTripStartedBanner = false } label: {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(NeonTheme.surfaceContainer.opacity(0.92))
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.secondary.opacity(0.4), lineWidth: 1)
-        }
     }
 
     private func attendanceButton(

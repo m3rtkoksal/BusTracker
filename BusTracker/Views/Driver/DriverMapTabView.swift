@@ -10,6 +10,10 @@ struct DriverMapTabView: View {
     let isTripActive: Bool
 
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
+    @State private var didInitialDriverCenter = false
+    @State private var mapAnnotationRefreshNonce = 0
+    /// Sağ üst konum tuşu: false = sürücü odak, true = tüm pinler.
+    @State private var mapShowsAllPins = false
 
     private var nextPickup: MorningPickup? {
         morningPickups.first
@@ -23,7 +27,8 @@ struct DriverMapTabView: View {
                 isTripActive: isTripActive,
                 morningPickups: morningPickups,
                 mapStyle: .hybrid(elevation: .realistic),
-                cameraPosition: $mapPosition
+                cameraPosition: $mapPosition,
+                annotationRefreshNonce: mapAnnotationRefreshNonce
             )
             .ignoresSafeArea()
 
@@ -42,13 +47,28 @@ struct DriverMapTabView: View {
             }
         }
         .onAppear {
-            fitCamera()
+            mapShowsAllPins = false
+            centerOnDriver(animated: false)
+            didInitialDriverCenter = driverLocation != nil
+            requestMapAnnotationRefresh()
         }
         .onChange(of: driverLocation?.updatedAt) { _, _ in
-            fitCamera()
+            if !didInitialDriverCenter, driverLocation != nil {
+                didInitialDriverCenter = true
+                mapShowsAllPins = false
+                centerOnDriver(animated: true)
+            }
+            requestMapAnnotationRefresh()
         }
         .onChange(of: morningPickups.map(\.memberID).joined()) { _, _ in
-            fitCamera()
+            requestMapAnnotationRefresh()
+        }
+    }
+
+    private func requestMapAnnotationRefresh() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            mapAnnotationRefreshNonce += 1
         }
     }
 
@@ -140,7 +160,12 @@ struct DriverMapTabView: View {
         VStack(spacing: 8) {
             mapControlButton(icon: "plus") { zoom(by: 0.7) }
             mapControlButton(icon: "minus") { zoom(by: 1.35) }
-            mapControlButton(icon: "location.fill", highlighted: true) { fitCamera() }
+            mapControlButton(
+                icon: mapShowsAllPins ? "location.fill" : "location.north.line.fill",
+                highlighted: true
+            ) {
+                toggleMapFocus()
+            }
         }
     }
 
@@ -250,14 +275,43 @@ struct DriverMapTabView: View {
         withAnimation { mapPosition = .region(region) }
     }
 
-    private func fitCamera() {
+    private func toggleMapFocus() {
+        if mapShowsAllPins {
+            centerOnDriver(animated: true)
+            mapShowsAllPins = false
+        } else {
+            fitAllPins()
+            mapShowsAllPins = true
+        }
+        requestMapAnnotationRefresh()
+    }
+
+    /// Navigasyon benzeri: sürücü ortada, sabit yakın zoom.
+    private func centerOnDriver(animated: Bool) {
+        guard let driverLocation else {
+            mapPosition = .region(MapDefaults.homeRegion)
+            return
+        }
+        let region = MKCoordinateRegion(
+            center: driverLocation.coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )
+        if animated {
+            withAnimation { mapPosition = .region(region) }
+        } else {
+            mapPosition = .region(region)
+        }
+    }
+
+    /// Sağ üst konum tuşu: sürücü + duraklar görünsün (gerekirse zoom out).
+    private func fitAllPins() {
         var coordinates: [CLLocationCoordinate2D] = morningPickups.map(\.coordinate)
         if let driverLocation {
             coordinates.append(driverLocation.coordinate)
         }
 
         guard let first = coordinates.first else {
-            mapPosition = .region(MapDefaults.homeRegion)
+            centerOnDriver(animated: true)
             return
         }
 

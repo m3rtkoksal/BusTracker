@@ -8,8 +8,10 @@ import UIKit
 @MainActor
 @Observable
 final class PassengerHomeViewModel: BaseViewModel {
-    var showTripStartedBanner = false
+    var showTripStartedAttendanceSheet = false
+    var pendingAttendanceSelection: AttendanceStatus?
     var isUpdatingAttendance = false
+    private var didPromptAttendanceThisTrip = false
     var isSavingPickup = false
     var draftPickupCoordinate: CLLocationCoordinate2D?
 
@@ -28,11 +30,25 @@ final class PassengerHomeViewModel: BaseViewModel {
         }
     }
 
-    func onTripActiveChanged(wasActive: Bool, isActive: Bool) {
-        if isActive && !wasActive {
-            showTripStartedBanner = true
-            showInfo("Servis yola çıktı! Gelecek misiniz?", title: "Servis Başladı")
+    func onTripActiveChanged(wasActive: Bool, isActive: Bool, attendance: AttendanceStatus) {
+        if !isActive {
+            didPromptAttendanceThisTrip = false
+            showTripStartedAttendanceSheet = false
+            return
         }
+        if isActive && !wasActive {
+            presentTripAttendanceSheetIfNeeded(isTripActive: true, attendance: attendance)
+        }
+    }
+
+    func presentTripAttendanceSheetIfNeeded(isTripActive: Bool, attendance: AttendanceStatus) {
+        guard isTripActive, attendance == .unknown, !didPromptAttendanceThisTrip else { return }
+        didPromptAttendanceThisTrip = true
+        showTripStartedAttendanceSheet = true
+    }
+
+    func dismissTripAttendanceSheet() {
+        showTripStartedAttendanceSheet = false
     }
 
     func requestSignOut(onConfirm: @escaping () -> Void) {
@@ -87,8 +103,12 @@ final class PassengerHomeViewModel: BaseViewModel {
         session: UserSession
     ) async {
         guard let profile = session.profile else { return }
+        pendingAttendanceSelection = status
         isUpdatingAttendance = true
-        defer { isUpdatingAttendance = false }
+        defer {
+            isUpdatingAttendance = false
+            pendingAttendanceSelection = nil
+        }
 
         do {
             try await store.setAttendance(
@@ -97,6 +117,8 @@ final class PassengerHomeViewModel: BaseViewModel {
                 name: profile.name,
                 status: status
             )
+            showTripStartedAttendanceSheet = false
+            showSuccess("Seçiminiz kaydedildi: \(status.title)")
         } catch {
             showError(error.localizedDescription)
         }
