@@ -2,6 +2,11 @@ const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/
 const { initializeApp } = require("firebase-admin/app");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const {
+  buildTripStartedMessageForGroup,
+  buildReturneeTripNotification,
+  fetchYesterdayNotComingMemberIds,
+} = require("./weather");
 
 initializeApp();
 
@@ -20,11 +25,14 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return 2 * earthRadius * Math.asin(Math.sqrt(a));
 }
 
-function passengerTokens(membersSnapshot) {
+function passengerMembers(membersSnapshot) {
   return membersSnapshot.docs
     .filter((doc) => doc.data().role === "passenger")
-    .map((doc) => doc.data().fcmToken)
-    .filter(Boolean);
+    .map((doc) => ({
+      memberID: doc.id,
+      token: doc.data().fcmToken,
+    }))
+    .filter((entry) => Boolean(entry.token));
 }
 
 exports.notifyTripStarted = onDocumentCreated(
@@ -54,23 +62,52 @@ exports.notifyTripStarted = onDocumentCreated(
       )
     );
 
-    const tokens = passengerTokens(membersSnapshot);
+    const passengers = passengerMembers(membersSnapshot);
 
-    if (tokens.length === 0) {
+    if (passengers.length === 0) {
       return;
     }
 
-    await getMessaging().sendEachForMulticast({
-      tokens,
-      notification: {
-        title: "Servis yola çıktı!",
-        body: `${driverName} servisi başlattı. Gelecek misiniz?`,
-      },
+    const tripDateKey = data.date || new Date().toLocaleDateString("en-CA", {
+      timeZone: "Europe/Istanbul",
+    });
+    const [defaultNotification, returneeYesterday] = await Promise.all([
+      buildTripStartedMessageForGroup(db, groupId, driverName),
+      fetchYesterdayNotComingMemberIds(db, groupId, tripDateKey),
+    ]);
+
+    const returneeNotification = buildReturneeTripNotification(driverName);
+
+    const messages = passengers.map(({ memberID, token }) => ({
+      token,
+      notification: returneeYesterday.has(memberID)
+        ? returneeNotification
+        : defaultNotification,
       data: {
         type: "trip_started",
         groupId,
+        memberID,
+        returnee: returneeYesterday.has(memberID) ? "1" : "0",
       },
-    });
+    }));
+
+    const result = await getMessaging().sendEach(messages);
+    const failed = result.responses.filter((r) => !r.success).length;
+    if (failed > 0) {
+      console.warn(
+        "[notifyTripStarted] FCM failures:",
+        failed,
+        "returnees:",
+        returneeYesterday.size
+      );
+    } else {
+      console.log(
+        "[notifyTripStarted] sent:",
+        messages.length,
+        "returnees:",
+        returneeYesterday.size
+      );
+    }
   }
 );
 
