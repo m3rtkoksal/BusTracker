@@ -146,7 +146,18 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        [.banner, .sound, .list]
+    }
+}
+
+extension NotificationService {
+    /// Servis çağrısı — korna sesi (bundle: approach_tink.caf).
+    static let approachSoundName = "approach_tink.caf"
+
+    static func isShuttleCallNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
+        if userInfo["type"] as? String == "driver_approaching" { return true }
+        if let gcm = userInfo["gcm.notification.type"] as? String, gcm == "driver_approaching" { return true }
+        return false
     }
 }
 

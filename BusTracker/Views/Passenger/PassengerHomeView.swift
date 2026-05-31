@@ -17,6 +17,8 @@ struct PassengerHomeView: BaseView {
     @State private var mapFocusNextIsAlternate = false
     @State private var mapSnapshotDriverLocation: DriverLocation?
     @State private var mapSnapshotDriverRoute: [CLLocationCoordinate2D] = []
+    @State private var pickupWeather: PassengerWeatherCardModel?
+    @State private var pickupWeatherLoading = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -253,9 +255,36 @@ struct PassengerHomeView: BaseView {
                 attendanceSection
 
                 pickupSummarySection
+
+                if savedMorningPickup != nil {
+                    clothingAdviceSection
+                }
             }
             .padding(24)
         }
+    }
+
+    private var clothingAdviceSection: some View {
+        PassengerWeatherCard(model: pickupWeather, isLoading: pickupWeatherLoading)
+            .task(id: pickupWeatherTaskKey) {
+                await refreshPickupWeather()
+            }
+    }
+
+    private var pickupWeatherTaskKey: String {
+        guard let pickup = savedMorningPickup else { return "none" }
+        return "\(pickup.latitude),\(pickup.longitude)"
+    }
+
+    private func refreshPickupWeather() async {
+        guard let pickup = savedMorningPickup else {
+            pickupWeather = nil
+            pickupWeatherLoading = false
+            return
+        }
+        pickupWeatherLoading = true
+        defer { pickupWeatherLoading = false }
+        pickupWeather = await PassengerWeatherService.load(for: pickup.coordinate)
     }
 
     private var serviceHeaderSection: some View {
@@ -325,6 +354,7 @@ struct PassengerHomeView: BaseView {
         }
         .padding(16)
         .background(NeonTheme.surfaceContainer)
+        .clipShape(Rectangle())
         .overlay {
             Rectangle()
                 .strokeBorder(NeonTheme.secondary.opacity(0.22), lineWidth: 1)
@@ -365,6 +395,7 @@ struct PassengerHomeView: BaseView {
                 .padding(.vertical, 14)
             }
             .background(NeonTheme.surfaceContainerHigh)
+            .clipShape(Rectangle())
             .overlay {
                 Rectangle()
                     .strokeBorder(NeonTheme.secondary.opacity(0.45), lineWidth: 1)
@@ -373,6 +404,7 @@ struct PassengerHomeView: BaseView {
         }
         .padding(16)
         .background(NeonTheme.surfaceContainer)
+        .clipShape(Rectangle())
         .overlay {
             Rectangle()
                 .strokeBorder(NeonTheme.outline.opacity(0.25), lineWidth: 1)
@@ -695,6 +727,7 @@ struct PassengerHomeView: BaseView {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(isSelected ? accent.opacity(0.12) : NeonTheme.surfaceContainerHigh.opacity(0.85))
+            .clipShape(Rectangle())
             .overlay {
                 Rectangle()
                     .strokeBorder(isSelected ? accent.opacity(0.55) : NeonTheme.outline.opacity(0.25), lineWidth: isSelected ? 2 : 1)

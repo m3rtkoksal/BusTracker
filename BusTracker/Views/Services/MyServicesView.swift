@@ -74,11 +74,13 @@ struct MyServicesView: View {
                             .foregroundStyle(NeonTheme.secondary)
                             .padding(10)
                             .background(NeonTheme.surfaceContainer)
+                            .clipShape(Rectangle())
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                Rectangle()
                                     .stroke(NeonTheme.secondary.opacity(0.35), lineWidth: 1)
                             )
                     }
+                    .buttonStyle(.plain)
                     Spacer()
                 }
                 .padding(.horizontal, 16)
@@ -102,7 +104,6 @@ struct MyServicesView: View {
                             Rectangle()
                                 .fill(NeonTheme.primary)
                                 .frame(width: 48, height: 4)
-                                .cornerRadius(2)
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
@@ -131,7 +132,7 @@ struct MyServicesView: View {
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
                                             .background(NeonTheme.secondary)
-                                            .cornerRadius(4)
+                                            .clipShape(Rectangle())
                                     }
 
                                     HStack(alignment: .top) {
@@ -160,16 +161,18 @@ struct MyServicesView: View {
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 5)
                                             .background(NeonTheme.secondary.opacity(0.15))
+                                            .clipShape(Rectangle())
                                             .overlay(
-                                                RoundedRectangle(cornerRadius: 6)
+                                                Rectangle()
                                                     .stroke(NeonTheme.secondary.opacity(0.4), lineWidth: 1)
                                             )
                                     }
                                 }
                                 .padding(20)
                                 .background(NeonTheme.surfaceContainerHigh)
+                                .clipShape(Rectangle())
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    Rectangle()
                                         .stroke(NeonTheme.secondary.opacity(0.5), lineWidth: 1)
                                 )
                                 .padding(.horizontal, 24)
@@ -214,17 +217,20 @@ struct MyServicesView: View {
                                                     .padding(.horizontal, 16)
                                                     .padding(.vertical, 8)
                                                     .background(NeonTheme.surfaceContainerHighest)
+                                                    .clipShape(Rectangle())
                                                     .overlay(
-                                                        RoundedRectangle(cornerRadius: 8)
+                                                        Rectangle()
                                                             .stroke(NeonTheme.primary.opacity(0.3), lineWidth: 1)
                                                     )
                                             }
+                                            .buttonStyle(.plain)
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 14)
                                         .background(NeonTheme.surfaceContainer)
+                                        .clipShape(Rectangle())
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
+                                            Rectangle()
                                                 .stroke(NeonTheme.onSurface.opacity(0.06), lineWidth: 1)
                                         )
                                         .padding(.horizontal, 24)
@@ -246,42 +252,44 @@ struct MyServicesView: View {
                                 .padding(.vertical, 20)
                                 .padding(.horizontal, 16)
                                 .background(NeonTheme.surfaceContainer)
+                                .clipShape(Rectangle())
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
+                                    Rectangle()
                                         .stroke(NeonTheme.outline.opacity(0.3), lineWidth: 1)
                                 )
                                 .padding(.horizontal, 24)
                             }
                         }
 
-                        // Add New Service Button (yolcu)
-                        if profile?.role == .passenger {
-                        VStack(spacing: 16) {
-                            Button(action: openAddServiceSheet) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(NeonTheme.primary)
-
-                                    Text("YENİ SERVİS EKLE")
-                                        .font(.system(size: 15, weight: .black, design: .rounded))
-                                        .tracking(1)
-                                        .foregroundStyle(NeonTheme.primary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(NeonTheme.background)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(NeonTheme.primary, lineWidth: 2)
-                                )
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.top, 16)
-                        }
-                        }
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 24)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if profile?.role == .passenger {
+                    Button(action: openAddServiceSheet) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(NeonTheme.primary)
+
+                            Text("YENİ SERVİS EKLE")
+                                .font(.system(size: 15, weight: .black, design: .rounded))
+                                .tracking(1)
+                                .foregroundStyle(NeonTheme.primary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(NeonTheme.background)
+                        .clipShape(Rectangle())
+                        .overlay(
+                            Rectangle()
+                                .stroke(NeonTheme.primary, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
                 }
             }
         }

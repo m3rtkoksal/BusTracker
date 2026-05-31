@@ -7,6 +7,7 @@ const {
   buildReturneeTripNotification,
   fetchYesterdayNotComingMemberIds,
 } = require("./weather");
+const { buildDriverApproachingMessage } = require("./notifications");
 
 initializeApp();
 
@@ -192,18 +193,9 @@ exports.notifyDriverApproachingPickup = onDocumentWritten(
         continue;
       }
 
-      await messaging.send({
-        token,
-        notification: {
-          title: "Sürücü yaklaşıyor",
-          body: "Sürücü biniş noktanıza yaklaştı.",
-        },
-        data: {
-          type: "driver_approaching",
-          groupId,
-          memberID,
-        },
-      });
+      await messaging.send(
+        buildDriverApproachingMessage({ token, groupId, memberID })
+      );
 
       await memberDoc.ref.set(
         { lastApproachNotificationSessionKey: approachSessionKey },

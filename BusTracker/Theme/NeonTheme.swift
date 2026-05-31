@@ -149,6 +149,7 @@ struct NeonFormField: View {
     var keyboard: UIKeyboardType = .default
     var textInputAutocapitalization: TextInputAutocapitalization? = .words
     var errorText: String? = nil
+    var cornerRadius: CGFloat = 10
 
     private var hasError: Bool { errorText != nil }
 
@@ -164,22 +165,36 @@ struct NeonFormField: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .foregroundStyle(NeonTheme.onSurface)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(NeonTheme.surfaceBright.opacity(0.8))
-                )
+                .background(fieldBackground)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(
-                            hasError ? NeonTheme.error.opacity(0.7) : NeonTheme.outline.opacity(0.5),
-                            lineWidth: 1
-                        )
+                    fieldBorder
                 }
             if let errorText {
                 Text(errorText)
                     .font(.caption)
                     .foregroundStyle(NeonTheme.error)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var fieldBackground: some View {
+        let fill = NeonTheme.surfaceBright.opacity(0.8)
+        if cornerRadius <= 0 {
+            Rectangle().fill(fill)
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(fill)
+        }
+    }
+
+    @ViewBuilder
+    private var fieldBorder: some View {
+        let color = hasError ? NeonTheme.error.opacity(0.7) : NeonTheme.outline.opacity(0.5)
+        if cornerRadius <= 0 {
+            Rectangle().strokeBorder(color, lineWidth: 1)
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(color, lineWidth: 1)
         }
     }
 }

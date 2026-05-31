@@ -16,7 +16,7 @@ struct DriverMapTabView: View {
     @State private var mapShowsAllPins = false
 
     private var nextPickup: MorningPickup? {
-        morningPickups.first
+        Self.nearestMorningPickup(to: driverLocation, from: morningPickups)
     }
 
     var body: some View {
@@ -255,6 +255,32 @@ struct DriverMapTabView: View {
             Rectangle()
                 .strokeBorder(NeonTheme.outline.opacity(0.2), lineWidth: 1)
         }
+    }
+
+    /// Firestore sırası değil — sürücüye en yakın geçerli biniş noktası.
+    static func nearestMorningPickup(to driver: DriverLocation?, from pickups: [MorningPickup]) -> MorningPickup? {
+        let valid = pickups.filter { isValidPickupCoordinate(latitude: $0.latitude, longitude: $0.longitude) }
+        guard !valid.isEmpty else { return pickups.first }
+
+        guard let driver else { return valid.first }
+
+        let driverLocation = CLLocation(latitude: driver.latitude, longitude: driver.longitude)
+        return valid.min { lhs, rhs in
+            let lhsMeters = driverLocation.distance(
+                from: CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
+            )
+            let rhsMeters = driverLocation.distance(
+                from: CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
+            )
+            return lhsMeters < rhsMeters
+        }
+    }
+
+    private static func isValidPickupCoordinate(latitude: Double, longitude: Double) -> Bool {
+        guard latitude.isFinite, longitude.isFinite else { return false }
+        guard abs(latitude) <= 90, abs(longitude) <= 180 else { return false }
+        guard abs(latitude) > 0.01 || abs(longitude) > 0.01 else { return false }
+        return true
     }
 
     private func distanceToPickup(_ pickup: MorningPickup) -> String? {

@@ -9,7 +9,7 @@ struct AddServiceSheet: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Capsule()
+            Rectangle()
                 .fill(NeonTheme.surfaceContainerHighest)
                 .frame(width: 48, height: 4)
                 .padding(.top, 12)
@@ -29,7 +29,8 @@ struct AddServiceSheet: View {
                 prompt: "6 haneli kod",
                 keyboard: .asciiCapable,
                 textInputAutocapitalization: .characters,
-                errorText: errorText
+                errorText: errorText,
+                cornerRadius: 0
             )
 
             Button(action: onJoin) {
@@ -55,6 +56,7 @@ struct AddServiceSheet: View {
                     .strokeBorder(NeonTheme.secondary.opacity(0.45), lineWidth: 1)
             }
             .buttonStyle(.plain)
+            .clipShape(Rectangle())
             .disabled(isLoading || serviceCode.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
 
             Button("Vazgeç", action: onDismiss)
@@ -66,7 +68,7 @@ struct AddServiceSheet: View {
         .padding(.bottom, 28)
         .frame(maxWidth: .infinity)
         .background {
-            UnevenRoundedRectangle(topLeadingRadius: 40, topTrailingRadius: 40)
+            Rectangle()
                 .fill(NeonTheme.surfaceContainer)
                 .shadow(color: .black.opacity(0.35), radius: 24, y: -4)
                 .ignoresSafeArea(edges: .bottom)
