@@ -464,7 +464,9 @@ struct PassengerHomeView: BaseView {
 
             savePickupButton
         }
-        .padding(14)
+        .padding(.horizontal, 12)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
         .background(NeonTheme.surfaceContainer.opacity(0.82))
         .background(.ultraThinMaterial.opacity(0.14))
         .overlay {
@@ -675,15 +677,15 @@ struct PassengerHomeView: BaseView {
         } label: {
             Group {
                 if viewModel.isSavingPickup {
-                    ProgressView().tint(NeonTheme.secondary)
+                    ProgressView().tint(NeonTheme.mapSaveAction)
                 } else {
                     HStack(spacing: 8) {
                         Image(systemName: "mappin.and.ellipse")
                         Text("BİNİŞ NOKTAMI KAYDET")
                             .tracking(1)
                     }
-                    .foregroundStyle(NeonTheme.secondary)
-                    .shadow(color: NeonTheme.secondary.opacity(0.45), radius: 6)
+                    .foregroundStyle(NeonTheme.mapSaveAction)
+                    .shadow(color: NeonTheme.mapSaveAction.opacity(0.55), radius: 8)
                 }
             }
             .font(.system(size: 12, weight: .heavy, design: .rounded))
@@ -693,7 +695,7 @@ struct PassengerHomeView: BaseView {
         .background(NeonTheme.surfaceContainerHigh.opacity(0.9))
         .overlay {
             Rectangle()
-                .strokeBorder(NeonTheme.secondary.opacity(0.45), lineWidth: 1)
+                .strokeBorder(NeonTheme.mapSaveAction.opacity(0.5), lineWidth: 1)
         }
         .disabled(viewModel.isSavingPickup || viewModel.draftPickupCoordinate == nil)
         .opacity(viewModel.draftPickupCoordinate == nil ? 0.45 : 1)

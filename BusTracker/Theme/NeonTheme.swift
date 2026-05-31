@@ -12,6 +12,8 @@ enum NeonTheme {
     static let onSurfaceVariant = Color(hex: 0xA098B0)
     static let primary = Color(hex: 0xFF2D78)
     static let secondary = Color(hex: 0x00FFCC)
+    /// Harita: “Biniş noktamı kaydet” — parlak mavi (iOS)
+    static let mapSaveAction = Color(hex: 0x6EFFF7)
     static let outline = Color(hex: 0x5A5068)
     static let error = Color(hex: 0xFF5252)
     /// Harita: sürücü canlı konum pini
