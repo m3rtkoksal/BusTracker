@@ -26,7 +26,7 @@ struct DriverMapTabView: View {
                 driverRoute: driverRoute,
                 isTripActive: isTripActive,
                 morningPickups: morningPickups,
-                mapStyle: .hybrid(elevation: .realistic),
+                mapStyle: .hybrid(elevation: .flat),
                 cameraPosition: $mapPosition,
                 annotationRefreshNonce: mapAnnotationRefreshNonce
             )

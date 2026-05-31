@@ -173,7 +173,9 @@ struct BaseViewShell<VM: BaseViewModel, Content: View, TrailingToolbar: View>: V
             Image(systemName: popup.style.iconName)
                 .foregroundStyle(popup.style.tint)
             VStack(alignment: .leading, spacing: 2) {
-                Text(popup.title).font(.subheadline.weight(.semibold))
+                if !popup.title.isEmpty {
+                    Text(popup.title).font(.subheadline.weight(.semibold))
+                }
                 Text(popup.message).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

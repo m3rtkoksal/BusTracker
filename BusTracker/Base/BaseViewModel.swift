@@ -136,7 +136,11 @@ class BaseViewModel {
     }
 
     func showSuccess(_ message: String, title: String = "Başarılı") {
-        toast = PopupPresentation(style: .success, title: title, message: message)
+        showToast(message, style: .success, title: title)
+    }
+
+    func showToast(_ message: String, style: PopupStyle = .success, title: String = "") {
+        toast = PopupPresentation(style: style, title: title, message: message)
     }
 
     func showInfo(_ message: String, title: String = "Bilgi") {

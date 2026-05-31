@@ -41,7 +41,7 @@ struct PassengerLiveMap: View {
                     .stroke(NeonTheme.secondary.opacity(0.75), lineWidth: 4)
                 }
 
-                if let driverLocation {
+                if isTripActive, let driverLocation {
                     Annotation(driverLocation.driverName, coordinate: driverLocation.coordinate) {
                         driverMarker
                     }
@@ -53,7 +53,7 @@ struct PassengerLiveMap: View {
                     }
                 }
             }
-            .mapStyle(.hybrid(elevation: .realistic))
+            .mapStyle(.hybrid(elevation: .flat))
             .onMapCameraChange(frequency: .onEnd) { context in
                 onCameraRegionChange?(context.region)
             }
@@ -116,7 +116,7 @@ struct PassengerLiveMap: View {
     private func fitAllAnnotations(animated: Bool) {
         var coordinates: [CLLocationCoordinate2D] = []
         if let pickup = displayPickup { coordinates.append(pickup) }
-        if let driver = driverLocation?.coordinate { coordinates.append(driver) }
+        if isTripActive, let driver = driverLocation?.coordinate { coordinates.append(driver) }
 
         let region: MKCoordinateRegion
         if coordinates.isEmpty {

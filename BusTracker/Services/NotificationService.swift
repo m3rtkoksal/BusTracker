@@ -20,6 +20,12 @@ final class NotificationService: NSObject {
         let isEnabled: Bool
     }
 
+    enum AccessResult: Equatable {
+        case granted
+        case prompted
+        case needsSettings
+    }
+
     private override init() {
         super.init()
     }
@@ -72,23 +78,55 @@ final class NotificationService: NSObject {
         _ = await authorizationSnapshot()
     }
 
-    /// Daha önce sorulmadıysa sistem bildirim diyaloğunu gösterir.
-    func requestPermissionIfNeeded() async {
+    /// Uygulama açılışında / ön plana gelince: izin yoksa iste, açıksa token senkronize et.
+    func ensureNotificationsEnabled(groupID: String?, memberID: String?) async -> AccessResult {
         configure()
         let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        authorizationStatus = status
         print("📋 [Shuttle Live] Bildirim izni durumu: \(status.rawValue) (0=sorulmadı, 1=reddedildi, 2=açık)")
+
         switch status {
         case .notDetermined:
             await requestPermissionAndRegister()
+            let updated = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            authorizationStatus = updated
+            if updated == .authorized || updated == .provisional || updated == .ephemeral {
+                isPermissionGranted = true
+                await syncTokenIfPossible(groupID: groupID, memberID: memberID)
+                return .granted
+            }
+            if updated == .denied {
+                isPermissionGranted = false
+                return .needsSettings
+            }
+            return .prompted
+
         case .authorized, .provisional, .ephemeral:
             isPermissionGranted = true
-            authorizationStatus = status
             await registerForRemoteNotifications()
-        default:
+            await syncTokenIfPossible(groupID: groupID, memberID: memberID)
+            return .granted
+
+        case .denied:
             isPermissionGranted = false
-            authorizationStatus = status
-            print("📋 [Shuttle Live] Bildirim daha önce reddedilmiş — Ayarlar'dan açılabilir")
+            return .needsSettings
+
+        @unknown default:
+            isPermissionGranted = false
+            return .needsSettings
         }
+    }
+
+    /// Geriye dönük uyumluluk — kayıt / giriş akışları.
+    func requestPermissionIfNeeded() async {
+        _ = await ensureNotificationsEnabled(groupID: nil, memberID: nil)
+    }
+
+    private func syncTokenIfPossible(groupID: String?, memberID: String?) async {
+        guard let groupID, let memberID else { return }
+        let trimmed = groupID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        await saveTokenToProfile(groupID: trimmed, memberID: memberID)
     }
 
     func openSystemSettings() {

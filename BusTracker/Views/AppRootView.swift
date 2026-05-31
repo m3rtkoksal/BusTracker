@@ -59,17 +59,6 @@ struct AppRootView: View {
         do {
             if let profile = try await store.fetchUserProfile(userID: userID) {
                 session.save(profile)
-                await NotificationService.shared.requestPermissionIfNeeded()
-
-                let effectiveGroupID = profile.groupID ?? profile.primaryGroupID
-                let memberID = profile.memberID
-
-                if !effectiveGroupID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    await NotificationService.shared.saveTokenToProfile(
-                        groupID: effectiveGroupID,
-                        memberID: memberID
-                    )
-                }
             } else {
                 print("⚠️ [Shuttle Live] Firestore'da profil yok — oturum kapatılıyor")
                 try? authService.signOut()

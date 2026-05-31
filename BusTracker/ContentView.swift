@@ -1,12 +1,13 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ContentView: View {
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
     @Environment(LocationTracker.self) private var locationTracker
-
     @State private var authMode: AuthMode = .register
-
     enum AuthMode {
         case register, login
     }
@@ -19,9 +20,6 @@ struct ContentView: View {
         Group {
             if isAuthenticatedWithProfile, let profile = session.profile {
                 homeView(for: profile)
-                    .task {
-                        await NotificationService.shared.requestPermissionIfNeeded()
-                    }
             } else {
                 switch authMode {
                 case .register:

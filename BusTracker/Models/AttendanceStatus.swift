@@ -20,4 +20,13 @@ enum AttendanceStatus: String, Codable, CaseIterable {
         case .unknown: "questionmark.circle.fill"
         }
     }
+
+    /// Harita sekmesi sol üst katılım kutusu.
+    var mapTabLabel: String {
+        switch self {
+        case .coming: "Geliyorum"
+        case .notComing: "Gelmiyorum"
+        case .unknown: "Belirsiz"
+        }
+    }
 }

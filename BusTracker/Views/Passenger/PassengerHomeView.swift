@@ -14,9 +14,6 @@ struct PassengerHomeView: BaseView {
     @State private var pendingCenterOnPassenger = false
     @State private var hasInitializedMapCamera = false
     /// Konum tuşu: false = bir sonraki basış birincil odak, true = bir sonraki basış alternatif odak.
-    @State private var mapFocusNextIsAlternate = false
-    @State private var mapSnapshotDriverLocation: DriverLocation?
-    @State private var mapSnapshotDriverRoute: [CLLocationCoordinate2D] = []
     @State private var pickupWeather: PassengerWeatherCardModel?
     @State private var pickupWeatherLoading = false
 
@@ -40,21 +37,19 @@ struct PassengerHomeView: BaseView {
                 passengerTopBar
             }
 
-            ZStack {
-                mapTab
-                    .zIndex(0)
-                    .allowsHitTesting(tabBar.selectedTab == .map)
-
-                if tabBar.selectedTab == .service {
+            Group {
+                switch tabBar.selectedTab {
+                case .map:
+                    mapTab
+                        .id("passenger-map-tab")
+                case .service:
                     serviceTab
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(NeonTheme.background)
-                        .zIndex(1)
-                } else if tabBar.selectedTab == .settings {
+                case .settings:
                     settingsTab
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(NeonTheme.background)
-                        .zIndex(1)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -69,17 +64,36 @@ struct PassengerHomeView: BaseView {
                 attendance: myAttendance
             )
         }
-        .onChange(of: tabBar.selectedTab) { oldTab, tab in
-            if oldTab == .map {
-                mapSnapshotDriverLocation = store.driverLocation
-                mapSnapshotDriverRoute = store.driverRoute
-            }
-            if tab == .map {
-                mapFocusNextIsAlternate = false
-            }
-            guard tab == .map, !hasInitializedMapCamera else { return }
+        .task(id: tripAttendancePromptKey) {
+            viewModel.presentTripAttendanceSheetIfNeeded(
+                isTripActive: store.isTripActive,
+                attendance: myAttendance
+            )
+        }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            viewModel.presentTripAttendanceSheetIfNeeded(
+                isTripActive: store.isTripActive,
+                attendance: myAttendance
+            )
+        }
+#endif
+        .onChange(of: myAttendance) { _, attendance in
+            viewModel.presentTripAttendanceSheetIfNeeded(
+                isTripActive: store.isTripActive,
+                attendance: attendance
+            )
+        }
+        .onChange(of: store.members.count) { _, _ in
+            viewModel.presentTripAttendanceSheetIfNeeded(
+                isTripActive: store.isTripActive,
+                attendance: myAttendance
+            )
+        }
+        .onChange(of: tabBar.selectedTab) { _, tab in
+            guard tab == .map else { return }
+            focusMapOnPickup(animated: !hasInitializedMapCamera)
             hasInitializedMapCamera = true
-            focusMapOnPickup(animated: false)
         }
         .onChange(of: locationTracker.effectiveLocation?.coordinate.latitude ?? 0) { _, _ in
             guard tabBar.selectedTab == .map else { return }
@@ -88,11 +102,10 @@ struct PassengerHomeView: BaseView {
         }
         .onChange(of: store.morningPickups.count) { _, _ in
             viewModel.loadSavedPickup(from: store, session: session)
+            guard tabBar.selectedTab == .map, !store.isTripActive else { return }
+            focusMapOnPickup(animated: false)
         }
         .onChange(of: store.isTripActive) { wasActive, isActive in
-            if !isActive {
-                mapFocusNextIsAlternate = false
-            }
             viewModel.onTripActiveChanged(
                 wasActive: wasActive,
                 isActive: isActive,
@@ -134,36 +147,30 @@ struct PassengerHomeView: BaseView {
         }
     }
 
-    private func togglePassengerMapFocus() {
-        if mapFocusNextIsAlternate {
-            focusOnAlternateMapTarget(animated: true)
-            mapFocusNextIsAlternate = false
-        } else {
-            focusOnPrimaryMapTarget(animated: true)
-            mapFocusNextIsAlternate = true
-        }
+    /// Servis + katılım verisi geldikçe “Geliyorum / Gelmiyorum” sheet’ini değerlendir.
+    private var tripAttendancePromptKey: String {
+        let memberID = profile?.memberID ?? ""
+        let memberLoaded = store.members.contains { $0.id == memberID }
+        return "\(store.isTripActive)-\(myAttendance.rawValue)-\(memberLoaded)-\(store.members.count)"
     }
 
-    /// İlk mod: haritada seçili biniş noktası; yoksa anlık konum.
-    private func focusOnPrimaryMapTarget(animated: Bool) {
-        if let coordinate = viewModel.draftPickupCoordinate {
-            centerMap(on: coordinate, animated: animated)
-            return
-        }
-        centerOnCurrentLocation(animated: animated)
-    }
-
-    /// İkinci mod: servis aktifse sürücü; değilse kayıtlı biniş veya anlık konum.
-    private func focusOnAlternateMapTarget(animated: Bool) {
-        if store.isTripActive, let driver = store.driverLocation?.coordinate {
-            centerMap(on: driver, animated: animated)
-            return
-        }
+    /// Konum oku: kayıtlı biniş noktası; yoksa cihaz konumu.
+    private func focusOnSavedPickupOrDevice(animated: Bool) {
         if let saved = savedMorningPickup?.coordinate {
             centerMap(on: saved, animated: animated)
             return
         }
         centerOnCurrentLocation(animated: animated)
+    }
+
+    private var showsDriverMapButton: Bool {
+        store.isTripActive
+    }
+
+    /// Minibüs: sürücünün anlık konumu (servis aktif veya canlı konum geliyorsa).
+    private func focusOnDriverLocation(animated: Bool) {
+        guard let driver = store.driverLocation?.coordinate else { return }
+        centerMap(on: driver, animated: animated)
     }
 
     private func centerOnCurrentLocation(animated: Bool) {
@@ -184,8 +191,7 @@ struct PassengerHomeView: BaseView {
     }
 
     private func centerOnMyLocation() {
-        mapFocusNextIsAlternate = true
-        focusOnPrimaryMapTarget(animated: true)
+        focusOnSavedPickupOrDevice(animated: true)
     }
 
     private func openMapFocusedOnPickup() {
@@ -194,17 +200,24 @@ struct PassengerHomeView: BaseView {
         focusMapOnPickup(animated: false)
     }
 
-    /// Harita sekmesine dönünce kayıtlı / taslak biniş noktasına odaklan.
+    /// Harita sekmesine dönünce biniş noktasına odaklan; servis pasifken yalnızca yolcu pini.
     private func focusMapOnPickup(animated: Bool) {
         viewModel.loadSavedPickup(from: store, session: session)
 
         guard let pickup = viewModel.draftPickupCoordinate ?? savedMorningPickup?.coordinate else {
-            centerOnMyLocation()
+            if store.isTripActive {
+                centerOnMyLocation()
+            }
+            return
+        }
+
+        guard store.isTripActive else {
+            applyMapRegion(for: [pickup], animated: animated)
             return
         }
 
         var coordinates = [pickup]
-        if store.isTripActive, let driver = store.driverLocation?.coordinate {
+        if let driver = store.driverLocation?.coordinate {
             let pickupLocation = CLLocation(latitude: pickup.latitude, longitude: pickup.longitude)
             let driverLocation = CLLocation(latitude: driver.latitude, longitude: driver.longitude)
             if pickupLocation.distance(from: driverLocation) <= 20_000 {
@@ -416,13 +429,13 @@ struct PassengerHomeView: BaseView {
     private var mapTab: some View {
         ZStack {
             PassengerLiveMap(
-                driverLocation: tabBar.selectedTab == .map ? store.driverLocation : mapSnapshotDriverLocation,
-                driverRoute: tabBar.selectedTab == .map ? store.driverRoute : mapSnapshotDriverRoute,
+                driverLocation: store.driverLocation,
+                driverRoute: store.driverRoute,
                 isTripActive: store.isTripActive,
                 selectedCoordinate: $viewModel.draftPickupCoordinate,
                 savedPickup: savedMorningPickup,
                 cameraPosition: $mapPosition,
-                isActive: tabBar.selectedTab == .map,
+                isActive: true,
                 autoFitOnAppear: false,
                 onCameraRegionChange: { lastKnownMapRegion = $0 }
             )
@@ -481,9 +494,9 @@ struct PassengerHomeView: BaseView {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 16) {
-                    if let code = profile?.groupCode {
+                    if let code = profile?.groupCode, !code.isEmpty {
                         settingsRow(title: "Servis Kodu", value: code) {
-                            viewModel.copyGroupCode(code)
+                            viewModel.copyServiceCode(code)
                         }
                     }
 
@@ -565,108 +578,165 @@ struct PassengerHomeView: BaseView {
         .buttonStyle(.plain)
     }
 
+    @ViewBuilder
     private func settingsRow(title: String, value: String, action: (() -> Void)?) -> some View {
-        Button {
-            action?()
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title.uppercased())
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                    Text(value)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NeonTheme.onSurface)
-                }
-                Spacer()
-                if action != nil {
-                    Image(systemName: "doc.on.doc")
-                        .foregroundStyle(NeonTheme.secondary)
-                }
+        let label = HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title.uppercased())
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+                Text(value)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NeonTheme.onSurface)
             }
-            .padding(16)
-            .background(NeonTheme.surfaceContainer)
-            .overlay {
-                Rectangle()
-                    .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
+            Spacer()
+            if action != nil {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(NeonTheme.secondary)
             }
         }
-        .buttonStyle(.plain)
-        .disabled(action == nil)
+        .padding(16)
+        .background(NeonTheme.surfaceContainer)
+        .overlay {
+            Rectangle()
+                .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
+        }
+
+        if let action {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.plain)
+        } else {
+            label
+        }
     }
 
     // MARK: - Shared components
 
     private var compactTopInfo: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
+            compactServiceInfoBox
+            compactAttendanceInfoBox
+        }
+    }
+
+    private var compactServiceInfoBox: some View {
+        let isServiceLive = store.isTripActive
+        let accent = isServiceLive ? NeonTheme.secondary : NeonTheme.outline
+
+        return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(NeonTheme.secondary)
+                    .fill(accent)
                     .frame(width: 6, height: 6)
-                    .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 4)
+                    .shadow(
+                        color: isServiceLive ? accent.opacity(0.8) : .clear,
+                        radius: isServiceLive ? 4 : 0
+                    )
                 Text((profile?.groupName ?? "Servis").uppercased())
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(NeonTheme.onSurface)
+                    .foregroundStyle(isServiceLive ? NeonTheme.onSurface : NeonTheme.onSurfaceVariant)
                     .lineLimit(1)
             }
 
-            if let location = store.driverLocation {
+            if isServiceLive, let location = store.driverLocation {
                 Text("\(location.driverName.uppercased()) • \(location.updatedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(NeonTheme.secondary)
                     .lineLimit(1)
             } else {
-                Text(store.isTripActive ? "Konum bekleniyor" : "Servis bekliyor")
+                Text(isServiceLive ? "Konum bekleniyor" : "Servis pasif")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(isServiceLive ? 1 : 0.85))
                     .lineLimit(1)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: 200, alignment: .leading)
-        .background(NeonTheme.surfaceContainer.opacity(0.72))
-        .background(.ultraThinMaterial.opacity(0.12))
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(NeonTheme.secondary)
-                .frame(width: 3)
+        .opacity(isServiceLive ? 1 : 0.88)
+        .mapInfoBoxStyle(accent: accent)
+    }
+
+    private var compactAttendanceInfoBox: some View {
+        let accent = attendanceColor(myAttendance)
+        return Button {
+            tabBar.select(.service)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: myAttendance.iconName)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(myAttendance.mapTabLabel.uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                Text("DEĞİŞTİR")
+                    .font(.system(size: 8, weight: .semibold, design: .rounded))
+                    .tracking(0.5)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+            }
+            .foregroundStyle(accent)
+            .padding(.leading, 10)
+            .padding(.trailing, 8)
+            .padding(.vertical, 7)
+            .background(accent.opacity(0.14))
+            .background(NeonTheme.surfaceContainer.opacity(0.5))
+            .fixedSize(horizontal: true, vertical: false)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(accent)
+                    .frame(width: 2)
+            }
+            .overlay {
+                Rectangle()
+                    .strokeBorder(accent.opacity(0.48), lineWidth: 1)
+            }
+            .shadow(color: accent.opacity(0.2), radius: 4, y: 1)
         }
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.secondary.opacity(0.22), lineWidth: 1)
-        }
+        .buttonStyle(.plain)
     }
 
     private var mapControls: some View {
         VStack(spacing: 8) {
-            mapControlButton(icon: "plus") { zoomMap(by: 0.7) }
-            mapControlButton(icon: "minus") { zoomMap(by: 1.35) }
             mapControlButton(
-                icon: mapFocusNextIsAlternate ? "location.fill" : "location.north.line.fill",
-                highlighted: true
+                icon: savedMorningPickup != nil ? "pin.fill" : "pin",
+                highlighted: true,
+                iconColor: NeonTheme.secondary
             ) {
-                togglePassengerMapFocus()
+                focusOnSavedPickupOrDevice(animated: true)
+            }
+            if showsDriverMapButton {
+                mapControlButton(
+                    icon: "bus.fill",
+                    highlighted: true,
+                    iconColor: NeonTheme.mapDriverPin
+                ) {
+                    focusOnDriverLocation(animated: true)
+                }
             }
         }
     }
 
-    private func mapControlButton(icon: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func mapControlButton(
+        icon: String,
+        highlighted: Bool = false,
+        compact: Bool = false,
+        iconColor: Color? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        let tint = iconColor ?? (highlighted ? NeonTheme.secondary : NeonTheme.onSurface)
+        let borderColor = iconColor ?? (highlighted ? NeonTheme.secondary : NeonTheme.outline)
+        return Button(action: action) {
             Image(systemName: icon)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(highlighted ? NeonTheme.secondary : NeonTheme.onSurface)
-                .frame(width: 40, height: 40)
+                .font(.system(size: compact ? 15 : 17, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: compact ? 32 : 40, height: compact ? 32 : 40)
                 .background(NeonTheme.surfaceContainer.opacity(0.92))
                 .overlay {
                     Rectangle()
-                        .strokeBorder(
-                            highlighted ? NeonTheme.secondary.opacity(0.5) : NeonTheme.outline.opacity(0.3),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(borderColor.opacity(highlighted ? 0.55 : 0.3), lineWidth: 1)
                 }
-                .shadow(color: highlighted ? NeonTheme.secondary.opacity(0.2) : .clear, radius: 6)
+                .shadow(color: tint.opacity(0.25), radius: 6)
         }
         .buttonStyle(.plain)
     }
@@ -834,6 +904,26 @@ struct PassengerHomeView: BaseView {
         case .notComing: Color(hex: 0xFF4444)
         case .unknown: Color(hex: 0xFFE04A)
         }
+    }
+}
+
+private extension View {
+    func mapInfoBoxStyle(accent: Color, compact: Bool = false) -> some View {
+        padding(.horizontal, compact ? 8 : 12)
+            .padding(.vertical, compact ? 5 : 10)
+            .frame(maxWidth: compact ? nil : 200, alignment: .leading)
+            .fixedSize(horizontal: compact, vertical: false)
+            .background(NeonTheme.surfaceContainer.opacity(0.72))
+            .background(.ultraThinMaterial.opacity(0.12))
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(accent)
+                    .frame(width: compact ? 2 : 3)
+            }
+            .overlay {
+                Rectangle()
+                    .strokeBorder(accent.opacity(0.22), lineWidth: 1)
+            }
     }
 }
 

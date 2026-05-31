@@ -25,7 +25,8 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     func onAppear(store: ShuttleStore, session: UserSession) {
         configure(session: session)
-        if let groupID = session.profile?.groupID {
+        let groupID = session.profile?.primaryGroupID ?? ""
+        if !groupID.isEmpty {
             store.startListening(groupID: groupID)
         }
     }
@@ -150,11 +151,6 @@ final class PassengerHomeViewModel: BaseViewModel {
         }
     }
 
-    func copyGroupCode(_ code: String) {
-        UIPasteboard.general.string = code
-        showSuccess("Servis kodu kopyalandı.")
-    }
-
     func saveMorningPickup(store: ShuttleStore, session: UserSession) async {
         guard let profile = session.profile else { return }
         guard let coordinate = draftPickupCoordinate else {
@@ -165,16 +161,39 @@ final class PassengerHomeViewModel: BaseViewModel {
         isSavingPickup = true
         defer { isSavingPickup = false }
 
+        let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
+        guard !groupID.isEmpty else {
+            showError("Servis bilgisi bulunamadı.")
+            return
+        }
+
         do {
             try await store.setMorningPickup(
-                groupID: profile.groupID ?? "",
+                groupID: groupID,
                 memberID: profile.memberID,
                 name: profile.name,
                 coordinate: coordinate
             )
-            showSuccess("Sabah biniş noktanız kaydedildi.")
+            try await store.setAttendance(
+                groupID: groupID,
+                memberID: profile.memberID,
+                name: profile.name,
+                status: .coming
+            )
+            showTripStartedAttendanceSheet = false
+            showSuccess("Biniş noktanız kaydedildi. Durumunuz: Geliyorum.")
         } catch {
             showError(error.localizedDescription)
         }
+    }
+
+    func copyServiceCode(_ code: String) {
+        let text = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            showError("Servis kodu bulunamadı.")
+            return
+        }
+        showSuccess("Servis kodu kopyalandı.")
+        CopyServiceCode.copy(text)
     }
 }

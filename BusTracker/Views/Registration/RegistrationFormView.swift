@@ -4,7 +4,6 @@ struct RegistrationFormView: BaseView {
     @Environment(ShuttleStore.self) private var store
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
-
     let role: MemberRole
     let onBack: () -> Void
 

@@ -192,13 +192,15 @@ struct DriverHomeView: BaseView {
 
             HStack(spacing: 8) {
                 if let code = profile?.groupCode {
-                    ShareLink(item: "ServisTakip servis kodum: \(code)") {
+                    ShareLink(item: "Servis kodu: \(code)") {
                         codeActionLabel(title: "Paylaş", icon: "square.and.arrow.up", accent: NeonTheme.primary, filled: true)
                     }
                     .buttonStyle(.plain)
 
                     Button {
-                        viewModel.copyGroupCode(code)
+                        if let code = profile?.groupCode {
+                            viewModel.copyServiceCode(code)
+                        }
                     } label: {
                         codeActionLabel(title: "Kopyala", icon: "doc.on.doc", accent: NeonTheme.onSurfaceVariant, filled: false)
                     }
@@ -516,9 +518,9 @@ struct DriverHomeView: BaseView {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 16) {
-                    if let code = profile?.groupCode {
+                    if let code = profile?.groupCode, !code.isEmpty {
                         settingsRow(title: "Servis Kodu", value: code) {
-                            viewModel.copyGroupCode(code)
+                            viewModel.copyServiceCode(code)
                         }
                     }
 
@@ -597,35 +599,39 @@ struct DriverHomeView: BaseView {
         .buttonStyle(.plain)
     }
 
+    @ViewBuilder
     private func settingsRow(title: String, value: String, action: (() -> Void)?) -> some View {
-        Button {
-            action?()
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title.uppercased())
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                    Text(value)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NeonTheme.onSurface)
-                }
-                Spacer()
-                if action != nil {
-                    Image(systemName: "doc.on.doc")
-                        .foregroundStyle(NeonTheme.secondary)
-                }
+        let label = HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title.uppercased())
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+                Text(value)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NeonTheme.onSurface)
             }
-            .padding(16)
-            .background(NeonTheme.surfaceContainer)
-            .overlay {
-                Rectangle()
-                    .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
+            Spacer()
+            if action != nil {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(NeonTheme.secondary)
             }
         }
-        .buttonStyle(.plain)
-        .disabled(action == nil)
+        .padding(16)
+        .background(NeonTheme.surfaceContainer)
+        .overlay {
+            Rectangle()
+                .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
+        }
+
+        if let action {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.plain)
+        } else {
+            label
+        }
     }
 
     private func attendanceColor(_ status: AttendanceStatus) -> Color {

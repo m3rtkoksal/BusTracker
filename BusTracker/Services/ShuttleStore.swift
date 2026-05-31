@@ -221,6 +221,31 @@ final class ShuttleStore {
         return profile
     }
 
+    /// Davet kodundaki serviste yolcu zaten kayıtlı mı?
+    func passengerIsMember(ofServiceCode code: String, profile: UserProfile) async -> Bool {
+        guard profile.role == .passenger,
+              let groupID = await groupID(forServiceCode: code) else { return false }
+        var memberGroupIDs = profile.groupIDs
+        if memberGroupIDs.isEmpty, let legacy = profile.groupID, !legacy.isEmpty {
+            memberGroupIDs = [legacy]
+        }
+        return memberGroupIDs.contains(groupID)
+    }
+
+    private func groupID(forServiceCode code: String) async -> String? {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard trimmed.count >= 4 else { return nil }
+        do {
+            let snapshot = try await db.collection("groups")
+                .whereField("code", isEqualTo: trimmed)
+                .limit(to: 1)
+                .getDocuments()
+            return snapshot.documents.first?.documentID
+        } catch {
+            return nil
+        }
+    }
+
     /// Yolcu kaydı: kod Firestore'da var mı (Apple oturumu açıldıktan sonra).
     func validatePassengerGroupCode(_ code: String) async throws {
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()

@@ -6,7 +6,7 @@ struct ShuttleMapView: View {
     var driverRoute: [CLLocationCoordinate2D] = []
     var isTripActive: Bool = false
     var morningPickups: [MorningPickup] = []
-    var mapStyle: MapStyle = .standard(elevation: .realistic)
+    var mapStyle: MapStyle = .standard(elevation: .flat)
     var cameraPosition: Binding<MapCameraPosition>?
     /// Konum/pin güncellenince tüm pinlere zoom yapılmasın (sürücü haritası).
     var autoFitCameraOnUpdate: Bool = false
@@ -246,6 +246,6 @@ enum DriverRouteDisplay {
         morningPickups: [
             MorningPickup(memberID: "1", name: "Ayşe", latitude: 41.01, longitude: 28.98, updatedAt: Date())
         ],
-        mapStyle: .hybrid(elevation: .realistic)
+        mapStyle: .hybrid(elevation: .flat)
     )
 }

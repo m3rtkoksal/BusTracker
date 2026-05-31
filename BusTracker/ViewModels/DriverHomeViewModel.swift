@@ -226,10 +226,13 @@ final class DriverHomeViewModel: BaseViewModel {
         await session.signOut()
     }
 
-    func copyGroupCode(_ code: String) {
-#if os(iOS) || os(visionOS)
-        UIPasteboard.general.string = code
+    func copyServiceCode(_ code: String) {
+        let text = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            showError("Servis kodu bulunamadı.")
+            return
+        }
         showSuccess("Servis kodu kopyalandı.")
-#endif
+        CopyServiceCode.copy(text)
     }
 }
