@@ -19,9 +19,15 @@ final class SmlerInviteCoordinator {
         inviteRevision += 1
     }
 
+    /// Kayıt akışında davet kodu bekleniyor (rol seçimini atlamak için).
+    var hasPassengerRegistrationInvite: Bool {
+        (deferredInviteCode?.count ?? 0) >= 4 || (pendingRegistrationCode?.count ?? 0) >= 4
+    }
+
     func preparePassengerRegistrationFromDeferred() {
-        guard let code = deferredInviteCode else { return }
-        pendingRegistrationCode = code
+        if let code = deferredInviteCode {
+            pendingRegistrationCode = code
+        }
     }
 
     func consumeRegistrationInvite() {

@@ -24,6 +24,9 @@ struct RegistrationFlowView: View {
                 RegistrationFormView(role: role, onBack: { path.removeLast() })
             }
         }
+        .task(id: smlerInviteCoordinator.inviteRevision) {
+            openPassengerRegistrationIfInvited()
+        }
         .task { await refreshNotificationAccess() }
 #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -38,6 +41,14 @@ struct RegistrationFlowView: View {
         } message: {
             Text("Servis başladığında haberdar olmak için bildirimleri açın.")
         }
+    }
+
+    /// Deeplink / deferred davet: rol seçimi yerine doğrudan yolcu kayıt formu.
+    private func openPassengerRegistrationIfInvited() {
+        guard smlerInviteCoordinator.hasPassengerRegistrationInvite else { return }
+        smlerInviteCoordinator.preparePassengerRegistrationFromDeferred()
+        guard path.isEmpty else { return }
+        path.append(MemberRole.passenger)
     }
 
     private func refreshNotificationAccess() async {
