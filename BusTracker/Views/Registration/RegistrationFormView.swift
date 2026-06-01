@@ -4,6 +4,7 @@ struct RegistrationFormView: BaseView {
     @Environment(ShuttleStore.self) private var store
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
+    @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
     let role: MemberRole
     let onBack: () -> Void
 
@@ -57,6 +58,14 @@ struct RegistrationFormView: BaseView {
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
+        .onAppear { applySmlerInviteCodeIfNeeded() }
+    }
+
+    private func applySmlerInviteCodeIfNeeded() {
+        guard role == .passenger,
+              let code = smlerInviteCoordinator.pendingRegistrationCode else { return }
+        viewModel.applyPrefillServiceCode(code)
+        smlerInviteCoordinator.consumeRegistrationInvite()
     }
 
     private var serviceFieldBinding: Binding<String> {
@@ -94,6 +103,7 @@ struct RegistrationFormView: BaseView {
         .environment(ShuttleStore())
         .environment(UserSession.shared)
         .environment(AuthService.shared)
+        .environment(SmlerInviteCoordinator())
 }
 
 #Preview("Yolcu") {
@@ -101,4 +111,5 @@ struct RegistrationFormView: BaseView {
         .environment(ShuttleStore())
         .environment(UserSession.shared)
         .environment(AuthService.shared)
+        .environment(SmlerInviteCoordinator())
 }

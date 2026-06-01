@@ -7,6 +7,8 @@ struct ContentView: View {
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
     @Environment(LocationTracker.self) private var locationTracker
+    @Environment(ShuttleStore.self) private var store
+    @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
     @State private var authMode: AuthMode = .register
     enum AuthMode {
         case register, login
@@ -37,6 +39,32 @@ struct ContentView: View {
         .task(id: locationPermissionTaskID) {
             locationTracker.requestWhenInUsePermissionIfNeeded()
         }
+        .task(id: smlerInviteRoutingTaskID) {
+            await smlerInviteCoordinator.handleIfReady(
+                profile: session.profile,
+                isSignedIn: authService.isSignedIn,
+                store: store
+            )
+        }
+        .alert("Servis daveti", isPresented: smlerInviteAlertBinding) {
+            Button("Tamam", role: .cancel) {
+                smlerInviteCoordinator.dismissAlreadyMemberMessage()
+            }
+        } message: {
+            Text(smlerInviteCoordinator.alreadyMemberMessage ?? "")
+        }
+    }
+
+    private var smlerInviteRoutingTaskID: String {
+        let profileID = session.profile?.memberID ?? "none"
+        return "\(smlerInviteCoordinator.inviteRevision)-\(authService.isSignedIn)-\(profileID)"
+    }
+
+    private var smlerInviteAlertBinding: Binding<Bool> {
+        Binding(
+            get: { smlerInviteCoordinator.alreadyMemberMessage != nil },
+            set: { if !$0 { smlerInviteCoordinator.dismissAlreadyMemberMessage() } }
+        )
     }
 
     /// Giriş, kayıt veya ana ekran: Android ile aynı — when-in-use isteği.

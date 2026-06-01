@@ -9,6 +9,7 @@ struct DriverHomeView: BaseView {
     @State var viewModel = DriverHomeViewModel()
     @State var tabBar = DriverTabBarController()
     @State private var showMyServices = false
+    @State private var isCreatingInviteLink = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -192,10 +193,17 @@ struct DriverHomeView: BaseView {
 
             HStack(spacing: 8) {
                 if let code = profile?.groupCode {
-                    ShareLink(item: "Servis kodu: \(code)") {
-                        codeActionLabel(title: "Paylaş", icon: "square.and.arrow.up", accent: NeonTheme.primary, filled: true)
+                    Button {
+                        Task { await shareServiceInvite(code) }
+                    } label: {
+                        if isCreatingInviteLink {
+                            codeActionLabel(title: "Hazırlanıyor", icon: "hourglass", accent: NeonTheme.primary, filled: true)
+                        } else {
+                            codeActionLabel(title: "Paylaş", icon: "square.and.arrow.up", accent: NeonTheme.primary, filled: true)
+                        }
                     }
                     .buttonStyle(.plain)
+                    .disabled(isCreatingInviteLink)
 
                     Button {
                         if let code = profile?.groupCode {
@@ -522,6 +530,9 @@ struct DriverHomeView: BaseView {
                         settingsRow(title: "Servis Kodu", value: code) {
                             viewModel.copyServiceCode(code)
                         }
+                        SettingsInviteShareRow(serviceCode: code) { message in
+                            viewModel.showError(message)
+                        }
                     }
 
                     if let name = profile?.name {
@@ -632,6 +643,24 @@ struct DriverHomeView: BaseView {
         } else {
             label
         }
+    }
+
+    private func shareServiceInvite(_ code: String) async {
+#if os(iOS) || os(visionOS)
+        guard !isCreatingInviteLink else { return }
+        isCreatingInviteLink = true
+        defer { isCreatingInviteLink = false }
+
+        print("[Smler] Paylaş butonu serviceCode=\(code)")
+        switch await SmlerDeepLinkService.shared.prepareShare(serviceCode: code) {
+        case .success(let message, let url):
+            print("[Smler] Paylaş OK url=\(url.absoluteString)")
+            SharePresenter.present(items: [url, message])
+        case .failure(let error):
+            print("[Smler] Paylaş HATA (ekranda da gösterildi): \(error)")
+            viewModel.showError(error)
+        }
+#endif
     }
 
     private func attendanceColor(_ status: AttendanceStatus) -> Color {

@@ -6,6 +6,7 @@ struct AppRootView: View {
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
     @Environment(ShuttleStore.self) private var store
+    @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
 
     @State private var isBootstrapped = false
 
@@ -37,6 +38,14 @@ struct AppRootView: View {
         await AuthSessionReconciler.reconcile(session: session, authService: authService)
         await loadSignedInUserIfNeeded()
         isBootstrapped = true
+        await processSmlerDeferredInviteIfNeeded()
+    }
+
+    private func processSmlerDeferredInviteIfNeeded() async {
+        guard let code = await SmlerDeepLinkService.shared.serviceCodeFromDeferredInstall() else {
+            return
+        }
+        smlerInviteCoordinator.ingest(serviceCode: code)
     }
 
     private func retryBootstrap() async {

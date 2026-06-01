@@ -6,11 +6,14 @@ struct PassengerHomeView: BaseView {
     @Environment(UserSession.self) private var session
     @Environment(AuthService.self) private var authService
     @Environment(LocationTracker.self) private var locationTracker
+    @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
     @State var viewModel = PassengerHomeViewModel()
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
     @State private var lastKnownMapRegion = MapDefaults.homeRegion
     @State private var showMyServices = false
+    @State private var myServicesInviteCode = ""
+    @State private var openAddServiceFromInvite = false
     @State private var pendingCenterOnPassenger = false
     @State private var hasInitializedMapCamera = false
     /// Konum tuşu: false = bir sonraki basış birincil odak, true = bir sonraki basış alternatif odak.
@@ -32,6 +35,18 @@ struct PassengerHomeView: BaseView {
     }
 
     func content() -> some View {
+        passengerTabRoot
+            .overlay { tripAttendanceOverlay }
+            .modifier(PassengerSmlerInviteModifier(
+                showMyServices: $showMyServices,
+                myServicesInviteCode: $myServicesInviteCode,
+                openAddServiceFromInvite: $openAddServiceFromInvite,
+                session: session,
+                onAppearCheck: presentMyServicesForSmlerInviteIfNeeded
+            ))
+    }
+
+    private var passengerTabRoot: some View {
         VStack(spacing: 0) {
             if tabBar.selectedTab != .map {
                 passengerTopBar
@@ -57,6 +72,7 @@ struct PassengerHomeView: BaseView {
             PassengerTabBar(controller: tabBar)
         }
         .onAppear {
+            presentMyServicesForSmlerInviteIfNeeded()
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
             viewModel.presentTripAttendanceSheetIfNeeded(
@@ -112,39 +128,49 @@ struct PassengerHomeView: BaseView {
                 attendance: myAttendance
             )
         }
-        .overlay {
-            if viewModel.showTripStartedAttendanceSheet {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.55)
-                        .ignoresSafeArea()
-                        .onTapGesture { viewModel.dismissTripAttendanceSheet() }
+    }
 
-                    TripStartedAttendanceSheet(
-                        driverName: store.driverLocation?.driverName ?? "Sürücü",
-                        isLoading: viewModel.isUpdatingAttendance,
-                        selectedComing: viewModel.pendingAttendanceSelection == .coming,
-                        selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
-                        onSelectComing: {
-                            Task {
-                                await viewModel.updateAttendance(status: .coming, store: store, session: session)
-                            }
-                        },
-                        onSelectNotComing: {
-                            Task {
-                                await viewModel.updateAttendance(status: .notComing, store: store, session: session)
-                            }
-                        }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+    @ViewBuilder
+    private var tripAttendanceOverlay: some View {
+        if viewModel.showTripStartedAttendanceSheet {
+            tripAttendanceSheetOverlay
+        }
+    }
+
+    private var tripAttendanceSheetOverlay: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture { viewModel.dismissTripAttendanceSheet() }
+
+            TripStartedAttendanceSheet(
+                driverName: store.driverLocation?.driverName ?? "Sürücü",
+                isLoading: viewModel.isUpdatingAttendance,
+                selectedComing: viewModel.pendingAttendanceSelection == .coming,
+                selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
+                onSelectComing: {
+                    Task {
+                        await viewModel.updateAttendance(status: .coming, store: store, session: session)
+                    }
+                },
+                onSelectNotComing: {
+                    Task {
+                        await viewModel.updateAttendance(status: .notComing, store: store, session: session)
+                    }
                 }
-                .ignoresSafeArea(edges: .bottom)
-                .animation(.easeInOut(duration: 0.28), value: viewModel.showTripStartedAttendanceSheet)
-            }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        .sheet(isPresented: $showMyServices) {
-            MyServicesView()
-                .environment(session)
-        }
+        .ignoresSafeArea(edges: .bottom)
+        .animation(.easeInOut(duration: 0.28), value: viewModel.showTripStartedAttendanceSheet)
+    }
+
+    private func presentMyServicesForSmlerInviteIfNeeded() {
+        guard let code = smlerInviteCoordinator.pendingAddServiceCode else { return }
+        myServicesInviteCode = code
+        openAddServiceFromInvite = true
+        showMyServices = true
+        smlerInviteCoordinator.clearAddServicePending()
     }
 
     /// Servis + katılım verisi geldikçe “Geliyorum / Gelmiyorum” sheet’ini değerlendir.
@@ -497,6 +523,9 @@ struct PassengerHomeView: BaseView {
                     if let code = profile?.groupCode, !code.isEmpty {
                         settingsRow(title: "Servis Kodu", value: code) {
                             viewModel.copyServiceCode(code)
+                        }
+                        SettingsInviteShareRow(serviceCode: code) { message in
+                            viewModel.showError(message)
                         }
                     }
 

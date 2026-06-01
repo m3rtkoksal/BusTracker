@@ -65,6 +65,13 @@ final class RegistrationFormViewModel: BaseViewModel {
         serviceFieldError = nil
     }
 
+    func applyPrefillServiceCode(_ code: String) {
+        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard normalized.count >= 4 else { return }
+        serviceField = normalized
+        serviceFieldError = nil
+    }
+
     /// Apple kayıt öncesi yerel doğrulama; hata servis alanı altında gösterilir.
     func validateBeforeAppleSignIn() -> Bool {
         serviceFieldError = nil

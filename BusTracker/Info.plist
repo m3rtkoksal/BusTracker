@@ -11,9 +11,12 @@
 			<array>
 				<string>com.googleusercontent.apps.851737532018-6u9dcmu4hjfhrc165l10q7f9fgv944vt</string>
 				<string>app-1-851737532018-ios-ba4cd654c865f8cf59d4eb</string>
+				<string>shuttlelive</string>
 			</array>
 		</dict>
 	</array>
+	<key>SmlerAPIKey</key>
+	<string>IhhHknxn6ycRmkV9dUhnjJ1elTml328WJ0cUDNv_NPA26StpSuB-9IeTWTcHuq7w</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>FirebaseAppDelegateProxyEnabled</key>

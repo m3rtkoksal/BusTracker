@@ -247,6 +247,16 @@ final class ShuttleStore {
     }
 
     /// Yolcu kaydı: kod Firestore'da var mı (Apple oturumu açıldıktan sonra).
+    func resolveGroupID(forCode code: String) async throws -> String? {
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard trimmedCode.count >= 4 else { return nil }
+        let snapshot = try await db.collection("groups")
+            .whereField("code", isEqualTo: trimmedCode)
+            .limit(to: 1)
+            .getDocuments()
+        return snapshot.documents.first?.documentID
+    }
+
     func validatePassengerGroupCode(_ code: String) async throws {
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if trimmedCode.isEmpty {

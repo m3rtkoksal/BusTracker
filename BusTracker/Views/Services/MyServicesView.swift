@@ -6,6 +6,9 @@ struct MyServicesView: View {
     @Environment(ShuttleStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
+    var initialServiceCode: String = ""
+    var openAddServiceOnAppear: Bool = false
+
     private var profile: UserProfile? {
         session.profile
     }
@@ -294,6 +297,7 @@ struct MyServicesView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear { openSmlerInviteAddServiceIfNeeded() }
         .overlay {
             if showAddServiceSheet {
                 ZStack(alignment: .bottom) {
@@ -325,6 +329,15 @@ struct MyServicesView: View {
         } message: {
             Text(joinSuccessMessage ?? "")
         }
+    }
+
+    private func openSmlerInviteAddServiceIfNeeded() {
+        guard openAddServiceOnAppear else { return }
+        let code = SmlerConfig.normalizedCode(initialServiceCode)
+        guard code.count >= 4 else { return }
+        addServiceCode = code
+        addServiceError = nil
+        showAddServiceSheet = true
     }
 
     private func openAddServiceSheet() {

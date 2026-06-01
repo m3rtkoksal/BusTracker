@@ -6,6 +6,7 @@ import UIKit
 struct RegistrationFlowView: View {
     let onLoginTapped: () -> Void
 
+    @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
     @State private var path = NavigationPath()
     @State private var showNotificationSettingsAlert = false
 
@@ -14,7 +15,10 @@ struct RegistrationFlowView: View {
             RoleSelectionView(
                 onLoginTapped: onLoginTapped,
                 onSelectDriver: { path.append(MemberRole.driver) },
-                onSelectPassenger: { path.append(MemberRole.passenger) }
+                onSelectPassenger: {
+                    smlerInviteCoordinator.preparePassengerRegistrationFromDeferred()
+                    path.append(MemberRole.passenger)
+                }
             )
             .navigationDestination(for: MemberRole.self) { role in
                 RegistrationFormView(role: role, onBack: { path.removeLast() })
@@ -52,4 +56,5 @@ struct RegistrationFlowView: View {
         .environment(ShuttleStore())
         .environment(UserSession.shared)
         .environment(AuthService.shared)
+        .environment(SmlerInviteCoordinator())
 }
