@@ -13,26 +13,22 @@ struct DriverAlwaysLocationGuideSheet: View {
                 .frame(width: 48, height: 4)
                 .padding(.top, 12)
 
-            Text("Servis için konum izni")
+            Text(L10n.locationPermissionTitle)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
                 .multilineTextAlignment(.center)
 
-            Text(
-                waitingForSettingsReturn
-                    ? "Ayarlar açıldıysa aşağıdaki adımları uygulayın, sonra bu ekrana dönün."
-                    : "Yolcular sizi haritada görebilsin diye tek seferlik izin gerekir."
-            )
+            Text(waitingForSettingsReturn ? L10n.locationPermissionBodySettings : L10n.locationPermissionBodyInitial)
             .font(.subheadline)
             .foregroundStyle(NeonTheme.onSurfaceVariant)
             .multilineTextAlignment(.center)
 
-            guideStep(number: 1, text: "Açılan pencerede Konum veya İzinler'e dokunun.")
-            guideStep(number: 2, text: "\"Her zaman izin ver\" seçeneğini işaretleyin.")
-            guideStep(number: 3, text: "Geri gelip Servisi başlat'a tekrar basın.")
+            guideStep(number: 1, text: L10n.locationStep1)
+            guideStep(number: 2, text: L10n.locationStep2)
+            guideStep(number: 3, text: L10n.locationStep3)
 
             Button(action: onRequestPermission) {
-                Text("İZİN VER")
+                Text(L10n.grantPermission)
                     .font(.system(size: 14, weight: .heavy, design: .rounded))
                     .tracking(1.2)
                     .foregroundStyle(NeonTheme.primary)
@@ -49,15 +45,15 @@ struct DriverAlwaysLocationGuideSheet: View {
             }
             .buttonStyle(.plain)
 
-            Text("Pencere açılmadıysa")
+            Text(L10n.ifWindowDidNotOpen)
                 .font(.caption)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
 
-            Button("Ayarlara git", action: onOpenSettings)
+            Button(L10n.goToSettings, action: onOpenSettings)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(NeonTheme.secondary)
 
-            Button("Vazgeç", action: onDismiss)
+            Button(L10n.cancel, action: onDismiss)
                 .font(.footnote)
                 .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(0.7))
                 .padding(.top, 4)

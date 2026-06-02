@@ -87,19 +87,19 @@ private struct FirebaseBootstrapErrorView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Bağlantı Hatası", systemImage: "wifi.exclamationmark")
+            Label(L10n.connectionError, systemImage: "wifi.exclamationmark")
         } description: {
             Text(error.localizedDescription)
         } actions: {
-            Button("Tekrar Dene", action: onRetry)
+            Button(L10n.tryAgain, action: onRetry)
                 .buttonStyle(.borderedProminent)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Firebase Console kontrol listesi:")
+                Text(L10n.firebaseChecklistTitle)
                     .font(.caption.weight(.semibold))
-                Text("1. Firestore Database oluşturulmuş olmalı")
-                Text("2. Authentication → Apple etkin olmalı")
-                Text("3. Push Notifications (APNs) yapılandırılmalı")
+                Text(L10n.firebaseCheck1)
+                Text(L10n.firebaseCheck2)
+                Text(L10n.firebaseCheck3)
             }
             .font(.caption)
             .foregroundStyle(.secondary)

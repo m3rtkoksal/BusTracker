@@ -33,13 +33,13 @@ struct RegistrationFlowView: View {
             Task { await refreshNotificationAccess() }
         }
 #endif
-        .alert("Bildirimler kapalı", isPresented: $showNotificationSettingsAlert) {
-            Button("Ayarları Aç") {
+        .alert(L10n.notificationsDisabledTitle, isPresented: $showNotificationSettingsAlert) {
+            Button(L10n.openSettings) {
                 NotificationService.shared.openSystemSettings()
             }
-            Button("Sonra", role: .cancel) {}
+            Button(L10n.later, role: .cancel) {}
         } message: {
-            Text("Servis başladığında haberdar olmak için bildirimleri açın.")
+            Text(L10n.notificationsDisabledMessage)
         }
     }
 

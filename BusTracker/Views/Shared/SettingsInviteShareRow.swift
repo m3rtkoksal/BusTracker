@@ -12,7 +12,7 @@ struct SettingsInviteShareRow: View {
         Button(action: shareInvite) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DAVET LİNKİ PAYLAŞ")
+                    Text(L10n.inviteLinkShare)
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .tracking(1.5)
                         .foregroundStyle(NeonTheme.onSurfaceVariant)

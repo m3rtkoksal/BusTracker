@@ -138,12 +138,12 @@ final class NotificationService: NSObject {
 
     private func label(for status: UNAuthorizationStatus) -> String {
         switch status {
-        case .notDetermined: "Henüz izin istenmedi"
-        case .denied: "Kapalı — sistem ayarlarından açın"
-        case .authorized: "Açık"
-        case .provisional: "Açık (geçici)"
-        case .ephemeral: "Açık"
-        @unknown default: "Bilinmiyor"
+        case .notDetermined: L10n.notificationsNotRequested
+        case .denied: L10n.notificationsOffSystemSettings
+        case .authorized: L10n.notificationsOn
+        case .provisional: L10n.notificationsOnTemporary
+        case .ephemeral: L10n.notificationsOn
+        @unknown default: L10n.notificationsUnknown
         }
     }
 

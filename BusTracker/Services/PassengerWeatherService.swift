@@ -9,13 +9,15 @@ struct PassengerWeatherCardModel: Equatable {
     let emoji: String
 
     var contextLine: String {
-        "Bugün \(placeName) · \(temperatureC)°"
+        L10n.weatherContext(placeName, temperatureC)
     }
 }
 
 enum PassengerWeatherService {
     private static let openMeteoURL = URL(string: "https://api.open-meteo.com/v1/forecast")!
     private static let nominatimURL = URL(string: "https://nominatim.openstreetmap.org/reverse")!
+    private static let cacheTTL: TimeInterval = 3600
+    private static let cacheKeyPrefix = "passengerWeather."
     private static let neighborhoodAddressKeys = [
         "neighbourhood",
         "suburb",
@@ -28,23 +30,77 @@ enum PassengerWeatherService {
     private static let hotTempC = 31.0
     private static let wetMm = 0.15
 
+    private struct WeatherCachePayload: Codable {
+        let latitude: Double
+        let longitude: Double
+        let placeName: String
+        let tempC: Double
+        let precipitation: Double
+        let rain: Double
+        let fetchedAt: Date
+    }
+
+    @MainActor
+    static func cachedModel(for coordinate: CLLocationCoordinate2D) -> PassengerWeatherCardModel? {
+        guard isValidCoordinate(coordinate),
+              let entry = cachedEntry(for: coordinate) else { return nil }
+        return model(from: entry)
+    }
+
+    @MainActor
     static func load(for coordinate: CLLocationCoordinate2D) async -> PassengerWeatherCardModel? {
         guard isValidCoordinate(coordinate) else { return nil }
+
+        if let entry = cachedEntry(for: coordinate) {
+            return model(from: entry)
+        }
 
         async let weatherTask = fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
         async let placeTask = resolvePlaceName(for: coordinate)
         guard let weather = await weatherTask else { return nil }
 
         let placeName = await placeTask
-        let (advice, emoji) = clothingAdvice(
+        let entry = WeatherCachePayload(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            placeName: placeName,
             tempC: weather.tempC,
             precipitation: weather.precipitation,
-            rain: weather.rain
+            rain: weather.rain,
+            fetchedAt: Date()
         )
+        saveCache(entry, for: coordinate)
+        return model(from: entry)
+    }
 
+    private static func cacheStorageKey(for coordinate: CLLocationCoordinate2D) -> String {
+        cacheKeyPrefix + String(format: "%.4f,%.4f", coordinate.latitude, coordinate.longitude)
+    }
+
+    private static func cachedEntry(for coordinate: CLLocationCoordinate2D) -> WeatherCachePayload? {
+        let key = cacheStorageKey(for: coordinate)
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let entry = try? JSONDecoder().decode(WeatherCachePayload.self, from: data),
+              Date().timeIntervalSince(entry.fetchedAt) < cacheTTL else {
+            return nil
+        }
+        return entry
+    }
+
+    private static func saveCache(_ entry: WeatherCachePayload, for coordinate: CLLocationCoordinate2D) {
+        guard let data = try? JSONEncoder().encode(entry) else { return }
+        UserDefaults.standard.set(data, forKey: cacheStorageKey(for: coordinate))
+    }
+
+    private static func model(from entry: WeatherCachePayload) -> PassengerWeatherCardModel {
+        let (advice, emoji) = clothingAdvice(
+            tempC: entry.tempC,
+            precipitation: entry.precipitation,
+            rain: entry.rain
+        )
         return PassengerWeatherCardModel(
-            placeName: placeName,
-            temperatureC: Int(weather.tempC.rounded()),
+            placeName: entry.placeName,
+            temperatureC: Int(entry.tempC.rounded()),
             advice: advice,
             emoji: emoji
         )
@@ -113,7 +169,7 @@ enum PassengerWeatherService {
         } catch {
             // Fallback below
         }
-        return "Biniş noktan"
+        return L10n.pickupPlaceFallback
     }
 
     private static func fetchNeighborhoodFromNominatim(latitude: Double, longitude: Double) async -> String? {
@@ -122,7 +178,7 @@ enum PassengerWeatherService {
             URLQueryItem(name: "lat", value: String(latitude)),
             URLQueryItem(name: "lon", value: String(longitude)),
             URLQueryItem(name: "format", value: "json"),
-            URLQueryItem(name: "accept-language", value: "tr"),
+            URLQueryItem(name: "accept-language", value: LanguageManager.shared.language.rawValue),
             URLQueryItem(name: "zoom", value: "17"),
         ]
         guard let url = components.url else { return nil }
@@ -157,20 +213,20 @@ enum PassengerWeatherService {
     ) -> (String, String) {
         let wet = precipitation >= wetMm || rain >= wetMm
         if wet {
-            return ("Yağmur var — şemsiyeni kap.", "🌧️")
+            return (L10n.adviceRain, "🌧️")
         }
         if tempC <= coldTempC {
-            return ("Hava soğuk — bere takmadan çıkma.", "🧣")
+            return (L10n.adviceColdHat, "🧣")
         }
         if tempC >= hotTempC {
-            return ("Hava cehennem gibi — şapka tak, su al.", "☀️")
+            return (L10n.adviceVeryHot, "☀️")
         }
         if tempC >= 22 {
-            return ("Hava sıcak — şapka tak, su al.", "☀️")
+            return (L10n.adviceHot, "☀️")
         }
         if tempC >= 12 {
-            return ("Hava serin — ince mont veya hırka al.", "🧥")
+            return (L10n.adviceCool, "🧥")
         }
-        return ("Hava soğuk — kalın giyin.", "🧣")
+        return (L10n.adviceCold, "🧣")
     }
 }

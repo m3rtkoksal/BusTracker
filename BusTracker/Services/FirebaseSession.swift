@@ -34,11 +34,11 @@ final class FirebaseSession {
         }
 
         guard isReady else {
-            throw error ?? FirebaseBootstrapError.authenticationFailed("Firebase hazır değil.")
+            throw error ?? FirebaseBootstrapError.authenticationFailed(L10n.firebaseNotReadyShort)
         }
 
         guard Auth.auth().currentUser != nil else {
-            throw FirebaseBootstrapError.authenticationFailed("Telefon ile giriş yapın.")
+            throw FirebaseBootstrapError.authenticationFailed(L10n.signInWithPhone)
         }
     }
 }

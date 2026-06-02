@@ -7,7 +7,7 @@ import UIKit
 
 /// Ayarlar sekmesinde bildirim durumu (yeşil toggle) + izin / sistem ayarları.
 struct NotificationSettingsRow: View {
-    @State private var statusLabel = "Yükleniyor…"
+    @State private var statusLabel = L10n.loadingEllipsis
     @State private var isEnabled = false
     @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
@@ -15,7 +15,7 @@ struct NotificationSettingsRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("BİLDİRİMLER")
+                    Text(L10n.notifications)
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .tracking(1.5)
                         .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -61,8 +61,8 @@ struct NotificationSettingsRow: View {
 
     private var helperLinkTitle: String {
         switch authorizationStatus {
-        case .notDetermined: "Bildirim izni için dokunun veya toggle'ı açın"
-        case .denied: "Kapalı — iPhone ayarlarından açın"
+        case .notDetermined: L10n.notificationsTapToEnable
+        case .denied: L10n.notificationsOffOpenSettings
         default: ""
         }
     }
@@ -109,6 +109,6 @@ struct NotificationSettingsRow: View {
         let snapshot = await NotificationService.shared.authorizationSnapshot()
         authorizationStatus = snapshot.status
         isEnabled = snapshot.isEnabled
-        statusLabel = snapshot.isEnabled ? "Açık" : snapshot.label
+        statusLabel = snapshot.isEnabled ? L10n.notificationsOn : snapshot.label
     }
 }

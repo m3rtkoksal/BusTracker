@@ -11,9 +11,9 @@ enum AppleSignInError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .missingCredential: "Apple giriş bilgisi alınamadı."
-        case .missingIdentityToken: "Apple kimlik doğrulaması tamamlanamadı."
-        case .cancelled: "Apple ile giriş iptal edildi."
+        case .missingCredential: L10n.appleCredentialUnavailable
+        case .missingIdentityToken: L10n.appleAuthFailed
+        case .cancelled: L10n.appleSignInCancelled
         }
     }
 }

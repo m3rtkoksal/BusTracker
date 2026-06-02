@@ -19,6 +19,7 @@ struct PassengerHomeView: BaseView {
     /// Konum tuşu: false = bir sonraki basış birincil odak, true = bir sonraki basış alternatif odak.
     @State private var pickupWeather: PassengerWeatherCardModel?
     @State private var pickupWeatherLoading = false
+    @State private var showLanguagePicker = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -144,7 +145,7 @@ struct PassengerHomeView: BaseView {
                 .onTapGesture { viewModel.dismissTripAttendanceSheet() }
 
             TripStartedAttendanceSheet(
-                driverName: store.driverLocation?.driverName ?? "Sürücü",
+                driverName: store.driverLocation?.driverName ?? L10n.driver,
                 isLoading: viewModel.isUpdatingAttendance,
                 selectedComing: viewModel.pendingAttendanceSelection == .coming,
                 selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
@@ -277,7 +278,7 @@ struct PassengerHomeView: BaseView {
                 .fill(NeonTheme.passengerChrome.statusAccent)
                 .frame(width: 8, height: 8)
                 .shadow(color: NeonTheme.passengerChrome.statusAccent.opacity(0.8), radius: 4)
-            Text("CANLI")
+            Text(L10n.live)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.passengerChrome.statusAccent)
@@ -295,40 +296,50 @@ struct PassengerHomeView: BaseView {
 
                 pickupSummarySection
 
-                if savedMorningPickup != nil {
-                    clothingAdviceSection
-                }
+                clothingAdviceSection
             }
             .padding(24)
         }
     }
 
+    private var weatherCoordinate: CLLocationCoordinate2D? {
+        savedMorningPickup?.coordinate ?? viewModel.draftPickupCoordinate
+    }
+
     private var clothingAdviceSection: some View {
-        PassengerWeatherCard(model: pickupWeather, isLoading: pickupWeatherLoading)
-            .task(id: pickupWeatherTaskKey) {
-                await refreshPickupWeather()
-            }
+        PassengerWeatherCard(
+            model: pickupWeather,
+            isLoading: weatherCoordinate != nil && pickupWeatherLoading,
+            emptyMessage: weatherCoordinate == nil ? L10n.weatherNeedsPickup : nil
+        )
+        .task(id: pickupWeatherTaskKey) {
+            await refreshPickupWeather()
+        }
     }
 
     private var pickupWeatherTaskKey: String {
-        guard let pickup = savedMorningPickup else { return "none" }
-        return "\(pickup.latitude),\(pickup.longitude)"
+        guard let coordinate = weatherCoordinate else { return "none" }
+        return "\(coordinate.latitude),\(coordinate.longitude)"
     }
 
     private func refreshPickupWeather() async {
-        guard let pickup = savedMorningPickup else {
+        guard let coordinate = weatherCoordinate else {
             pickupWeather = nil
             pickupWeatherLoading = false
             return
         }
+        if let cached = PassengerWeatherService.cachedModel(for: coordinate) {
+            pickupWeather = cached
+            return
+        }
         pickupWeatherLoading = true
         defer { pickupWeatherLoading = false }
-        pickupWeather = await PassengerWeatherService.load(for: pickup.coordinate)
+        pickupWeather = await PassengerWeatherService.load(for: coordinate)
     }
 
     private var serviceHeaderSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text((profile?.groupName ?? "Servis").uppercased())
+            Text((profile?.groupName ?? L10n.service).uppercased())
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
 
@@ -343,7 +354,7 @@ struct PassengerHomeView: BaseView {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(NeonTheme.secondary)
                 } else {
-                    Text(store.isTripActive ? "Sürücü konumu bekleniyor" : "Servis henüz başlamadı")
+                    Text(store.isTripActive ? L10n.waitingForDriverLocation : L10n.shuttleNotStarted)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(NeonTheme.onSurfaceVariant)
                 }
@@ -353,7 +364,7 @@ struct PassengerHomeView: BaseView {
 
     private var attendanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("BUGÜN GELECEK MİSİNİZ?")
+            Text(L10n.attendanceTodayQuestion)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -362,7 +373,7 @@ struct PassengerHomeView: BaseView {
                 HStack(spacing: 6) {
                     Image(systemName: myAttendance.iconName)
                         .foregroundStyle(attendanceColor(myAttendance))
-                    Text("Seçiminiz: \(myAttendance.title)")
+                    Text(L10n.yourChoice(myAttendance.title))
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(NeonTheme.onSurface)
                 }
@@ -370,14 +381,14 @@ struct PassengerHomeView: BaseView {
 
             HStack(spacing: 8) {
                 attendanceButton(
-                    title: "GELİYORUM",
+                    title: L10n.attendanceComingSelf,
                     icon: "checkmark.circle.fill",
                     accent: NeonTheme.secondary,
                     status: .coming,
                     isSelected: myAttendance == .coming
                 )
                 attendanceButton(
-                    title: "GELMİYORUM",
+                    title: L10n.attendanceNotComingSelf,
                     icon: "xmark.circle.fill",
                     accent: Color(hex: 0xFF4444),
                     status: .notComing,
@@ -385,7 +396,7 @@ struct PassengerHomeView: BaseView {
                 )
             }
 
-            Text("Seçiminiz sürücüye kaydedilir. Servis bitince yeniden seçmeniz gerekir.")
+            Text(L10n.attendanceHint)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(NeonTheme.outline)
@@ -402,20 +413,20 @@ struct PassengerHomeView: BaseView {
 
     private var pickupSummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("BİNİŞ NOKTASI")
+            Text(L10n.pickupPoint)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(1.5)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
 
             if let savedMorningPickup {
                 Label(
-                    "Kayıtlı: \(savedMorningPickup.updatedAt.formatted(date: .omitted, time: .shortened))",
+                    L10n.savedAt(savedMorningPickup.updatedAt.formatted(date: .omitted, time: .shortened)),
                     systemImage: "checkmark.circle.fill"
                 )
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(NeonTheme.secondary)
             } else {
-                Text("Henüz biniş noktası kaydetmediniz.")
+                Text(L10n.noPickupSaved)
                     .font(.subheadline)
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             }
@@ -425,7 +436,7 @@ struct PassengerHomeView: BaseView {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "map")
-                    Text(savedMorningPickup == nil ? "HARİTADA BELİRLE" : "HARİTADA DÜZENLE")
+                    Text(savedMorningPickup == nil ? L10n.setOnMap : L10n.editOnMap)
                         .tracking(1)
                 }
                 .font(.system(size: 12, weight: .heavy, design: .rounded))
@@ -496,7 +507,7 @@ struct PassengerHomeView: BaseView {
 
     private var mapPickupBar: some View {
         VStack(spacing: 8) {
-            Text("Haritaya dokunarak biniş noktanızı seçin.")
+            Text(L10n.tapMapToSelectPickup)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -521,7 +532,7 @@ struct PassengerHomeView: BaseView {
             ScrollView {
                 VStack(spacing: 16) {
                     if let code = profile?.groupCode, !code.isEmpty {
-                        settingsRow(title: "Servis Kodu", value: code) {
+                        settingsRow(title: L10n.settingsServiceCode, value: code) {
                             viewModel.copyServiceCode(code)
                         }
                         SettingsInviteShareRow(serviceCode: code) { message in
@@ -530,14 +541,16 @@ struct PassengerHomeView: BaseView {
                     }
 
                     if let name = profile?.name {
-                        settingsRow(title: "Adınız", value: name, action: nil)
+                        settingsRow(title: L10n.settingsYourName, value: name, action: nil)
                     }
 
                     if let groupName = profile?.groupName {
-                        settingsRow(title: "Servis", value: groupName, action: nil)
+                        settingsRow(title: L10n.settingsShuttle, value: groupName, action: nil)
                     }
 
                     NotificationSettingsRow()
+
+                    LanguageSettingsRow(showPicker: $showLanguagePicker)
 
                     Button {
                         viewModel.requestSignOut {
@@ -546,7 +559,7 @@ struct PassengerHomeView: BaseView {
                     } label: {
                         HStack {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("Çıkış Yap")
+                            Text(L10n.signOut)
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -564,6 +577,12 @@ struct PassengerHomeView: BaseView {
             }
 
             settingsDeleteAccountFooter
+        }
+        .overlay {
+            if showLanguagePicker {
+                LanguagePickerOverlay(isPresented: $showLanguagePicker)
+                    .animation(.easeInOut(duration: 0.28), value: showLanguagePicker)
+            }
         }
     }
 
@@ -595,7 +614,7 @@ struct PassengerHomeView: BaseView {
         } label: {
             HStack {
                 Image(systemName: "trash")
-                Text("Hesabı Sil")
+                Text(L10n.deleteAccount)
                     .fontWeight(.semibold)
                     .textCase(.uppercase)
                 Spacer()
@@ -664,7 +683,7 @@ struct PassengerHomeView: BaseView {
                         color: isServiceLive ? accent.opacity(0.8) : .clear,
                         radius: isServiceLive ? 4 : 0
                     )
-                Text((profile?.groupName ?? "Servis").uppercased())
+                Text((profile?.groupName ?? L10n.service).uppercased())
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(isServiceLive ? NeonTheme.onSurface : NeonTheme.onSurfaceVariant)
                     .lineLimit(1)
@@ -676,7 +695,7 @@ struct PassengerHomeView: BaseView {
                     .foregroundStyle(NeonTheme.secondary)
                     .lineLimit(1)
             } else {
-                Text(isServiceLive ? "Konum bekleniyor" : "Servis pasif")
+                Text(isServiceLive ? L10n.waitingForLocation : L10n.shuttleInactive)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(isServiceLive ? 1 : 0.85))
                     .lineLimit(1)
@@ -697,7 +716,7 @@ struct PassengerHomeView: BaseView {
                 Text(myAttendance.mapTabLabel.uppercased())
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .lineLimit(1)
-                Text("DEĞİŞTİR")
+                Text(L10n.change)
                     .font(.system(size: 8, weight: .semibold, design: .rounded))
                     .tracking(0.5)
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -780,7 +799,7 @@ struct PassengerHomeView: BaseView {
                 } else {
                     HStack(spacing: 8) {
                         Image(systemName: "mappin.and.ellipse")
-                        Text("BİNİŞ NOKTAMI KAYDET")
+                        Text(L10n.savePickupPoint)
                             .tracking(1)
                     }
                     .foregroundStyle(NeonTheme.mapSaveAction)

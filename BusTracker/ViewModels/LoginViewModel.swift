@@ -8,12 +8,12 @@ final class LoginViewModel: BaseViewModel {
     init(onRegisterTapped: @escaping () -> Void) {
         self.onRegisterTapped = onRegisterTapped
         super.init()
-        title = "Giriş"
+        title = L10n.loginTitle
         navigationBarStyle = .auth
     }
 
     func signInWithApple(authService: AuthService, store: ShuttleStore, session: UserSession) async {
-        setLoading(true, message: "Giriş yapılıyor...")
+        setLoading(true, message: L10n.signingIn)
         defer { setLoading(false) }
 
         do {
@@ -32,11 +32,11 @@ final class LoginViewModel: BaseViewModel {
                         memberID: profile.memberID
                     )
                 } else {
-                    showError("Profil bilgileri eksik. Lütfen tekrar deneyin.")
+                    showError(L10n.profileIncomplete)
                     try? authService.signOut()
                 }
             } else {
-                showError("Bu Apple hesabıyla kayıtlı profil bulunamadı. Hesabınız silinmiş olabilir; yeni hesap oluşturabilirsiniz.")
+                showError(L10n.profileNotFound)
                 try? authService.signOut()
             }
         } catch let error as AppleSignInError {
@@ -93,11 +93,11 @@ struct LoginView: BaseView {
                                 .shadow(color: NeonTheme.secondary.opacity(0.6), radius: 8)
                         }
 
-                        Text("Giriş Yap")
+                        Text(L10n.signInAction)
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundStyle(NeonTheme.onSurface)
 
-                        Text("Apple hesabınızla giriş yapın.")
+                        Text(L10n.signInWithAppleHint)
                             .font(.subheadline)
                             .foregroundStyle(NeonTheme.onSurfaceVariant)
                             .multilineTextAlignment(.center)
@@ -107,7 +107,7 @@ struct LoginView: BaseView {
                     NeonGlassCard(accent: NeonTheme.secondary) {
                         VStack(spacing: 20) {
                             SignInWithAppleButton(
-                                title: "Apple ile Giriş Yap",
+                                title: L10n.signInWithApple,
                                 isLoading: authService.isLoading || viewModel.isLoading
                             ) {
                                 Task {
@@ -124,9 +124,9 @@ struct LoginView: BaseView {
 
                     Button(action: viewModel.onRegisterTapped) {
                         HStack(spacing: 4) {
-                            Text("Hesabın yok mu?")
+                            Text(L10n.noAccount)
                                 .foregroundStyle(NeonTheme.onSurfaceVariant)
-                            Text("Hesap oluştur")
+                            Text(L10n.createAccount)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(NeonTheme.secondary)
                         }

@@ -11,9 +11,9 @@ enum ShuttleStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notAuthenticated: "Giriş yapmanız gerekiyor."
-        case .groupNotFound: "Bu servis kodu bulunamadı."
-        case .alreadyInGroup: "Zaten bir servise kayıtlısınız."
+        case .notAuthenticated: L10n.signInRequired
+        case .groupNotFound: L10n.shuttleCodeNotFound
+        case .alreadyInGroup: L10n.alreadyInShuttle
         case .invalidInput(let message): message
         }
     }
@@ -174,8 +174,8 @@ final class ShuttleStore {
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDriver = driverName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { throw ShuttleStoreError.invalidInput("Servis adı boş olamaz.") }
-        guard !trimmedDriver.isEmpty else { throw ShuttleStoreError.invalidInput("Adınız boş olamaz.") }
+        guard !trimmedName.isEmpty else { throw ShuttleStoreError.invalidInput(L10n.serviceNameEmpty) }
+        guard !trimmedDriver.isEmpty else { throw ShuttleStoreError.invalidInput(L10n.nameEmpty) }
 
         if try await fetchUserProfile(userID: user.uid) != nil {
             throw ShuttleStoreError.alreadyInGroup
@@ -260,10 +260,10 @@ final class ShuttleStore {
     func validatePassengerGroupCode(_ code: String) async throws {
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if trimmedCode.isEmpty {
-            throw ShuttleStoreError.invalidInput("Servis kodu girmedin.")
+            throw ShuttleStoreError.invalidInput(L10n.enterServiceCode)
         }
         if trimmedCode.count < 4 {
-            throw ShuttleStoreError.invalidInput("Servis kodu en az 4 karakter olmalı.")
+            throw ShuttleStoreError.invalidInput(L10n.serviceCodeMinLength)
         }
         let snapshot = try await db.collection("groups")
             .whereField("code", isEqualTo: trimmedCode)
@@ -281,8 +281,8 @@ final class ShuttleStore {
 
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let trimmedName = passengerName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedCode.count >= 4 else { throw ShuttleStoreError.invalidInput("Servis kodu en az 4 karakter olmalı.") }
-        guard !trimmedName.isEmpty else { throw ShuttleStoreError.invalidInput("Adınız boş olamaz.") }
+        guard trimmedCode.count >= 4 else { throw ShuttleStoreError.invalidInput(L10n.serviceCodeMinLength) }
+        guard !trimmedName.isEmpty else { throw ShuttleStoreError.invalidInput(L10n.nameEmpty) }
 
         if try await fetchUserProfile(userID: user.uid) != nil {
             throw ShuttleStoreError.alreadyInGroup
@@ -302,7 +302,7 @@ final class ShuttleStore {
 
         let memberID = user.uid
         let groupData = groupDoc.data()
-        let groupName = groupData["name"] as? String ?? "Servis"
+        let groupName = groupData["name"] as? String ?? L10n.service
         let groupCode = groupData["code"] as? String ?? trimmedCode
 
         try await groupDoc.reference.collection("members").document(memberID).setData([
@@ -335,13 +335,13 @@ final class ShuttleStore {
         try await FirebaseSession.shared.ensureAuthenticated()
         guard let user = Auth.auth().currentUser else { throw ShuttleStoreError.notAuthenticated }
         guard currentProfile.role == .passenger else {
-            throw ShuttleStoreError.invalidInput("Yalnızca yolcu hesabı servis ekleyebilir.")
+            throw ShuttleStoreError.invalidInput(L10n.passengersOnlyCanAddShuttle)
         }
 
         let appleUserID = try requireAppleUserID(from: user)
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard trimmedCode.count >= 4 else {
-            throw ShuttleStoreError.invalidInput("Servis kodu en az 4 karakter olmalı.")
+            throw ShuttleStoreError.invalidInput(L10n.serviceCodeMinLength)
         }
 
         var existingGroupIDs = currentProfile.groupIDs
@@ -363,11 +363,11 @@ final class ShuttleStore {
 
         let newGroupID = groupDoc.documentID
         if existingGroupIDs.contains(newGroupID) {
-            throw ShuttleStoreError.invalidInput("Bu servise zaten kayıtlısınız.")
+            throw ShuttleStoreError.invalidInput(L10n.alreadyRegisteredForShuttle)
         }
 
         let groupData = groupDoc.data()
-        let groupName = groupData["name"] as? String ?? "Servis"
+        let groupName = groupData["name"] as? String ?? L10n.service
         let groupCode = groupData["code"] as? String ?? trimmedCode
         let passengerName = currentProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -405,12 +405,10 @@ final class ShuttleStore {
     ) async throws {
         guard !isTripActive else { return }
         guard durationHours > 0 else {
-            throw ShuttleStoreError.invalidInput("Servis süresi seçin.")
+            throw ShuttleStoreError.invalidInput(L10n.selectTripDuration)
         }
         guard locationTracker.canDriverStartTrip else {
-            throw ShuttleStoreError.invalidInput(
-                "Servisi başlatmak için Ayarlar'dan \"Her zaman\" konum iznini açmanız gerekir."
-            )
+            throw ShuttleStoreError.invalidInput(L10n.alwaysLocationRequiredInSettings)
         }
         try await FirebaseSession.shared.ensureAuthenticated()
 
@@ -563,7 +561,7 @@ final class ShuttleStore {
 
     private func requireAppleUserID(from user: User) throws -> String {
         guard let appleUserID = AuthService.resolveAppleUserID(from: user) else {
-            throw ShuttleStoreError.invalidInput("Apple hesap kimliği bulunamadı.")
+            throw ShuttleStoreError.invalidInput(L10n.appleUserIDNotFound)
         }
         return appleUserID
     }
@@ -897,7 +895,7 @@ final class ShuttleStore {
         else { return nil }
 
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
-        let driverName = data["driverName"] as? String ?? "Şoför"
+        let driverName = data["driverName"] as? String ?? L10n.driverDefaultName
         var coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
 
         #if targetEnvironment(simulator)

@@ -7,9 +7,9 @@ enum DriverHomeTab: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .passengers: "Yolcular"
-        case .map: "Harita"
-        case .settings: "Ayarlar"
+        case .passengers: L10n.tabPassengers
+        case .map: L10n.tabMap
+        case .settings: L10n.tabSettings
         }
     }
 

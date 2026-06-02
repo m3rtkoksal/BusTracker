@@ -11,9 +11,9 @@ struct PassengerListView: View {
     var body: some View {
         if passengers.isEmpty {
             ContentUnavailableView(
-                "Henüz yolcu yok",
+                L10n.noPassengersYet,
                 systemImage: "person.3",
-                description: Text("Yolcular servis kodunu girerek katılabilir.")
+                description: Text(L10n.passengersJoinWithCode)
             )
         } else {
             List(passengers) { member in

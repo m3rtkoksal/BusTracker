@@ -33,22 +33,22 @@ enum AuthErrorMessage {
            let code = AuthErrorCode(rawValue: nsError.code) {
             switch code {
             case .networkError:
-                return "Ağ hatası. İnternet bağlantınızı kontrol edin."
+                return L10n.networkError
             case .tooManyRequests:
-                return "Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin."
+                return L10n.tooManyRequests
             case .userDisabled:
-                return "Bu hesap devre dışı bırakılmış."
+                return L10n.accountDisabled
             case .operationNotAllowed:
-                return "Apple ile giriş Firebase Console'da etkin değil."
+                return L10n.appleSignInNotEnabled
             case .invalidCredential, .userMismatch:
-                return "Apple giriş bilgisi geçersiz. Tekrar deneyin."
+                return L10n.appleCredentialInvalid
             default:
                 break
             }
         }
 
         if textContainsAuthCancellation(nsError) {
-            return "Apple ile giriş iptal edildi."
+            return L10n.appleSignInCancelled
         }
 
         return nsError.localizedDescription

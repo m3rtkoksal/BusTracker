@@ -20,18 +20,18 @@ struct TripStartedAttendanceSheet: View {
                 .foregroundStyle(NeonTheme.secondary)
                 .shadow(color: NeonTheme.secondary.opacity(0.5), radius: 8)
 
-            Text("Servis başladı")
+            Text(L10n.shuttleStarted)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
 
-            Text("\(driverName) servisi yola çıktı. Bugün gelecek misiniz?")
+            Text(L10n.driverStartedTrip(driverName))
                 .font(.subheadline)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 8) {
                 attendanceChoice(
-                    title: "GELİYORUM",
+                    title: L10n.attendanceComingSelf,
                     icon: "checkmark.circle.fill",
                     accent: NeonTheme.secondary,
                     isSelected: selectedComing,
@@ -39,7 +39,7 @@ struct TripStartedAttendanceSheet: View {
                     action: onSelectComing
                 )
                 attendanceChoice(
-                    title: "GELMİYORUM",
+                    title: L10n.attendanceNotComingSelf,
                     icon: "xmark.circle.fill",
                     accent: Color(hex: 0xFF4444),
                     isSelected: selectedNotComing,
@@ -48,7 +48,7 @@ struct TripStartedAttendanceSheet: View {
                 )
             }
 
-            Text("Seçiminiz sürücüye anında iletilir.")
+            Text(L10n.choiceSentToDriver)
                 .font(.caption)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
         }

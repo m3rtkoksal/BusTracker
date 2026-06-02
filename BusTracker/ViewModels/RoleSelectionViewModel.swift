@@ -8,8 +8,8 @@ final class RoleSelectionViewModel: BaseViewModel {
     init(onLoginTapped: @escaping () -> Void) {
         self.onLoginTapped = onLoginTapped
         super.init()
-        title = "Hesap Oluştur"
-        subtitle = "Sürücü müsünüz, yolcu mu?"
+        title = L10n.roleSelectionTitle
+        subtitle = L10n.roleSelectionSubtitle
         navSubtitleStyle = .neonCaps
         usesLargeTitle = false
         hidesNavigationBar = true

@@ -54,7 +54,7 @@ final class SmlerInviteCoordinator {
         guard isSignedIn, let profile else { return }
 
         if await isAlreadyMember(code: code, profile: profile, store: store) {
-            alreadyMemberMessage = "Bu servise zaten kayıtlısınız."
+            alreadyMemberMessage = L10n.alreadyMemberOfShuttle
             discardInvite(keepingLastHandled: code)
             return
         }

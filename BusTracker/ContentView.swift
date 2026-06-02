@@ -46,8 +46,8 @@ struct ContentView: View {
                 store: store
             )
         }
-        .alert("Servis daveti", isPresented: smlerInviteAlertBinding) {
-            Button("Tamam", role: .cancel) {
+        .alert(L10n.shuttleInvite, isPresented: smlerInviteAlertBinding) {
+            Button(L10n.ok, role: .cancel) {
                 smlerInviteCoordinator.dismissAlreadyMemberMessage()
             }
         } message: {

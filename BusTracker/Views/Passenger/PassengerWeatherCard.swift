@@ -3,10 +3,11 @@ import SwiftUI
 struct PassengerWeatherCard: View {
     let model: PassengerWeatherCardModel?
     var isLoading: Bool = false
+    var emptyMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("GİYİM ÖNERİSİ")
+            Text(L10n.clothingAdvice)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(1.5)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -28,11 +29,15 @@ struct PassengerWeatherCard: View {
                     }
                 }
             } else if isLoading {
-                Text("Biniş noktana göre öneri hazırlanıyor…")
+                Text(L10n.weatherLoading)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+            } else if let emptyMessage {
+                Text(emptyMessage)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             } else {
-                Text("Öneri şu an alınamadı.")
+                Text(L10n.weatherUnavailable)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             }

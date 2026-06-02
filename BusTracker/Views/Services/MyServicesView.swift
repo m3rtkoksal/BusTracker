@@ -49,7 +49,7 @@ struct MyServicesView: View {
 
         for gid in groupIDs {
             let isActiveGroup = activeIDs.contains(gid)
-            let name = (gid == profile.groupID) ? (profile.groupName ?? "Servis") : "Servis \(gid.prefix(6))"
+            let name = (gid == profile.groupID) ? (profile.groupName ?? L10n.service) : L10n.shuttleFallbackName(String(gid.prefix(6)))
 
             result.append(ServiceDisplay(
                 id: gid,
@@ -99,7 +99,7 @@ struct MyServicesView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         // Title
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("SERVİSLERİM")
+                            Text(L10n.myShuttles)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
                                 .foregroundStyle(NeonTheme.onSurface)
                                 .tracking(1)
@@ -128,7 +128,7 @@ struct MyServicesView: View {
                             ForEach(activeServices) { activeService in
                                 VStack(alignment: .leading, spacing: 16) {
                                     HStack {
-                                        Text("SİSTEM AKTİF")
+                                        Text(L10n.systemActive)
                                             .font(.system(size: 10, weight: .bold, design: .rounded))
                                             .tracking(1.5)
                                             .foregroundStyle(NeonTheme.background)
@@ -145,11 +145,11 @@ struct MyServicesView: View {
                                                 .foregroundStyle(NeonTheme.secondary)
 
                                             if let start = tripStartTime {
-                                                Text("Başlangıç: \(start.formatted(date: .omitted, time: .shortened))")
+                                                Text(L10n.startedAt(start.formatted(date: .omitted, time: .shortened)))
                                                     .font(.system(size: 12, design: .rounded))
                                                     .foregroundStyle(NeonTheme.onSurfaceVariant)
                                             } else {
-                                                Text("Sürücü servisi başlattı")
+                                                Text(L10n.driverStartedShuttle)
                                                     .font(.system(size: 12, design: .rounded))
                                                     .foregroundStyle(NeonTheme.onSurfaceVariant)
                                             }
@@ -157,7 +157,7 @@ struct MyServicesView: View {
 
                                         Spacer()
 
-                                        Text("AKTİF")
+                                        Text(L10n.active)
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .tracking(1)
                                             .foregroundStyle(NeonTheme.secondary)
@@ -191,7 +191,7 @@ struct MyServicesView: View {
                                 Rectangle()
                                     .fill(NeonTheme.primary)
                                     .frame(width: 3, height: 14)
-                                Text("KAYITLI ROTALAR")
+                                Text(L10n.savedRoutes)
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .tracking(1.5)
                                     .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -213,7 +213,7 @@ struct MyServicesView: View {
                                             Button(action: {
                                                 // TODO: Switch to this service
                                             }) {
-                                                Text("GEÇİŞ YAP")
+                                                Text(L10n.switchRoute)
                                                     .font(.system(size: 12, weight: .bold, design: .rounded))
                                                     .tracking(0.5)
                                                     .foregroundStyle(NeonTheme.primary)
@@ -242,11 +242,11 @@ struct MyServicesView: View {
                             } else {
                                 // Empty state when the user has no other routes
                                 VStack(spacing: 8) {
-                                    Text("Başka rota yok")
+                                    Text(L10n.noOtherRoute)
                                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                                         .foregroundStyle(NeonTheme.onSurface)
 
-                                    Text("Yeni bir servis ekleyerek rotalarını genişletebilirsin.")
+                                    Text(L10n.addShuttleHint)
                                         .font(.system(size: 13, design: .rounded))
                                         .foregroundStyle(NeonTheme.onSurfaceVariant)
                                         .multilineTextAlignment(.center)
@@ -276,7 +276,7 @@ struct MyServicesView: View {
                                 .font(.system(size: 20))
                                 .foregroundStyle(NeonTheme.primary)
 
-                            Text("YENİ SERVİS EKLE")
+                            Text(L10n.addNewShuttle)
                                 .font(.system(size: 15, weight: .black, design: .rounded))
                                 .tracking(1)
                                 .foregroundStyle(NeonTheme.primary)
@@ -321,11 +321,11 @@ struct MyServicesView: View {
                 .animation(.easeInOut(duration: 0.28), value: showAddServiceSheet)
             }
         }
-        .alert("Başarılı", isPresented: Binding(
+        .alert(L10n.success, isPresented: Binding(
             get: { joinSuccessMessage != nil },
             set: { if !$0 { joinSuccessMessage = nil } }
         )) {
-            Button("Tamam", role: .cancel) {}
+            Button(L10n.ok, role: .cancel) {}
         } message: {
             Text(joinSuccessMessage ?? "")
         }
@@ -370,7 +370,7 @@ struct MyServicesView: View {
                 memberID: updated.memberID
             )
             closeAddServiceSheet()
-            joinSuccessMessage = "\(updated.groupName ?? "Servis") eklendi ve aktif yapıldı."
+            joinSuccessMessage = L10n.shuttleAdded(updated.groupName ?? L10n.service)
         } catch let error as ShuttleStoreError {
             addServiceError = error.errorDescription
         } catch {

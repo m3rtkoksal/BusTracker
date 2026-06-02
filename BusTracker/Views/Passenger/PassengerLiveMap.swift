@@ -93,7 +93,7 @@ struct PassengerLiveMap: View {
                 .font(.title2)
                 .foregroundStyle(NeonTheme.mapPickupPin)
                 .shadow(color: NeonTheme.mapPickupPin.opacity(0.6), radius: 6)
-            Text("Biniş")
+            Text(L10n.pickupPinLabel)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(NeonTheme.onSurface)
                 .padding(.horizontal, 6)

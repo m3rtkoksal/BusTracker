@@ -31,7 +31,7 @@ final class DriverHomeViewModel: BaseViewModel {
     var selectedTripDurationHours = 2.0
 
     func configure(session: UserSession) {
-        title = session.profile?.groupName ?? "Servis"
+        title = session.profile?.groupName ?? L10n.service
         navigationBarStyle = .neonDriver
         hidesNavigationBar = true
         usesLargeTitle = false
@@ -67,9 +67,9 @@ final class DriverHomeViewModel: BaseViewModel {
 
     func requestSignOut(onConfirm: @escaping () -> Void) {
         showConfirm(
-            title: "Çıkış Yap",
-            message: "Çıkış yapmak istediğinize emin misiniz?",
-            confirmTitle: "Çıkış Yap",
+            title: L10n.signOut,
+            message: L10n.signOutConfirmMessage,
+            confirmTitle: L10n.signOut,
             destructive: true,
             onConfirm: onConfirm
         )
@@ -77,9 +77,9 @@ final class DriverHomeViewModel: BaseViewModel {
 
     func requestDeleteAccount(onConfirm: @escaping () -> Void) {
         showConfirm(
-            title: "Hesabı Sil",
-            message: "Hesabınızı ve tüm verilerinizi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
-            confirmTitle: "Hesabı Kalıcı Olarak Sil",
+            title: L10n.deleteAccount,
+            message: L10n.deleteAccountConfirmMessage,
+            confirmTitle: L10n.deleteAccountPermanently,
             destructive: true,
             onConfirm: onConfirm
         )
@@ -132,9 +132,9 @@ final class DriverHomeViewModel: BaseViewModel {
 
     private func presentDeleteAccountResult(profileDeleted: Bool, authRemoved: Bool) {
         if profileDeleted || authRemoved {
-            showSuccess("Hesabınız başarıyla silindi.")
+            showSuccess(L10n.accountDeletedSuccess)
         } else {
-            showError("Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.")
+            showError(L10n.accountDeleteFailed)
         }
     }
 
@@ -145,7 +145,7 @@ final class DriverHomeViewModel: BaseViewModel {
 
         if store.isTripActive {
             await store.stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
-            showSuccess("Servis durduruldu.")
+            showSuccess(L10n.shuttleStopped)
             return
         }
 
@@ -190,9 +190,7 @@ final class DriverHomeViewModel: BaseViewModel {
         guard hasAlways else {
             pendingTripDurationSheetAfterAlways = true
             showAlwaysLocationGuide = true
-            showError(
-                "Servisi başlatmak için \"Her zaman\" konum izni zorunludur. Ayarlar'dan izin verin."
-            )
+            showError(L10n.alwaysLocationRequiredToStart)
             return
         }
 
@@ -207,10 +205,8 @@ final class DriverHomeViewModel: BaseViewModel {
                 durationHours: selectedTripDurationHours,
                 locationTracker: locationTracker
             )
-            let hoursLabel = selectedTripDurationHours == floor(selectedTripDurationHours)
-                ? "\(Int(selectedTripDurationHours)) saat"
-                : "\(selectedTripDurationHours) saat"
-            showSuccess("Servis başlatıldı. \(hoursLabel) sonra otomatik duracak.")
+            let hoursLabel = L10n.hoursLabel(selectedTripDurationHours)
+            showSuccess(L10n.shuttleStartedAutoStop(hoursLabel))
         } catch {
             showError(error.localizedDescription)
         }
@@ -229,10 +225,10 @@ final class DriverHomeViewModel: BaseViewModel {
     func copyServiceCode(_ code: String) {
         let text = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
-            showError("Servis kodu bulunamadı.")
+            showError(L10n.serviceCodeNotFound)
             return
         }
-        showSuccess("Servis kodu kopyalandı.")
+        showSuccess(L10n.serviceCodeCopied)
         CopyServiceCode.copy(text)
     }
 }

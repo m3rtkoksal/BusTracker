@@ -6,8 +6,8 @@ enum MemberRole: String, Codable, CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .driver: "Sürücü"
-        case .passenger: "Yolcu"
+        case .driver: L10n.roleDriver
+        case .passenger: L10n.rolePassenger
         }
     }
 }

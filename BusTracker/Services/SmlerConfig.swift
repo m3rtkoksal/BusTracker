@@ -10,9 +10,8 @@ enum SmlerConfig {
     static let createAPIBase = "https://smler.in/api/v1"
 
     /// Smler ara sayfası / paylaşım önizlemesi (Custom OG Tags).
-    static let inviteOGTitle = "Shuttle Live — Servis daveti"
-    static let inviteOGDescription =
-        "Resmi Shuttle Live uygulaması. Servis kodunuzla güvenle katılın. App Store’dan indirin."
+    static let inviteOGTitle = L10n.smlerOGTitle
+    static let inviteOGDescription = L10n.smlerOGDescription
     /// Shuttle Live marka ikonu (Firebase Hosting — Smler OG / ara sayfa).
     static let inviteOGImageURL =
         "https://bustracker-717a3.web.app/shuttle-live-og.png"

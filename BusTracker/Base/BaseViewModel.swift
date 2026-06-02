@@ -123,7 +123,7 @@ class BaseViewModel {
     var embedsInNavigationStack: Bool = true
 
     var isLoading: Bool = false
-    var loadingMessage: String = "Yükleniyor..."
+    var loadingMessage: String = L10n.loading
 
     var alert: PopupPresentation?
     var toast: PopupPresentation?
@@ -131,11 +131,11 @@ class BaseViewModel {
 
     private var confirmHandler: (() -> Void)?
 
-    func showError(_ message: String, title: String = "Hata") {
+    func showError(_ message: String, title: String = L10n.error) {
         alert = PopupPresentation(style: .error, title: title, message: message)
     }
 
-    func showSuccess(_ message: String, title: String = "Başarılı") {
+    func showSuccess(_ message: String, title: String = L10n.success) {
         showToast(message, style: .success, title: title)
     }
 
@@ -143,15 +143,15 @@ class BaseViewModel {
         toast = PopupPresentation(style: style, title: title, message: message)
     }
 
-    func showInfo(_ message: String, title: String = "Bilgi") {
+    func showInfo(_ message: String, title: String = L10n.info) {
         alert = PopupPresentation(style: .info, title: title, message: message)
     }
 
     func showConfirm(
         title: String,
         message: String,
-        confirmTitle: String = "Onayla",
-        cancelTitle: String = "Vazgeç",
+        confirmTitle: String = L10n.confirm,
+        cancelTitle: String = L10n.cancel,
         destructive: Bool = false,
         onConfirm: @escaping () -> Void
     ) {
@@ -183,7 +183,7 @@ class BaseViewModel {
         toast = nil
     }
 
-    func setLoading(_ loading: Bool, message: String = "Yükleniyor...") {
+    func setLoading(_ loading: Bool, message: String = L10n.loading) {
         isLoading = loading
         loadingMessage = message
     }

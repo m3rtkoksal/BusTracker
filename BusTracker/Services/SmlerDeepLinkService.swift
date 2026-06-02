@@ -30,11 +30,11 @@ final class SmlerDeepLinkService {
         log("prepareShare başladı serviceCode=\(code)")
         guard code.count >= 4 else {
             log("HATA: servis kodu çok kısa")
-            return .failure("Geçerli bir servis kodu yok.")
+            return .failure(L10n.invalidServiceCode)
         }
         guard SmlerConfig.apiKey != nil else {
             log("HATA: SmlerAPIKey boş (Info.plist)")
-            return .failure("Smler API anahtarı tanımlı değil. Xcode → Info.plist → SmlerAPIKey alanına dashboard’daki API key’i yapıştırın.")
+            return .failure(L10n.smlerAPIKeyMissingInfo)
         }
         log("API key yüklü (uzunluk=\(SmlerConfig.apiKey?.count ?? 0))")
 
@@ -42,10 +42,9 @@ final class SmlerDeepLinkService {
         case .success(let url):
             log("OK shortURL=\(url.absoluteString)")
             let message = """
-            Shuttle Live servis daveti
+            \(L10n.smlerShareTitle)
 
-            Servis kodu: \(code)
-            \(url.absoluteString)
+            \(L10n.smlerShareBody(code, url.absoluteString))
             """
             return .success(message: message, shortURL: url)
         case .failure(let error):
@@ -113,10 +112,10 @@ final class SmlerDeepLinkService {
         }
 
         guard let apiKey = SmlerConfig.apiKey else {
-            return .failure("Smler API anahtarı eksik.")
+            return .failure(L10n.smlerAPIKeyMissing)
         }
         guard let endpoint = URL(string: "\(SmlerConfig.createAPIBase)/short") else {
-            return .failure("Smler API adresi geçersiz.")
+            return .failure(L10n.smlerAPIInvalid)
         }
 
         var request = URLRequest(url: endpoint)
@@ -148,7 +147,7 @@ final class SmlerDeepLinkService {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 log("HATA: HTTPURLResponse yok")
-                return .failure("Smler yanıt vermedi.")
+                return .failure(L10n.smlerNoResponse)
             }
             let responseText = String(data: data, encoding: .utf8) ?? "<okunamadı>"
             log("response status=\(http.statusCode)")
@@ -156,17 +155,17 @@ final class SmlerDeepLinkService {
 
             guard (200 ... 299).contains(http.statusCode) else {
                 let detail = apiErrorMessage(from: data) ?? shortAPIErrorHint(status: http.statusCode)
-                return .failure("Smler link oluşturulamadı (\(http.statusCode)): \(detail)")
+                return .failure(L10n.smlerLinkFailed(http.statusCode, detail))
             }
             if let url = parseShortURL(from: data) ?? SmlerConfig.shortLinkURL(shortCode: code) {
                 cacheURL(url, for: code)
                 return .success(url)
             }
             log("HATA: yanıtta short URL parse edilemedi")
-            return .failure("Smler kısa link adresi alınamadı. Console’daki response body’ye bakın.")
+            return .failure(L10n.smlerShortLinkMissing)
         } catch {
             log("HATA network: \(error.localizedDescription)")
-            return .failure("Bağlantı hatası: \(error.localizedDescription)")
+            return .failure(L10n.connectionErrorDetail(error.localizedDescription))
         }
     }
 
@@ -185,8 +184,8 @@ final class SmlerDeepLinkService {
     }
 
     private func shortAPIErrorHint(status: Int) -> String {
-        if status == 404 { return "API adresi bulunamadı." }
-        return "Ayrıntı için Xcode console [Smler] satırlarına bakın."
+        if status == 404 { return L10n.apiURLNotFound }
+        return L10n.checkXcodeConsole
     }
 
     private func resolveServiceCode(fromSmlerURL url: URL) async -> String? {

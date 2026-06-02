@@ -11,11 +11,11 @@ enum AuthServiceError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notSignedIn: "Oturum açık değil."
-        case .profileNotFound: "Kullanıcı profili bulunamadı."
-        case .firebaseNotReady: "Firebase henüz hazır değil. Lütfen tekrar deneyin."
+        case .notSignedIn: L10n.notSignedIn
+        case .profileNotFound: L10n.userProfileNotFound
+        case .firebaseNotReady: L10n.firebaseNotReady
         case .appleSignInFailed(let message): message
-        case .missingAppleUserID: "Apple hesap kimliği alınamadı."
+        case .missingAppleUserID: L10n.appleUserIDUnavailable
         }
     }
 }
@@ -91,7 +91,7 @@ final class AuthService {
             throw AuthServiceError.appleSignInFailed(AuthErrorMessage.message(for: error))
         }
 #else
-        throw AuthServiceError.appleSignInFailed("Apple ile giriş yalnızca iOS'ta desteklenir.")
+        throw AuthServiceError.appleSignInFailed(L10n.appleSignInIOSOnly)
 #endif
     }
 
@@ -191,9 +191,7 @@ final class AuthService {
     func deleteCurrentUser() async throws {
         let removed = await removeAccountIfPossible()
         if !removed {
-            throw AuthServiceError.appleSignInFailed(
-                "Hesap silmek için güvenlik nedeniyle önce çıkış yapıp tekrar Apple ile giriş yapmanız gerekebilir."
-            )
+            throw AuthServiceError.appleSignInFailed(L10n.reauthRequiredToDelete)
         }
     }
 

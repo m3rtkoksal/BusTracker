@@ -36,7 +36,7 @@ struct NeonRoleCard: View {
                         .frame(maxWidth: 260)
 
                     HStack(spacing: 6) {
-                        Text("SEÇ VE DEVAM ET")
+                        Text(L10n.selectAndContinue)
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .tracking(1.5)
                         Image(systemName: "arrow.right")
@@ -110,7 +110,7 @@ struct RegistrationBackButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "arrow.left")
-                Text("ROL SEÇİMİNE DÖN")
+                Text(L10n.backToRoleSelection)
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(2)
             }

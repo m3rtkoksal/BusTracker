@@ -28,7 +28,7 @@ struct RegistrationFormView: BaseView {
 
                 NeonGlassCard(accent: viewModel.accent) {
                     VStack(spacing: 20) {
-                        NeonFormField(title: "Adınız", text: $viewModel.name, prompt: viewModel.namePrompt)
+                        NeonFormField(title: L10n.yourNameField, text: $viewModel.name, prompt: viewModel.namePrompt)
                         NeonFormField(
                             title: viewModel.serviceFieldTitle,
                             text: serviceFieldBinding,
@@ -43,7 +43,7 @@ struct RegistrationFormView: BaseView {
                             .foregroundStyle(NeonTheme.onSurfaceVariant)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Text("Kayıt için Apple hesabınız kullanılır; telefon numarası istenmez.")
+                        Text(L10n.appleRegistrationNote)
                             .font(.caption)
                             .foregroundStyle(NeonTheme.onSurfaceVariant)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,7 +81,7 @@ struct RegistrationFormView: BaseView {
 
     private var createButton: some View {
         SignInWithAppleButton(
-            title: "Apple ile Kayıt Ol",
+            title: L10n.registerWithApple,
             isLoading: store.isLoading || authService.isLoading || viewModel.isLoading
         ) {
             guard viewModel.validateBeforeAppleSignIn() else { return }

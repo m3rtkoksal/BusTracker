@@ -8,9 +8,9 @@ enum FirebaseBootstrapError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingConfiguration:
-            "GoogleService-Info.plist bulunamadı. Dosyanın BusTracker hedefinde Copy Bundle Resources içinde olduğundan emin olun."
+            L10n.googleServicePlistMissing
         case .authenticationFailed(let message):
-            "Firebase bağlantısı kurulamadı: \(message)"
+            L10n.firebaseConnectionFailed(message)
         }
     }
 }

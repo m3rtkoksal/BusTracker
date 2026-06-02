@@ -19,15 +19,15 @@ struct RoleSelectionView: BaseView {
         ScrollView {
             VStack(spacing: 24) {
                 NeonRoleCard(
-                    title: "Sürücüyüm",
-                    subtitle: "Servisi oluştururum, sabah \"Servisi Başlat\" derim ve konumumu paylaşırım.",
+                    title: L10n.iAmDriver,
+                    subtitle: L10n.iAmDriverSubtitle,
                     icon: "steeringwheel",
                     accent: NeonTheme.primary,
                     action: onSelectDriver
                 )
                 NeonRoleCard(
-                    title: "Yolcuyum",
-                    subtitle: "Servise katılırım, haritadan takip ederim ve geleceğimi bildiririm.",
+                    title: L10n.iAmPassenger,
+                    subtitle: L10n.iAmPassengerSubtitle,
                     icon: "person.fill",
                     accent: NeonTheme.secondary,
                     action: onSelectPassenger
@@ -35,9 +35,9 @@ struct RoleSelectionView: BaseView {
 
                 Button(action: viewModel.onLoginTapped) {
                     HStack(spacing: 4) {
-                        Text("Zaten hesabım var —")
+                        Text(L10n.alreadyHaveAccount)
                             .foregroundStyle(NeonTheme.onSurfaceVariant)
-                        Text("Apple ile giriş yap")
+                        Text(L10n.signInWithAppleLink)
                             .fontWeight(.semibold)
                             .foregroundStyle(NeonTheme.secondary)
                     }

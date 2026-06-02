@@ -12,7 +12,7 @@ final class RegistrationFormViewModel: BaseViewModel {
     init(role: MemberRole) {
         self.role = role
         super.init()
-        title = "Hesap Oluştur"
+        title = L10n.createAccountTitle
         navSubtitleStyle = .hidden
         usesLargeTitle = false
         hidesNavigationBar = true
@@ -21,13 +21,13 @@ final class RegistrationFormViewModel: BaseViewModel {
     }
 
     var heroTitle: String {
-        role == .driver ? "Sürücü Kaydı" : "Yolcu Kaydı"
+        role == .driver ? L10n.driverRegistration : L10n.passengerRegistration
     }
 
     var heroSubtitle: String {
         role == .driver
-            ? "Servisinizi oluşturun, yolcularınız sizi takip etsin."
-            : "Servis kodunuzla katılın, haritadan takip edin."
+            ? L10n.driverRegistrationSubtitle
+            : L10n.passengerRegistrationSubtitle
     }
 
     var heroIcon: String {
@@ -39,21 +39,21 @@ final class RegistrationFormViewModel: BaseViewModel {
     }
 
     var serviceFieldTitle: String {
-        role == .driver ? "Servis adı" : "Servis kodu"
+        role == .driver ? L10n.serviceNameField : L10n.serviceCodeField
     }
 
     var serviceFieldPrompt: String {
-        role == .driver ? "Örn. Kadıköy Servisi" : "Sürücünün verdiği 6 haneli kod"
+        role == .driver ? L10n.serviceNameExample : L10n.serviceCodeExample
     }
 
     var namePrompt: String {
-        role == .driver ? "Örn. Ahmet" : "Örn. Ayşe"
+        role == .driver ? L10n.nameExampleDriver : L10n.nameExamplePassenger
     }
 
     var footerCaption: String {
         role == .driver
-            ? "Konum paylaşımı yalnızca sürücü hesabında açıktır."
-            : "Yolcu hesabında konum paylaşımı yoktur."
+            ? L10n.driverLocationFooter
+            : L10n.passengerLocationFooter
     }
 
     var canSubmit: Bool {
@@ -76,21 +76,21 @@ final class RegistrationFormViewModel: BaseViewModel {
     func validateBeforeAppleSignIn() -> Bool {
         serviceFieldError = nil
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            showError("Kayıt için adınızı girin.")
+            showError(L10n.enterNameToRegister)
             return false
         }
         let trimmedService = serviceField.trimmingCharacters(in: .whitespacesAndNewlines)
         if role == .passenger {
             if trimmedService.isEmpty {
-                serviceFieldError = "Servis kodu girmedin."
+                serviceFieldError = L10n.enterServiceCode
                 return false
             }
             if trimmedService.count < 4 {
-                serviceFieldError = "Servis kodu en az 4 karakter olmalı."
+                serviceFieldError = L10n.serviceCodeMinLength
                 return false
             }
         } else if trimmedService.isEmpty {
-            serviceFieldError = "Servis adı girmedin."
+            serviceFieldError = L10n.enterServiceName
             return false
         }
         return true
@@ -128,10 +128,10 @@ final class RegistrationFormViewModel: BaseViewModel {
             let profile: UserProfile
             if role == .driver {
                 profile = try await store.createGroup(name: serviceField, driverName: name)
-                showSuccess("Servis hesabınız oluşturuldu.")
+                showSuccess(L10n.driverAccountCreated)
             } else {
                 profile = try await store.joinGroup(code: serviceField, passengerName: name)
-                showSuccess("Servise katıldınız.")
+                showSuccess(L10n.joinedShuttle)
             }
 
             session.save(profile)
@@ -174,13 +174,13 @@ final class RegistrationFormViewModel: BaseViewModel {
     private func serviceFieldErrorMessage(for error: ShuttleStoreError) -> String {
         switch error {
         case .groupNotFound:
-            return error.errorDescription ?? "Bu servis kodu bulunamadı."
+            return error.errorDescription ?? L10n.shuttleCodeNotFound
         case .invalidInput(let message):
             return message
         case .alreadyInGroup:
-            return error.errorDescription ?? "Zaten bir servise kayıtlısınız."
+            return error.errorDescription ?? L10n.alreadyInShuttle
         case .notAuthenticated:
-            return error.errorDescription ?? "Giriş yapmanız gerekiyor."
+            return error.errorDescription ?? L10n.signInRequired
         }
     }
 

@@ -10,6 +10,7 @@ struct DriverHomeView: BaseView {
     @State var tabBar = DriverTabBarController()
     @State private var showMyServices = false
     @State private var isCreatingInviteLink = false
+    @State private var showLanguagePicker = false
 
     private var profile: UserProfile? { session.profile }
 
@@ -117,7 +118,7 @@ struct DriverHomeView: BaseView {
                         .fill(NeonTheme.driverChrome.statusAccent)
                         .frame(width: 8, height: 8)
                         .shadow(color: NeonTheme.driverChrome.statusAccent.opacity(0.8), radius: 4)
-                    Text("AKTİF")
+                    Text(L10n.active)
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(2)
                         .foregroundStyle(NeonTheme.driverChrome.statusAccent)
@@ -165,12 +166,12 @@ struct DriverHomeView: BaseView {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 pulseDot
-                Text("SERVİS ADI")
+                Text(L10n.serviceNameLabel)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .tracking(2)
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             }
-            Text((profile?.groupName ?? "Servis").uppercased())
+            Text((profile?.groupName ?? L10n.service).uppercased())
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
                 .tracking(-0.5)
@@ -179,7 +180,7 @@ struct DriverHomeView: BaseView {
 
     private var serviceCodeCard: some View {
         VStack(spacing: 16) {
-            Text("SERVİS KODU")
+            Text(L10n.serviceCodeLabel)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(3)
                 .foregroundStyle(NeonTheme.primary)
@@ -197,9 +198,9 @@ struct DriverHomeView: BaseView {
                         Task { await shareServiceInvite(code) }
                     } label: {
                         if isCreatingInviteLink {
-                            codeActionLabel(title: "Hazırlanıyor", icon: "hourglass", accent: NeonTheme.primary, filled: true)
+                            codeActionLabel(title: L10n.preparing, icon: "hourglass", accent: NeonTheme.primary, filled: true)
                         } else {
-                            codeActionLabel(title: "Paylaş", icon: "square.and.arrow.up", accent: NeonTheme.primary, filled: true)
+                            codeActionLabel(title: L10n.share, icon: "square.and.arrow.up", accent: NeonTheme.primary, filled: true)
                         }
                     }
                     .buttonStyle(.plain)
@@ -210,7 +211,7 @@ struct DriverHomeView: BaseView {
                             viewModel.copyServiceCode(code)
                         }
                     } label: {
-                        codeActionLabel(title: "Kopyala", icon: "doc.on.doc", accent: NeonTheme.onSurfaceVariant, filled: false)
+                        codeActionLabel(title: L10n.copy, icon: "doc.on.doc", accent: NeonTheme.onSurfaceVariant, filled: false)
                     }
                     .buttonStyle(.plain)
                 }
@@ -254,21 +255,21 @@ struct DriverHomeView: BaseView {
     private var statsGrid: some View {
         HStack(spacing: 8) {
             statCard(
-                title: "GELECEK",
+                title: L10n.statComing,
                 value: "\(stats.coming)",
                 valueColor: NeonTheme.secondary,
                 accentBorder: NeonTheme.secondary.opacity(0.3),
                 trailingIcon: "checkmark.circle.fill"
             )
             statCard(
-                title: "GELMEYECEK",
+                title: L10n.statNotComing,
                 value: "\(stats.notComing)",
                 valueColor: Color(hex: 0xFF4444),
                 accentBorder: Color(hex: 0xFF4444).opacity(0.3),
                 trailingIcon: "xmark.circle.fill"
             )
             statCard(
-                title: "BELİRTMEDİ",
+                title: L10n.statUnknown,
                 value: "\(stats.unknown)",
                 valueColor: Color(hex: 0xFFE04A),
                 accentBorder: Color(hex: 0xFFE04A).opacity(0.35),
@@ -349,11 +350,11 @@ struct DriverHomeView: BaseView {
             }
 
             VStack(spacing: 6) {
-                Text("YOLCU BEKLENİYOR")
+                Text(L10n.waitingForPassengers)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .tracking(2)
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
-                Text("Yolcular yukarıdaki servis kodunu kullanarak katıldığında burada görünecek.")
+                Text(L10n.waitingForPassengersHint)
                     .font(.caption)
                     .foregroundStyle(NeonTheme.outline)
                     .multilineTextAlignment(.center)
@@ -367,7 +368,7 @@ struct DriverHomeView: BaseView {
 
     private var passengerListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("YOLCU LİSTESİ")
+            Text(L10n.passengerList)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -429,7 +430,7 @@ struct DriverHomeView: BaseView {
                 HStack(spacing: 10) {
                     Image(systemName: store.isTripActive ? "stop.fill" : "bolt.fill")
                         .font(.title3)
-                    Text(store.isTripActive ? "SERVİSİ DURDUR" : "SERVİSİ BAŞLAT")
+                    Text(store.isTripActive ? L10n.stopShuttle : L10n.startShuttle)
                         .font(.system(size: 15, weight: .heavy, design: .rounded))
                         .tracking(2)
                 }
@@ -457,15 +458,15 @@ struct DriverHomeView: BaseView {
     private var tripStatusCaption: String {
         if store.isTripActive {
             if let end = store.plannedTripEndAt {
-                return "Bitiş: \(end.formatted(date: .omitted, time: .shortened))"
+                return L10n.tripEndTime(end.formatted(date: .omitted, time: .shortened))
             }
-            return "Konum paylaşılıyor"
+            return L10n.sharingLocation
         }
-        return "Başlatınca süre seçilir"
+        return L10n.selectDurationOnStart
     }
 
     private var locationWarning: some View {
-        Text("Konum izni kapalı. Ayarlar'dan izin verin.")
+        Text(L10n.locationPermissionDenied)
             .font(.caption)
             .foregroundStyle(Color(hex: 0xFF4444))
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -473,10 +474,10 @@ struct DriverHomeView: BaseView {
 
     private var backgroundLocationWarning: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Arka planda konum paylaşımı için \"Her zaman\" iznini açın.")
+            Text(L10n.backgroundLocationWarning)
                 .font(.caption)
                 .foregroundStyle(Color(hex: 0xFFE04A))
-            Button("Her zaman iznini aç") {
+            Button(L10n.enableAlwaysLocation) {
                 viewModel.requestDriverAlwaysPermission(locationTracker: locationTracker)
                 locationTracker.requestDriverAlwaysPermissionIfNeeded()
             }
@@ -492,7 +493,7 @@ struct DriverHomeView: BaseView {
         resolveDriverMapLocation(
             firestoreLocation: store.driverLocation,
             deviceLocation: locationTracker.effectiveLocation,
-            driverName: profile?.name ?? "Sürücü"
+            driverName: profile?.name ?? L10n.driver
         )
     }
 
@@ -527,7 +528,7 @@ struct DriverHomeView: BaseView {
             ScrollView {
                 VStack(spacing: 16) {
                     if let code = profile?.groupCode, !code.isEmpty {
-                        settingsRow(title: "Servis Kodu", value: code) {
+                        settingsRow(title: L10n.settingsServiceCode, value: code) {
                             viewModel.copyServiceCode(code)
                         }
                         SettingsInviteShareRow(serviceCode: code) { message in
@@ -536,10 +537,12 @@ struct DriverHomeView: BaseView {
                     }
 
                     if let name = profile?.name {
-                        settingsRow(title: "Adınız", value: name, action: nil)
+                        settingsRow(title: L10n.settingsYourName, value: name, action: nil)
                     }
 
                     NotificationSettingsRow()
+
+                    LanguageSettingsRow(showPicker: $showLanguagePicker)
 
                     Button {
                         viewModel.requestSignOut {
@@ -548,7 +551,7 @@ struct DriverHomeView: BaseView {
                     } label: {
                         HStack {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("Çıkış Yap")
+                            Text(L10n.signOut)
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -566,6 +569,12 @@ struct DriverHomeView: BaseView {
             }
 
             settingsDeleteAccountFooter
+        }
+        .overlay {
+            if showLanguagePicker {
+                LanguagePickerOverlay(isPresented: $showLanguagePicker)
+                    .animation(.easeInOut(duration: 0.28), value: showLanguagePicker)
+            }
         }
     }
 
@@ -598,7 +607,7 @@ struct DriverHomeView: BaseView {
         } label: {
             HStack {
                 Image(systemName: "trash")
-                Text("Hesabı Sil")
+                Text(L10n.deleteAccount)
                     .fontWeight(.semibold)
                     .textCase(.uppercase)
                 Spacer()

@@ -7,9 +7,9 @@ enum AttendanceStatus: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
-        case .coming: "Gelecek"
-        case .notComing: "Gelmeyecek"
-        case .unknown: "Belirtmedi"
+        case .coming: L10n.attendanceComing
+        case .notComing: L10n.attendanceNotComing
+        case .unknown: L10n.attendanceUnknown
         }
     }
 
@@ -24,9 +24,9 @@ enum AttendanceStatus: String, Codable, CaseIterable {
     /// Harita sekmesi sol üst katılım kutusu.
     var mapTabLabel: String {
         switch self {
-        case .coming: "Geliyorum"
-        case .notComing: "Gelmiyorum"
-        case .unknown: "Belirsiz"
+        case .coming: L10n.attendanceComingSelf
+        case .notComing: L10n.attendanceNotComingSelf
+        case .unknown: L10n.attendanceUncertain
         }
     }
 }

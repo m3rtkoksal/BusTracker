@@ -16,7 +16,7 @@ final class PassengerHomeViewModel: BaseViewModel {
     var draftPickupCoordinate: CLLocationCoordinate2D?
 
     func configure(session: UserSession) {
-        title = session.profile?.groupName ?? "Servis"
+        title = session.profile?.groupName ?? L10n.service
         navigationBarStyle = .neonPassenger
         hidesNavigationBar = true
         usesLargeTitle = false
@@ -54,9 +54,9 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     func requestSignOut(onConfirm: @escaping () -> Void) {
         showConfirm(
-            title: "Çıkış Yap",
-            message: "Çıkış yapmak istediğinize emin misiniz?",
-            confirmTitle: "Çıkış Yap",
+            title: L10n.signOut,
+            message: L10n.signOutConfirmMessage,
+            confirmTitle: L10n.signOut,
             destructive: true,
             onConfirm: onConfirm
         )
@@ -65,9 +65,9 @@ final class PassengerHomeViewModel: BaseViewModel {
     // MARK: - Hesap Silme (App Store 5.1.1(v) için gerekli)
     func requestDeleteAccount(onConfirm: @escaping () -> Void) {
         showConfirm(
-            title: "Hesabı Sil",
-            message: "Hesabınızı ve tüm verilerinizi (profil, biniş noktaları, katılım kayıtları vb.) kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
-            confirmTitle: "Hesabı Kalıcı Olarak Sil",
+            title: L10n.deleteAccount,
+            message: L10n.deleteAccountConfirmMessagePassenger,
+            confirmTitle: L10n.deleteAccountPermanently,
             destructive: true,
             onConfirm: onConfirm
         )
@@ -106,9 +106,9 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     private func presentDeleteAccountResult(profileDeleted: Bool, authRemoved: Bool) {
         if profileDeleted || authRemoved {
-            showSuccess("Hesabınız başarıyla silindi.")
+            showSuccess(L10n.accountDeletedSuccess)
         } else {
-            showError("Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.")
+            showError(L10n.accountDeleteFailed)
         }
     }
 
@@ -133,7 +133,7 @@ final class PassengerHomeViewModel: BaseViewModel {
                 status: status
             )
             showTripStartedAttendanceSheet = false
-            showSuccess("Seçiminiz kaydedildi: \(status.title)")
+            showSuccess(L10n.choiceSaved(status.title))
         } catch {
             showError(error.localizedDescription)
         }
@@ -154,7 +154,7 @@ final class PassengerHomeViewModel: BaseViewModel {
     func saveMorningPickup(store: ShuttleStore, session: UserSession) async {
         guard let profile = session.profile else { return }
         guard let coordinate = draftPickupCoordinate else {
-            showError("Haritada sabah biniş noktanızı işaretleyin.")
+            showError(L10n.markPickupOnMap)
             return
         }
 
@@ -163,7 +163,7 @@ final class PassengerHomeViewModel: BaseViewModel {
 
         let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
         guard !groupID.isEmpty else {
-            showError("Servis bilgisi bulunamadı.")
+            showError(L10n.shuttleInfoNotFound)
             return
         }
 
@@ -181,7 +181,7 @@ final class PassengerHomeViewModel: BaseViewModel {
                 status: .coming
             )
             showTripStartedAttendanceSheet = false
-            showSuccess("Biniş noktanız kaydedildi. Durumunuz: Geliyorum.")
+            showSuccess(L10n.pickupSavedComing)
         } catch {
             showError(error.localizedDescription)
         }
@@ -190,10 +190,10 @@ final class PassengerHomeViewModel: BaseViewModel {
     func copyServiceCode(_ code: String) {
         let text = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
-            showError("Servis kodu bulunamadı.")
+            showError(L10n.serviceCodeNotFound)
             return
         }
-        showSuccess("Servis kodu kopyalandı.")
+        showSuccess(L10n.serviceCodeCopied)
         CopyServiceCode.copy(text)
     }
 }

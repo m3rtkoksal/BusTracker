@@ -14,19 +14,19 @@ struct AddServiceSheet: View {
                 .frame(width: 48, height: 4)
                 .padding(.top, 12)
 
-            Text("Yeni servis ekle")
+            Text(L10n.addShuttleTitle)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
 
-            Text("Sürücünün verdiği servis kodunu girin. Ekledikten sonra bu servis aktif olur.")
+            Text(L10n.addShuttleBody)
                 .font(.subheadline)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
                 .multilineTextAlignment(.center)
 
             NeonFormField(
-                title: "Servis kodu",
+                title: L10n.serviceCodeField,
                 text: $serviceCode,
-                prompt: "6 haneli kod",
+                prompt: L10n.sixDigitCode,
                 keyboard: .asciiCapable,
                 textInputAutocapitalization: .characters,
                 errorText: errorText,
@@ -38,7 +38,7 @@ struct AddServiceSheet: View {
                     if isLoading {
                         ProgressView().tint(NeonTheme.secondary)
                     } else {
-                        Text("SERVİSE KATIL")
+                        Text(L10n.joinShuttle)
                             .font(.system(size: 14, weight: .heavy, design: .rounded))
                             .tracking(1.2)
                             .foregroundStyle(NeonTheme.secondary)
@@ -59,7 +59,7 @@ struct AddServiceSheet: View {
             .clipShape(Rectangle())
             .disabled(isLoading || serviceCode.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
 
-            Button("Vazgeç", action: onDismiss)
+            Button(L10n.cancel, action: onDismiss)
                 .font(.footnote)
                 .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(0.7))
                 .padding(.top, 4)

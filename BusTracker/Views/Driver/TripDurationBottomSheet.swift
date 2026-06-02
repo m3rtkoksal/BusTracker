@@ -47,16 +47,12 @@ struct TripDurationBottomSheet: View {
                 .shadow(color: NeonTheme.primary.opacity(0.5), radius: 8)
                 .padding(.bottom, 16)
 
-            Text("Servis Süresi")
+            Text(L10n.tripDuration)
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
                 .padding(.bottom, 8)
 
-            Text(
-                canStartTrip
-                    ? "Sefer boyunca konumunuz yolculara paylaşılır. Paylaşım süre sonunda otomatik durur."
-                    : "\"Her zaman\" konum izni olmadan servis başlatılamaz. Önce İZİN VER adımlarını tamamlayın."
-            )
+            Text(canStartTrip ? L10n.tripDurationBodyCanStart : L10n.tripDurationBodyNeedsPermission)
             .font(.subheadline)
             .foregroundStyle(canStartTrip ? NeonTheme.onSurfaceVariant : Color(hex: 0xFF4444))
             .multilineTextAlignment(.center)
@@ -71,7 +67,7 @@ struct TripDurationBottomSheet: View {
                     if isLoading {
                         ProgressView().tint(NeonTheme.primary)
                     } else {
-                        Text("SERVİSİ BAŞLAT")
+                        Text(L10n.startShuttle)
                             .tracking(1.5)
                     }
                 }
@@ -153,7 +149,7 @@ struct TripDurationBottomSheet: View {
     }
 
     private func durationLabel(_ hours: Double) -> String {
-        hours == floor(hours) ? "\(Int(hours)) saat" : "\(hours) saat"
+        L10n.hoursLabel(hours)
     }
 
     private var sheetBackground: some View {

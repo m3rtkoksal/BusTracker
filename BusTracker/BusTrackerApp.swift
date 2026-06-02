@@ -16,6 +16,7 @@ struct BusTrackerApp: App {
     @State private var store = ShuttleStore()
     @State private var locationTracker = LocationTracker()
     @State private var smlerInviteCoordinator = SmlerInviteCoordinator()
+    @State private var languageManager = LanguageManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -26,6 +27,9 @@ struct BusTrackerApp: App {
                 .environment(store)
                 .environment(locationTracker)
                 .environment(smlerInviteCoordinator)
+                .environment(languageManager)
+                .environment(\.locale, languageManager.locale)
+                .id(languageManager.language)
                 .onOpenURL { url in
                     Task { await handleSmlerURL(url) }
                 }

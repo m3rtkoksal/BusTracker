@@ -7,9 +7,9 @@ enum PassengerHomeTab: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .service: "Servis"
-        case .map: "Harita"
-        case .settings: "Ayarlar"
+        case .service: L10n.tabService
+        case .map: L10n.tabMap
+        case .settings: L10n.tabSettings
         }
     }
 

@@ -2,7 +2,7 @@ import AuthenticationServices
 import SwiftUI
 
 struct SignInWithAppleButton: View {
-    var title: String = "Apple ile Devam Et"
+    var title: String = L10n.continueWithApple
     var isLoading: Bool = false
     let action: () -> Void
 

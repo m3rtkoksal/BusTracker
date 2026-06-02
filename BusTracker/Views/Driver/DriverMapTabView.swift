@@ -93,7 +93,7 @@ struct DriverMapTabView: View {
                 .fill(NeonTheme.secondary)
                 .frame(width: 8, height: 8)
                 .shadow(color: NeonTheme.secondary.opacity(0.8), radius: 4)
-            Text("AKTİF")
+            Text(L10n.active)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.secondary)
@@ -110,7 +110,7 @@ struct DriverMapTabView: View {
 
     private var nextStopCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("SONRAKİ DURAK")
+            Text(L10n.nextStop)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(0.5)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
@@ -127,15 +127,15 @@ struct DriverMapTabView: View {
                             .foregroundStyle(NeonTheme.secondary)
                     }
                     Spacer()
-                    Text("Sabah biniş")
+                    Text(L10n.morningPickup)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(NeonTheme.onSurfaceVariant)
                 }
             } else {
-                Text("Durak yok")
+                Text(L10n.noStop)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurface)
-                Text("Yolcu biniş noktası bekleniyor.")
+                Text(L10n.waitingForPassengerPickup)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             }
@@ -191,18 +191,18 @@ struct DriverMapTabView: View {
     private var bentoGrid: some View {
         HStack(spacing: 8) {
             bentoCard(
-                title: "KAPASİTE",
+                title: L10n.capacity,
                 value: "\(stats.capacityOccupied)",
                 suffix: "/ \(stats.total)",
                 valueColor: NeonTheme.primary,
-                footnote: stats.unknown > 0 ? "\(stats.unknown) belirtmedi" : nil
+                footnote: stats.unknown > 0 ? L10n.unspecifiedCount(stats.unknown) : nil
             )
             bentoCard(
-                title: "DURAKLAR",
+                title: L10n.stops,
                 value: "\(morningPickups.count)",
                 suffix: nil,
                 valueColor: NeonTheme.onSurface,
-                footnote: isTripActive ? nil : "Servis bekliyor",
+                footnote: isTripActive ? nil : L10n.shuttleWaiting,
                 footnoteIcon: isTripActive ? nil : "clock"
             )
         }

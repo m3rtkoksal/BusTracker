@@ -106,7 +106,7 @@ struct BaseViewShell<VM: BaseViewModel, Content: View, TrailingToolbar: View>: V
             if viewModel.showsBackButton, let onBack {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onBack) {
-                        Label("Geri", systemImage: "chevron.left")
+                        Label(L10n.back, systemImage: "chevron.left")
                     }
                 }
             }
@@ -119,7 +119,7 @@ struct BaseViewShell<VM: BaseViewModel, Content: View, TrailingToolbar: View>: V
             Alert(
                 title: Text(popup.title),
                 message: Text(popup.message),
-                dismissButton: .default(Text("Tamam")) {
+                dismissButton: .default(Text(L10n.ok)) {
                     viewModel.clearAlert()
                 }
             )
