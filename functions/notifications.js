@@ -69,8 +69,50 @@ function buildDriverApproachingMessage({ token, groupId, memberID }) {
   };
 }
 
+/**
+ * Bir yolcu servise bindi — tüm servise (gelmeyenler hariç).
+ */
+function buildPassengerBoardedMessage({ token, groupId, boardedMemberID, boardedName }) {
+  const title = "Servis";
+  const body = `${boardedName} servise bindi`;
+  return {
+    token,
+    notification: { title, body },
+    data: {
+      type: "passenger_boarded",
+      groupId,
+      boardedMemberID,
+      boardedName,
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: CHANNEL_APPROACHING,
+        sound: SOUND_APPROACH_ANDROID,
+        priority: "high",
+        tag: `passenger_boarded_${groupId}_${boardedMemberID}`,
+        ticker: body,
+        visibility: "public",
+        defaultVibrateTimings: false,
+        vibrateTimingsMillis: [0, 140, 90, 140, 90, 220],
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: SOUND_APPROACH_IOS,
+          "thread-id": `trip_${groupId}`,
+        },
+      },
+    },
+  };
+}
+
 module.exports = {
   CHANNEL_TRIP,
   CHANNEL_APPROACHING,
   buildDriverApproachingMessage,
+  buildPassengerBoardedMessage,
 };

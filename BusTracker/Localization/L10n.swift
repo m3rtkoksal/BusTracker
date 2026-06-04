@@ -30,6 +30,11 @@ enum L10n {
     static var attendanceComingSelf: String { L.t("Geliyorum", "I'm coming") }
     static var attendanceNotComingSelf: String { L.t("Gelmiyorum", "I'm not coming") }
     static var attendanceUncertain: String { L.t("Belirsiz", "Undecided") }
+    static var attendanceBoarded: String { L.t("Bindi", "On board") }
+    static var attendanceBoardedSelf: String { L.t("Servise bindim", "On the shuttle") }
+    static func passengerBoardedNotification(_ name: String) -> String {
+        L.t("\(name) servise bindi", "\(name) boarded the shuttle")
+    }
 
     // MARK: - Roles
 

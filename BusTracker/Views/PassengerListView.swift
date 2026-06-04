@@ -18,8 +18,10 @@ struct PassengerListView: View {
         } else {
             List(passengers) { member in
                 HStack(spacing: 12) {
-                    Image(systemName: member.effectiveAttendance.iconName)
-                        .foregroundStyle(color(for: member.effectiveAttendance))
+                    Image(systemName: member.isBoardedToday ? "bus.fill" : member.effectiveAttendance.iconName)
+                        .foregroundStyle(
+                            member.isBoardedToday ? .green : color(for: member.effectiveAttendance)
+                        )
                         .font(.title3)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -34,7 +36,7 @@ struct PassengerListView: View {
                                     .background(Capsule().fill(.blue.opacity(0.15)))
                             }
                         }
-                        Text(member.effectiveAttendance.title)
+                        Text(member.isBoardedToday ? L10n.attendanceBoarded : member.effectiveAttendance.title)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

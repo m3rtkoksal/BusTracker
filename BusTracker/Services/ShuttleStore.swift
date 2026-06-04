@@ -42,6 +42,9 @@ final class ShuttleStore {
     private var activeTripDriverName: String?
     private var lastLocationUploadAt: Date?
     private var lastAppendedRoutePoint: CLLocationCoordinate2D?
+    private var lastDriverTelemetryLocation: CLLocation?
+    private var pickupReachLoggedMemberIDs: Set<String> = []
+    private static let pickupReachRadiusMeters: CLLocationDistance = 120
     private var tripAutoStopTask: Task<Void, Never>?
     private static let minRoutePointDistanceMeters: CLLocationDistance = 20
     private(set) var plannedTripEndAt: Date?
@@ -437,8 +440,12 @@ final class ShuttleStore {
             ], merge: true)
 
         try await resetDriverRoute(groupID: groupID)
+        try await resetTripTelemetry(groupID: groupID)
+        try await resetTripActivity(groupID: groupID)
 
         isTripActive = true
+        lastDriverTelemetryLocation = nil
+        pickupReachLoggedMemberIDs = []
         activeTripGroupID = groupID
         activeTripDriverName = driverName
         lastLocationUploadAt = nil
@@ -458,6 +465,7 @@ final class ShuttleStore {
                 location: location,
                 isActive: true
             )
+            try? await recordPickupReachIfNeeded(groupID: groupID, driverCoordinate: location.coordinate)
             lastLocationUploadAt = Date()
         }
 
@@ -644,20 +652,175 @@ final class ShuttleStore {
                 location: location,
                 isActive: true
             )
+            try await recordPickupReachIfNeeded(groupID: groupID, driverCoordinate: location.coordinate)
+            try await appendDriverTelemetrySample(groupID: groupID, location: location)
             lastLocationUploadAt = now
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
+    func boardedAt(for memberID: String) -> Date? {
+        guard let response = latestAttendanceResponses[memberID] else { return nil }
+        return (response["boardedAt"] as? Timestamp)?.dateValue()
+    }
+
+    func uploadMotionActivitySnapshot(
+        groupID: String,
+        role: MotionActivityRole,
+        memberID: String,
+        automotiveSecondsInWindow: Int,
+        segments: [MotionActivitySegment]
+    ) async throws {
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        let documentID: String
+        switch role {
+        case .driver:
+            documentID = "activity_driver"
+        case .passenger:
+            documentID = "activity_passenger_\(memberID)"
+        }
+
+        let encodedSegments: [[String: Any]] = segments.map { segment in
+            [
+                "startedAt": Timestamp(date: segment.startedAt),
+                "endedAt": Timestamp(date: segment.endedAt),
+                "isAutomotive": segment.isAutomotive
+            ]
+        }
+
+        try await db.collection("groups").document(groupID)
+            .collection("tripActivity").document(documentID)
+            .setData([
+                "tripDate": todayKey,
+                "role": role.rawValue,
+                "memberID": memberID,
+                "automotiveSecondsInWindow": automotiveSecondsInWindow,
+                "segments": encodedSegments,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+    }
+
+    private func recordPickupReachIfNeeded(
+        groupID: String,
+        driverCoordinate: CLLocationCoordinate2D
+    ) async throws {
+        guard isTripActive else { return }
+
+        let driverLocation = CLLocation(
+            latitude: driverCoordinate.latitude,
+            longitude: driverCoordinate.longitude
+        )
+
+        for pickup in morningPickups {
+            guard !pickupReachLoggedMemberIDs.contains(pickup.memberID) else { continue }
+
+            if let member = members.first(where: { $0.id == pickup.memberID }),
+               member.effectiveAttendance == .notComing {
+                continue
+            }
+
+            let pickupLocation = CLLocation(
+                latitude: pickup.latitude,
+                longitude: pickup.longitude
+            )
+            guard driverLocation.distance(from: pickupLocation) <= Self.pickupReachRadiusMeters else {
+                continue
+            }
+
+            pickupReachLoggedMemberIDs.insert(pickup.memberID)
+            try await db.collection("groups").document(groupID)
+                .collection("tripActivity").document("pickupReach_\(pickup.memberID)")
+                .setData([
+                    "tripDate": todayKey,
+                    "memberID": pickup.memberID,
+                    "latitude": pickup.latitude,
+                    "longitude": pickup.longitude,
+                    "reachedAt": FieldValue.serverTimestamp()
+                ], merge: true)
+        }
+    }
+
+    private func resetTripActivity(groupID: String) async throws {
+        let activity = db.collection("groups").document(groupID).collection("tripActivity")
+        let snapshot = try await activity.getDocuments()
+        for document in snapshot.documents {
+            try await document.reference.delete()
+        }
+    }
+
+    private func appendDriverTelemetrySample(groupID: String, location: CLLocation) async throws {
+        let speedMps = TripTelemetry.speedMps(
+            from: location,
+            previous: lastDriverTelemetryLocation
+        )
+        lastDriverTelemetryLocation = location
+        let sample = TripTelemetry.Sample(
+            speedMps: speedMps,
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            sampledAt: Date()
+        )
+        try await writeTelemetrySamples(
+            groupID: groupID,
+            documentID: "driver",
+            appending: sample
+        )
+    }
+
+    private func writeTelemetrySamples(
+        groupID: String,
+        documentID: String,
+        appending newSample: TripTelemetry.Sample
+    ) async throws {
+        let ref = db.collection("groups").document(groupID)
+            .collection("tripTelemetry").document(documentID)
+
+        let snapshot = try await ref.getDocument()
+        var samples = TripTelemetry.samples(from: snapshot.data())
+        samples.append(newSample)
+        let cutoff = Date().addingTimeInterval(-TripTelemetry.sampleWindowSeconds)
+        samples = samples.filter { $0.sampledAt >= cutoff }
+        if samples.count > TripTelemetry.maxStoredSamples {
+            samples = Array(samples.suffix(TripTelemetry.maxStoredSamples))
+        }
+
+        let encoded = samples.map { sample -> [String: Any] in
+            var payload = TripTelemetry.firestorePayload(for: sample)
+            payload["sampledAt"] = Timestamp(date: sample.sampledAt)
+            return payload
+        }
+
+        try await ref.setData([
+            "tripDate": todayKey,
+            "samples": encoded,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    private func resetTripTelemetry(groupID: String) async throws {
+        let telemetry = db.collection("groups").document(groupID).collection("tripTelemetry")
+        let snapshot = try await telemetry.getDocuments()
+        for document in snapshot.documents {
+            try await document.reference.delete()
+        }
+    }
+
     private func uploadLocation(groupID: String, driverName: String, location: CLLocation, isActive: Bool) async throws {
         try await FirebaseSession.shared.ensureAuthenticated()
+
+        let speedMps = TripTelemetry.speedMps(
+            from: location,
+            previous: lastDriverTelemetryLocation
+        )
 
         try await db.collection("groups").document(groupID)
             .collection("live").document("current")
             .setData([
                 "latitude": location.coordinate.latitude,
                 "longitude": location.coordinate.longitude,
+                "speedMps": speedMps,
                 "isActive": isActive,
                 "driverName": driverName,
                 "tripDate": todayKey,
@@ -837,6 +1000,11 @@ final class ShuttleStore {
             } else {
                 updated.attendance = .unknown
             }
+            if let response = latestAttendanceResponses[member.id] {
+                updated.boardedAt = (response["boardedAt"] as? Timestamp)?.dateValue()
+            } else {
+                updated.boardedAt = nil
+            }
             return updated
         }
     }
@@ -844,7 +1012,10 @@ final class ShuttleStore {
     private func resetPassengerAttendance() {
         members = members.map { member in
             var updated = member
-            if member.role == .passenger { updated.attendance = .unknown }
+            if member.role == .passenger {
+                updated.attendance = .unknown
+                updated.boardedAt = nil
+            }
             return updated
         }
     }

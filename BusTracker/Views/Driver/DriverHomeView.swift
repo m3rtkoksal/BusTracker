@@ -22,6 +22,24 @@ struct DriverHomeView: BaseView {
         viewModel.passengerStats(from: store.members)
     }
 
+    private func updateDriverMotionMonitoring() {
+        guard store.isTripActive,
+              let groupID = profile?.primaryGroupID ?? profile?.groupID,
+              let memberID = profile?.memberID,
+              !groupID.isEmpty else {
+            MotionActivityService.shared.stopMonitoring()
+            return
+        }
+
+        MotionActivityService.shared.updateMonitoring(
+            isEnabled: true,
+            role: .driver,
+            groupID: groupID,
+            memberID: memberID,
+            store: store
+        )
+    }
+
     func content() -> some View {
         VStack(spacing: 0) {
             if tabBar.selectedTab != .map {
@@ -44,6 +62,13 @@ struct DriverHomeView: BaseView {
         }
         .onAppear {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
+            updateDriverMotionMonitoring()
+        }
+        .onChange(of: store.isTripActive) { _, _ in
+            updateDriverMotionMonitoring()
+        }
+        .onDisappear {
+            MotionActivityService.shared.stopMonitoring()
         }
         .overlay {
             if viewModel.showAlwaysLocationGuide {

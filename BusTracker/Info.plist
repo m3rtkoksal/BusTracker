@@ -21,6 +21,8 @@
 	<false/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
+	<key>NSMotionUsageDescription</key>
+	<string>Servise bindiğinizi otomatik anlamak için hareket veriniz kullanılır; sürekli konum paylaşımı gerekmez.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

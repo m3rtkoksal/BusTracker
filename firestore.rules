@@ -58,6 +58,14 @@ service cloud.firestore {
         allow delete: if isSignedIn()
           && (request.auth.uid == memberId || isGroupDriver(groupId));
       }
+
+      match /tripTelemetry/{telemetryId} {
+        allow read, write: if isSignedIn();
+      }
+
+      match /tripActivity/{activityDocId} {
+        allow read, write: if isSignedIn();
+      }
     }
   }
 }

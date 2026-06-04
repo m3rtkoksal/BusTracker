@@ -22,6 +22,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseAuthLaunch.start(in: application) {
             // registerForRemoteNotifications, Auth hazır olduktan sonra FirebaseAuthLaunch içinde çağrılır
         }
+
+        if let userInfo = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+            Task { @MainActor in
+                PushNotificationRouter.handle(userInfo: userInfo)
+            }
+        }
+
         return true
     }
 

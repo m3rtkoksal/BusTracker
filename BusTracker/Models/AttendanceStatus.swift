@@ -29,4 +29,8 @@ enum AttendanceStatus: String, Codable, CaseIterable {
         case .unknown: L10n.attendanceUncertain
         }
     }
+
+    func mapTabLabel(isBoarded: Bool) -> String {
+        isBoarded ? L10n.attendanceBoardedSelf : mapTabLabel
+    }
 }

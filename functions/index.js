@@ -8,6 +8,7 @@ const {
   fetchYesterdayNotComingMemberIds,
 } = require("./weather");
 const { buildDriverApproachingMessage } = require("./notifications");
+const { evaluateGroupBoarding } = require("./boarding");
 
 initializeApp();
 
@@ -202,5 +203,22 @@ exports.notifyDriverApproachingPickup = onDocumentWritten(
         { merge: true }
       );
     }
+  }
+);
+
+exports.evaluatePassengerBoarded = onDocumentWritten(
+  "groups/{groupId}/tripActivity/{activityDocId}",
+  async (event) => {
+    const groupId = event.params.groupId;
+    await evaluateGroupBoarding(getFirestore(), groupId);
+  }
+);
+
+exports.evaluatePassengerBoardedOnTelemetry = onDocumentWritten(
+  "groups/{groupId}/tripTelemetry/{telemetryId}",
+  async (event) => {
+    if (event.params.telemetryId !== "driver") return;
+    const groupId = event.params.groupId;
+    await evaluateGroupBoarding(getFirestore(), groupId);
   }
 );

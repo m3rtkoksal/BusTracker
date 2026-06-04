@@ -186,16 +186,51 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .list]
     }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let userInfo = response.notification.request.content.userInfo
+        await MainActor.run {
+            PushNotificationRouter.handle(userInfo: userInfo)
+        }
+    }
 }
 
 extension NotificationService {
     /// Servis çağrısı — korna sesi (bundle: approach_tink.caf).
     static let approachSoundName = "approach_tink.caf"
 
+    static func notificationType(from userInfo: [AnyHashable: Any]) -> String? {
+        if let type = userInfo["type"] as? String { return type }
+        if let gcm = userInfo["gcm.notification.type"] as? String { return gcm }
+        return nil
+    }
+
     static func isShuttleCallNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
-        if userInfo["type"] as? String == "driver_approaching" { return true }
-        if let gcm = userInfo["gcm.notification.type"] as? String, gcm == "driver_approaching" { return true }
-        return false
+        notificationType(from: userInfo) == "driver_approaching"
+    }
+}
+
+/// `trip_started` bildirimine basınca yolcu harita sekmesine gider (yoklama sheet'i ayrı kurallarla).
+@MainActor
+enum PushNotificationRouter {
+    static let openPassengerMapNotification = Notification.Name("PushNotificationRouter.openPassengerMap")
+
+    private static var pendingOpenPassengerMap = false
+
+    static func handle(userInfo: [AnyHashable: Any]) {
+        let type = NotificationService.notificationType(from: userInfo)
+        guard type == "trip_started" || type == "passenger_boarded" else { return }
+        pendingOpenPassengerMap = true
+        NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
+    }
+
+    static func consumePendingOpenPassengerMap() -> Bool {
+        guard pendingOpenPassengerMap else { return false }
+        pendingOpenPassengerMap = false
+        return true
     }
 }
 

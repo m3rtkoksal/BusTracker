@@ -23,6 +23,9 @@ struct PassengerHomeView: BaseView {
     @State private var showHolidayModePicker = false
     @State private var holidayModeSelectedEndDate = Date()
     @State private var isSavingHolidayMode = false
+#if canImport(UIKit)
+    @Environment(\.scenePhase) private var scenePhase
+#endif
 
     private var profile: UserProfile? { session.profile }
 
@@ -102,11 +105,20 @@ struct PassengerHomeView: BaseView {
             presentMyServicesForSmlerInviteIfNeeded()
             viewModel.onAppear(store: store, session: session)
             viewModel.loadSavedPickup(from: store, session: session)
+            if PushNotificationRouter.consumePendingOpenPassengerMap() {
+                openMapFromTripStartedNotification()
+            }
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
                 attendance: myAttendance
             )
+            updatePassengerMotionMonitoring()
         }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openPassengerMapNotification)) { _ in
+            openMapFromTripStartedNotification()
+        }
+#endif
         .task(id: tripAttendancePromptKey) {
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
@@ -154,7 +166,35 @@ struct PassengerHomeView: BaseView {
                 isActive: isActive,
                 attendance: myAttendance
             )
+            updatePassengerMotionMonitoring()
         }
+#if canImport(UIKit)
+        .onChange(of: scenePhase) { _, _ in
+            updatePassengerMotionMonitoring()
+        }
+#endif
+        .onDisappear {
+            MotionActivityService.shared.stopMonitoring()
+        }
+    }
+
+    private func updatePassengerMotionMonitoring() {
+#if canImport(UIKit)
+        let isForeground = scenePhase == .active
+#else
+        let isForeground = true
+#endif
+        let groupID = profile?.primaryGroupID ?? profile?.groupID ?? ""
+        let memberID = profile?.memberID ?? ""
+        let shouldMonitor = isForeground && !groupID.isEmpty && !memberID.isEmpty
+
+        MotionActivityService.shared.updateMonitoring(
+            isEnabled: shouldMonitor,
+            role: .passenger,
+            groupID: groupID,
+            memberID: memberID,
+            store: store
+        )
     }
 
     @ViewBuilder
@@ -248,6 +288,11 @@ struct PassengerHomeView: BaseView {
     }
 
     private func openMapFocusedOnPickup() {
+        openMapFromTripStartedNotification()
+    }
+
+    /// Servis yola çıktı bildirimine basınca harita sekmesi (+ sefer aktifse odak).
+    private func openMapFromTripStartedNotification() {
         tabBar.select(.map)
         hasInitializedMapCamera = true
         focusMapOnPickup(animated: false)
@@ -804,14 +849,17 @@ struct PassengerHomeView: BaseView {
     }
 
     private var compactAttendanceInfoBox: some View {
-        let accent = attendanceColor(myAttendance)
+        let isBoarded = myMember?.isBoardedToday == true
+        let accent = isBoarded ? NeonTheme.secondary : attendanceColor(myAttendance)
+        let label = myAttendance.mapTabLabel(isBoarded: isBoarded)
+        let icon = isBoarded ? "bus.fill" : myAttendance.iconName
         return Button {
             tabBar.select(.service)
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: myAttendance.iconName)
+                Image(systemName: icon)
                     .font(.system(size: 11, weight: .semibold))
-                Text(myAttendance.mapTabLabel.uppercased())
+                Text(label.uppercased())
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .lineLimit(1)
                 Text(L10n.change)
