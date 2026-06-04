@@ -155,6 +155,15 @@ final class SmlerDeepLinkService {
 
             guard (200 ... 299).contains(http.statusCode) else {
                 let detail = apiErrorMessage(from: data) ?? shortAPIErrorHint(status: http.statusCode)
+                if let existing = existingShortLinkURL(
+                    code: code,
+                    status: http.statusCode,
+                    responseBody: responseText
+                ) {
+                    log("Mevcut kısa link kullanılıyor: \(existing.absoluteString)")
+                    cacheURL(existing, for: code)
+                    return .success(existing)
+                }
                 return .failure(L10n.smlerLinkFailed(http.statusCode, detail))
             }
             if let url = parseShortURL(from: data) ?? SmlerConfig.shortLinkURL(shortCode: code) {
@@ -186,6 +195,16 @@ final class SmlerDeepLinkService {
     private func shortAPIErrorHint(status: Int) -> String {
         if status == 404 { return L10n.apiURLNotFound }
         return L10n.checkXcodeConsole
+    }
+
+    /// Smler'de shortCode zaten kayıtlıysa (400) oluşturma yerine bilinen kısa URL kullanılır.
+    private func existingShortLinkURL(code: String, status: Int, responseBody: String) -> URL? {
+        guard status == 400 || status == 409 else { return nil }
+        let body = responseBody.lowercased()
+        guard body.contains("already exists") || body.contains("unable to create short url") else {
+            return nil
+        }
+        return SmlerConfig.shortLinkURL(shortCode: code)
     }
 
     private func resolveServiceCode(fromSmlerURL url: URL) async -> String? {

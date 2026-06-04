@@ -40,9 +40,9 @@ final class DriverHomeViewModel: BaseViewModel {
     func passengerStats(from members: [ShuttleMember]) -> DriverPassengerStats {
         let passengers = members.filter { $0.role == .passenger }
         return DriverPassengerStats(
-            coming: passengers.filter { $0.attendance == .coming }.count,
-            notComing: passengers.filter { $0.attendance == .notComing }.count,
-            unknown: passengers.filter { $0.attendance == .unknown }.count
+            coming: passengers.filter { $0.effectiveAttendance == .coming }.count,
+            notComing: passengers.filter { $0.effectiveAttendance == .notComing }.count,
+            unknown: passengers.filter { $0.effectiveAttendance == .unknown }.count
         )
     }
 

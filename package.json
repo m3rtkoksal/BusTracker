@@ -4,7 +4,8 @@
   "scripts": {
     "firebase": "firebase",
     "firebase:login": "firebase login",
-    "firebase:deploy": "firebase deploy --only functions"
+    "firebase:deploy": "firebase deploy --only functions",
+    "firebase:deploy:hosting": "firebase deploy --only hosting"
   },
   "devDependencies": {
     "firebase-tools": "^14.0.0"

@@ -376,16 +376,16 @@ struct DriverHomeView: BaseView {
             VStack(spacing: 0) {
                 ForEach(passengers) { member in
                     HStack(spacing: 12) {
-                        Image(systemName: member.attendance.iconName)
+                        Image(systemName: member.effectiveAttendance.iconName)
                             .font(.title3)
-                            .foregroundStyle(attendanceColor(member.attendance))
+                            .foregroundStyle(attendanceColor(member.effectiveAttendance))
                             .frame(width: 28)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(member.name)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(NeonTheme.onSurface)
-                            Text(member.attendance.title)
+                            Text(member.effectiveAttendance.title)
                                 .font(.caption)
                                 .foregroundStyle(NeonTheme.onSurfaceVariant)
                         }
@@ -516,7 +516,7 @@ struct DriverHomeView: BaseView {
         let passengerIDs = Set(passengers.map(\.id))
         return store.morningPickups.filter { pickup in
             guard passengerIDs.contains(pickup.memberID) else { return false }
-            let attendance = passengers.first { $0.id == pickup.memberID }?.attendance
+            let attendance = passengers.first { $0.id == pickup.memberID }?.effectiveAttendance
             return attendance != .notComing
         }
     }

@@ -5,11 +5,20 @@ struct ShuttleMember: Identifiable, Codable, Hashable {
     let name: String
     let role: MemberRole
     var attendance: AttendanceStatus
+    /// `yyyy-MM-dd` — bitiş günü dahil tatil.
+    var holidayModeEndDate: String?
 
-    init(id: String, name: String, role: MemberRole, attendance: AttendanceStatus = .unknown) {
+    init(
+        id: String,
+        name: String,
+        role: MemberRole,
+        attendance: AttendanceStatus = .unknown,
+        holidayModeEndDate: String? = nil
+    ) {
         self.id = id
         self.name = name
         self.role = role
         self.attendance = attendance
+        self.holidayModeEndDate = holidayModeEndDate
     }
 }

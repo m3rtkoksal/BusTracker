@@ -590,6 +590,43 @@ final class ShuttleStore {
         // Gelmiyorum: biniş noktası silinmez; sürücü haritasında katılıma göre gizlenir.
     }
 
+    func setHolidayMode(groupID: String, memberID: String, endDate: Date) async throws {
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        let endKey = HolidayMode.dateKey(from: endDate)
+        try await db.collection("groups").document(groupID)
+            .collection("members").document(memberID)
+            .setData([
+                "holidayModeEndDate": endKey,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+
+        members = members.map { member in
+            guard member.id == memberID else { return member }
+            var updated = member
+            updated.holidayModeEndDate = endKey
+            return updated
+        }
+    }
+
+    func clearHolidayMode(groupID: String, memberID: String) async throws {
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        try await db.collection("groups").document(groupID)
+            .collection("members").document(memberID)
+            .updateData([
+                "holidayModeEndDate": FieldValue.delete(),
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+
+        members = members.map { member in
+            guard member.id == memberID else { return member }
+            var updated = member
+            updated.holidayModeEndDate = nil
+            return updated
+        }
+    }
+
     private func handleLocationUpdate(_ location: CLLocation) async {
         guard isTripActive,
               let groupID = activeTripGroupID,
@@ -863,7 +900,13 @@ final class ShuttleStore {
             let role = MemberRole(rawValue: roleRaw)
         else { return nil }
 
-        return ShuttleMember(id: document.documentID, name: name, role: role)
+        let holidayEnd = stringValue(data["holidayModeEndDate"])
+        return ShuttleMember(
+            id: document.documentID,
+            name: name,
+            role: role,
+            holidayModeEndDate: holidayEnd
+        )
     }
 
     private static func morningPickup(from document: QueryDocumentSnapshot) -> MorningPickup? {

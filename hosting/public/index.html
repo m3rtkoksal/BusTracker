@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mika Technology — Uygulamalar</title>
+    <meta
+      name="description"
+      content="Mika Technology: Shuttle Live, VibeCheck Dating, FreshStart ve HUD Car Speedometer iOS uygulamaları."
+      data-en-description="Mika Technology: Shuttle Live, VibeCheck Dating, FreshStart, and HUD Car Speedometer for iOS."
+    />
+    <meta property="og:title" content="Mika Technology" />
+    <meta
+      property="og:description"
+      content="Sürücü konumunu haritada izleyin, bugün geleceğinizi bildirin, servis koduyla katılın."
+    />
+    <meta property="og:image" content="https://mika.technology/shuttle-live-og.png" />
+    <meta property="og:url" content="https://mika.technology/" />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/site.css?v=5" />
+    <link rel="icon" href="/shuttle-live-og.png" type="image/png" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container inner">
+        <div class="brand">
+          <strong>Mika Technology</strong>
+          <span data-i18n="brand-tagline" data-tr="iOS uygulamaları" data-en="iOS apps">iOS uygulamaları</span>
+        </div>
+        <div class="nav-actions">
+          <div class="lang-toggle" role="group" aria-label="Language">
+            <button type="button" data-lang="tr">TR</button>
+            <button type="button" data-lang="en">EN</button>
+          </div>
+          <a class="btn btn-primary" id="app-store-link" href="https://apps.apple.com/tr/app/shuttle-live/id6772752037?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="cta-download"
+            data-tr="Uygulamayı indir"
+            data-en="Download the app">Uygulamayı indir</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-tabs-wrap" id="app-tabs">
+      <div class="container">
+        <p class="app-tabs-label" data-i18n="tabs-label" data-tr="Uygulama seçin" data-en="Choose an app">Uygulama seçin</p>
+        <div class="app-tabs" role="tablist" aria-label="Uygulamalar">
+          <button type="button" class="app-tab active" role="tab" aria-selected="true" aria-controls="panel-shuttle" data-app="shuttle">Shuttle Live</button>
+          <button type="button" class="app-tab" role="tab" aria-selected="false" aria-controls="panel-vibe" data-app="vibe">VibeCheck Dating</button>
+          <button type="button" class="app-tab" role="tab" aria-selected="false" aria-controls="panel-fresh" data-app="fresh">FreshStart</button>
+          <button type="button" class="app-tab" role="tab" aria-selected="false" aria-controls="panel-hud" data-app="hud">HUD</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <div class="app-panel active" data-app="shuttle" id="panel-shuttle">
+      <section class="hero">
+        <div class="container hero-grid">
+          <div>
+            <div class="badge-row">
+              <span class="badge" data-i18n="badge-live" data-tr="Canlı konum" data-en="Live location">Canlı konum</span>
+              <span class="badge" data-i18n="badge-ios" data-tr="iOS" data-en="iOS">iOS</span>
+            </div>
+            <h1 data-i18n-html="hero-title"
+              data-tr-html="Servisiniz artık <em>Shuttle Live</em> ile görünür."
+              data-en-html="Your shuttle is visible with <em>Shuttle Live</em>.">
+              Servisiniz artık <em>Shuttle Live</em> ile görünür.
+            </h1>
+            <p class="lead" data-i18n="hero-lead"
+              data-tr="Sürücüler servisi başlatır ve konumu paylaşır; yolcular haritadan takip eder, bugün gelip gelmeyeceğini bildirir ve biniş noktasını kaydeder."
+              data-en="Drivers start the shuttle and share location; passengers track on the map, report attendance, and save their pickup point.">
+              Sürücüler servisi başlatır ve konumu paylaşır; yolcular haritadan takip eder, bugün gelip gelmeyeceğini bildirir ve biniş noktasını kaydeder.
+            </p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" id="app-store-hero" href="https://apps.apple.com/tr/app/shuttle-live/id6772752037?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="cta-appstore"
+                data-tr="App Store'da indir"
+                data-en="Get on the App Store">App Store'da indir</a>
+              <a class="btn btn-secondary" href="#how" data-i18n="cta-how"
+                data-tr="Nasıl çalışır?"
+                data-en="How it works">Nasıl çalışır?</a>
+            </div>
+          </div>
+          <div class="phone-mock" aria-hidden="true">
+            <div class="screen">
+              <div class="mock-title" data-i18n="mock-code-label" data-tr="Servis kodu" data-en="Shuttle code">Servis kodu</div>
+              <div class="mock-code">KAD42</div>
+              <div class="mock-stats">
+                <div class="mock-stat">
+                  <strong>12</strong>
+                  <span data-i18n="mock-coming" data-tr="Gelecek" data-en="Coming">Gelecek</span>
+                </div>
+                <div class="mock-stat">
+                  <strong>3</strong>
+                  <span data-i18n="mock-not" data-tr="Gelmeyecek" data-en="Not coming">Gelmeyecek</span>
+                </div>
+                <div class="mock-stat">
+                  <strong>2</strong>
+                  <span data-i18n="mock-unknown" data-tr="Belirtmedi" data-en="No response">Belirtmedi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="container">
+          <p class="section-title" data-i18n="sec-features" data-tr="Özellikler" data-en="Features">Özellikler</p>
+          <h2 class="section-heading" data-i18n="features-heading"
+            data-tr="Sürücü ve yolcu için tek uygulama"
+            data-en="One app for drivers and passengers">Sürücü ve yolcu için tek uygulama</h2>
+          <div class="features">
+            <article class="feature-card">
+              <div class="icon">📍</div>
+              <h3 data-i18n="f1-title" data-tr="Canlı harita" data-en="Live map">Canlı harita</h3>
+              <p data-i18n="f1-body"
+                data-tr="Servis başladığında sürücü konumu yolculara anlık yansır."
+                data-en="When the shuttle starts, the driver's location updates for passengers in real time.">
+                Servis başladığında sürücü konumu yolculara anlık yansır.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="icon">✅</div>
+              <h3 data-i18n="f2-title" data-tr="Katılım bildirimi" data-en="Attendance">Katılım bildirimi</h3>
+              <p data-i18n="f2-body"
+                data-tr="Yolcular bugün gelip gelmeyeceğini seçer; sürücü listeyi görür."
+                data-en="Passengers say if they're coming today; drivers see the list at a glance.">
+                Yolcular bugün gelip gelmeyeceğini seçer; sürücü listeyi görür.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="icon">🔗</div>
+              <h3 data-i18n="f3-title" data-tr="Servis kodu &amp; davet" data-en="Shuttle code &amp; invite">Servis kodu &amp; davet</h3>
+              <p data-i18n="f3-body"
+                data-tr="6 haneli kod veya davet linki ile yolcular servise katılır."
+                data-en="Passengers join with a 6-digit code or an invite link.">
+                6 haneli kod veya davet linki ile yolcular servise katılır.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="icon">🌤️</div>
+              <h3 data-i18n="f4-title" data-tr="Hava önerisi" data-en="Weather tips">Hava önerisi</h3>
+              <p data-i18n="f4-body"
+                data-tr="Biniş noktasına göre giyim önerisi (şemsiye, mont vb.)."
+                data-en="Clothing tips based on pickup location (umbrella, jacket, etc.).">
+                Biniş noktasına göre giyim önerisi (şemsiye, mont vb.).
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="how">
+        <div class="container">
+          <p class="section-title" data-i18n="sec-how" data-tr="Başlangıç" data-en="Getting started">Başlangıç</p>
+          <h2 class="section-heading" data-i18n="how-heading"
+            data-tr="Üç adımda kullanıma hazır"
+            data-en="Ready in three steps">Üç adımda kullanıma hazır</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div>
+                <h3 data-i18n="s1-title" data-tr="Uygulamayı indirin" data-en="Download the app">Uygulamayı indirin</h3>
+                <p data-i18n="s1-body"
+                  data-tr="Shuttle Live'ı App Store'dan ücretsiz indirin."
+                  data-en="Download Shuttle Live free from the App Store.">
+                  Shuttle Live'ı App Store'dan ücretsiz indirin.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div>
+                <h3 data-i18n="s2-title" data-tr="Rolünüzü seçin" data-en="Choose your role">Rolünüzü seçin</h3>
+                <p data-i18n="s2-body"
+                  data-tr="Sürücü servis oluşturur; yolcu servis koduyla katılır. Apple ile giriş."
+                  data-en="Drivers create a shuttle; passengers join with a code. Sign in with Apple.">
+                  Sürücü servis oluşturur; yolcu servis koduyla katılır. Apple ile giriş.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div>
+                <h3 data-i18n="s3-title" data-tr="Sabah rutini" data-en="Morning routine">Sabah rutini</h3>
+                <p data-i18n="s3-body"
+                  data-tr="Sürücü servisi başlatır; yolcular haritayı açar ve katılımını bildirir."
+                  data-en="Driver starts the shuttle; passengers open the map and confirm attendance.">
+                  Sürücü servisi başlatır; yolcular haritayı açar ve katılımını bildirir.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="roles">
+        <div class="container">
+          <p class="section-title" data-i18n="sec-roles" data-tr="Roller" data-en="Roles">Roller</p>
+          <h2 class="section-heading" data-i18n="roles-heading"
+            data-tr="Kim ne yapar?"
+            data-en="Who does what?">Kim ne yapar?</h2>
+          <div class="roles">
+            <article class="role-card driver">
+              <h3 data-i18n="role-driver" data-tr="Sürücü" data-en="Driver">Sürücü</h3>
+              <p data-i18n="role-driver-body"
+                data-tr="Servisi oluşturur, sabah başlatır, konumu paylaşır ve yolcu listesini görür."
+                data-en="Creates the shuttle, starts it in the morning, shares location, and sees the passenger list.">
+                Servisi oluşturur, sabah başlatır, konumu paylaşır ve yolcu listesini görür.
+              </p>
+            </article>
+            <article class="role-card passenger">
+              <h3 data-i18n="role-passenger" data-tr="Yolcu" data-en="Passenger">Yolcu</h3>
+              <p data-i18n="role-passenger-body"
+                data-tr="Kodla katılır, haritadan takip eder, biniş noktasını ve katılımını kaydeder."
+                data-en="Joins with a code, tracks on the map, saves pickup point and attendance.">
+                Kodla katılır, haritadan takip eder, biniş noktasını ve katılımını kaydeder.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <div class="app-panel" data-app="vibe" id="panel-vibe" hidden>
+        <section class="hero">
+          <div class="container hero-grid">
+            <div>
+              <div class="badge-row">
+                <span class="badge" data-i18n="vibe-b1" data-tr="Uyum analizi" data-en="Compatibility">Uyum analizi</span>
+                <span class="badge" data-i18n="badge-ios" data-tr="iOS" data-en="iOS">iOS</span>
+              </div>
+              <h1 data-i18n-html="vibe-hero-title"
+                data-tr-html="İlişki dinamiklerini <em>VibeCheck</em> ile görün."
+                data-en-html="See relationship dynamics with <em>VibeCheck</em>.">
+                İlişki dinamiklerini <em>VibeCheck</em> ile görün.
+              </h1>
+              <p class="lead" data-i18n="vibe-hero-lead"
+                data-tr="Profilinizi oluşturun, VibeCode ile paylaşın ve yapay zeka destekli uyum özetleri, buzkıran önerileri ve randevu sonrası geri bildirimle daha bilinçli ilerleyin."
+                data-en="Build your profile, share your VibeCode, and move forward with AI compatibility summaries, icebreakers, and optional post-date feedback.">
+                Profilinizi oluşturun, VibeCode ile paylaşın ve yapay zeka destekli uyum özetleri, buzkıran önerileri ve randevu sonrası geri bildirimle daha bilinçli ilerleyin.
+              </p>
+              <div class="hero-cta">
+                <a class="btn btn-primary app-store-cta" href="https://apps.apple.com/tr/app/vibecheck-dating/id6766612780?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="cta-appstore"
+                  data-tr="App Store'da indir"
+                  data-en="Get on the App Store">App Store'da indir</a>
+              </div>
+            </div>
+            <div class="phone-mock" aria-hidden="true">
+              <div class="screen">
+                <div class="mock-title" data-i18n="vibe-mock-label" data-tr="Uyum skoru" data-en="Compatibility score">Uyum skoru</div>
+                <div class="mock-code">82%</div>
+                <div class="mock-pills">
+                  <span class="mock-pill"><strong>+</strong> <span data-i18n="vibe-m1" data-tr="İletişim" data-en="Communication">İletişim</span></span>
+                  <span class="mock-pill"><strong>~</strong> <span data-i18n="vibe-m2" data-tr="Beklenti" data-en="Expectations">Beklenti</span></span>
+                  <span class="mock-pill"><strong>✓</strong> <span data-i18n="vibe-m3" data-tr="Özet" data-en="Summary">Özet</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="features-vibe">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-features" data-tr="Özellikler" data-en="Features">Özellikler</p>
+            <h2 class="section-heading" data-i18n="vibe-features-heading"
+              data-tr="Dating için rehberlik aracı"
+              data-en="A guide for modern dating">Dating için rehberlik aracı</h2>
+            <div class="features">
+              <article class="feature-card">
+                <div class="icon">💜</div>
+                <h3 data-i18n="vf1-title" data-tr="VibeCode" data-en="VibeCode">VibeCode</h3>
+                <p data-i18n="vf1-body" data-tr="Kodunuzu paylaşın; karşı tarafın kodu veya kullanıcı adıyla hızlı uyum analizi." data-en="Share your code; run compatibility from their code or username.">Kodunuzu paylaşın; karşı tarafın kodu veya kullanıcı adıyla hızlı uyum analizi.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">✨</div>
+                <h3 data-i18n="vf2-title" data-tr="AI özet" data-en="AI summary">AI özet</h3>
+                <p data-i18n="vf2-body" data-tr="Güçlü yönler, sürtüşmeler ve iletişim tarzı sade bir dille." data-en="Strengths, friction points, and communication style in plain language.">Güçlü yönler, sürtüşmeler ve iletişim tarzı sade bir dille.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">💬</div>
+                <h3 data-i18n="vf3-title" data-tr="Buzkıranlar" data-en="Icebreakers">Buzkıranlar</h3>
+                <p data-i18n="vf3-body" data-tr="Sohbete başlamak için öneriler ve öngörü kartları." data-en="Conversation starters and insight cards.">Sohbete başlamak için öneriler ve öngörü kartları.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">🎙️</div>
+                <h3 data-i18n="vf4-title" data-tr="Ses analizi" data-en="Voice analysis">Ses analizi</h3>
+                <p data-i18n="vf4-body" data-tr="İsteğe bağlı ses kaydından karakter analizi." data-en="Optional character insights from voice recordings.">İsteğe bağlı ses kaydından karakter analizi.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">⭐</div>
+                <h3 data-i18n="vf5-title" data-tr="Karşılıklı puan" data-en="Mutual ratings">Karşılıklı puan</h3>
+                <p data-i18n="vf5-body" data-tr="Gizlilik odaklı randevu sonrası değerlendirme." data-en="Privacy-focused post-date ratings.">Gizlilik odaklı randevu sonrası değerlendirme.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+        <section id="how-vibe">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-how" data-tr="Başlangıç" data-en="Getting started">Başlangıç</p>
+            <h2 class="section-heading" data-i18n="how-heading" data-tr="Üç adımda kullanıma hazır" data-en="Ready in three steps">Üç adımda kullanıma hazır</h2>
+            <div class="steps">
+              <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                  <h3 data-i18n="s1-title" data-tr="Uygulamayı indirin" data-en="Download the app">Uygulamayı indirin</h3>
+                  <p data-i18n="vibe-s1-body" data-tr="VibeCheck Dating'i App Store'dan ücretsiz indirin." data-en="Download VibeCheck Dating free from the App Store.">VibeCheck Dating'i App Store'dan ücretsiz indirin.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                  <h3 data-i18n="vibe-s2-title" data-tr="Profil &amp; VibeCode" data-en="Profile &amp; VibeCode">Profil &amp; VibeCode</h3>
+                  <p data-i18n="vibe-s2-body" data-tr="Kısa profil akışını tamamlayın ve kodunuzu paylaşın." data-en="Complete your profile and share your VibeCode.">Kısa profil akışını tamamlayın ve kodunuzu paylaşın.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">3</div>
+                <div>
+                  <h3 data-i18n="vibe-s3-title" data-tr="Uyumu görün" data-en="See compatibility">Uyumu görün</h3>
+                  <p data-i18n="vibe-s3-body" data-tr="Skor, özet ve önerilerle daha bilinçli karar verin." data-en="Use scores, summaries, and tips to decide with more clarity.">Skor, özet ve önerilerle daha bilinçli karar verin.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="app-panel" data-app="fresh" id="panel-fresh" hidden>
+        <section class="hero">
+          <div class="container hero-grid">
+            <div>
+              <div class="badge-row">
+                <span class="badge" data-i18n="fresh-b1" data-tr="Sağlık &amp; fitness" data-en="Health &amp; fitness">Sağlık &amp; fitness</span>
+                <span class="badge" data-i18n="badge-ios" data-tr="iOS" data-en="iOS">iOS</span>
+              </div>
+              <h1 data-i18n-html="fresh-hero-title"
+                data-tr-html="Sağlıklı yaşam yolculuğunuz <em>FreshStart</em> ile."
+                data-en-html="Your wellness journey with <em>FreshStart</em>.">
+                Sağlıklı yaşam yolculuğunuz <em>FreshStart</em> ile.
+              </h1>
+              <p class="lead" data-i18n="fresh-hero-lead"
+                data-tr="Kişiselleştirilmiş öğün planları, kolay tarifler, HealthKit entegrasyonu ve ilerleme takibi — hedeflerinize uygun esnek bir wellness arkadaşı."
+                data-en="Personalized meal plans, easy recipes, HealthKit sync, and progress tracking — a flexible wellness companion for your goals.">
+                Kişiselleştirilmiş öğün planları, kolay tarifler, HealthKit entegrasyonu ve ilerleme takibi — hedeflerinize uygun esnek bir wellness arkadaşı.
+              </p>
+              <div class="hero-cta">
+                <a class="btn btn-primary app-store-cta" href="https://apps.apple.com/tr/app/freshstart/id6738893033?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="cta-appstore"
+                  data-tr="App Store'da indir"
+                  data-en="Get on the App Store">App Store'da indir</a>
+              </div>
+            </div>
+            <div class="phone-mock" aria-hidden="true">
+              <div class="screen">
+                <div class="mock-title" data-i18n="fresh-mock-label" data-tr="Günlük plan" data-en="Daily plan">Günlük plan</div>
+                <div class="mock-code">2.4k</div>
+                <div class="mock-stats">
+                  <div class="mock-stat">
+                    <strong>3</strong>
+                    <span data-i18n="fresh-m1" data-tr="Öğün" data-en="Meals">Öğün</span>
+                  </div>
+                  <div class="mock-stat">
+                    <strong>8</strong>
+                    <span data-i18n="fresh-m2" data-tr="Su" data-en="Water">Su</span>
+                  </div>
+                  <div class="mock-stat">
+                    <strong>1</strong>
+                    <span data-i18n="fresh-m3" data-tr="Rozet" data-en="Badge">Rozet</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="features-fresh">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-features" data-tr="Özellikler" data-en="Features">Özellikler</p>
+            <h2 class="section-heading" data-i18n="fresh-features-heading"
+              data-tr="Hedeflerinize göre plan"
+              data-en="Plans built around you">Hedeflerinize göre plan</h2>
+            <div class="features">
+              <article class="feature-card">
+                <div class="icon">🥗</div>
+                <h3 data-i18n="ff1-title" data-tr="Öğün planları" data-en="Meal plans">Öğün planları</h3>
+                <p data-i18n="ff1-body" data-tr="Vegan, vejetaryen veya esnek diyet — tercihlerinize göre." data-en="Vegan, vegetarian, or flexible diets tailored to you.">Vegan, vejetaryen veya esnek diyet — tercihlerinize göre.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">📖</div>
+                <h3 data-i18n="ff2-title" data-tr="Kolay tarifler" data-en="Simple recipes">Kolay tarifler</h3>
+                <p data-i18n="ff2-body" data-tr="Adım adım tarifler ve malzeme listeleri." data-en="Step-by-step recipes with ingredient lists.">Adım adım tarifler ve malzeme listeleri.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">❤️</div>
+                <h3 data-i18n="ff3-title" data-tr="HealthKit" data-en="HealthKit">HealthKit</h3>
+                <p data-i18n="ff3-body" data-tr="Aktivite ve sağlık verilerinizle planları optimize edin." data-en="Optimize plans with your activity and health data.">Aktivite ve sağlık verilerinizle planları optimize edin.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">🏆</div>
+                <h3 data-i18n="ff4-title" data-tr="İlerleme &amp; rozetler" data-en="Progress &amp; badges">İlerleme &amp; rozetler</h3>
+                <p data-i18n="ff4-body" data-tr="Grafikler, haftalık görevler ve motivasyon rozetleri." data-en="Charts, weekly challenges, and motivation badges.">Grafikler, haftalık görevler ve motivasyon rozetleri.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+        <section id="how-fresh">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-how" data-tr="Başlangıç" data-en="Getting started">Başlangıç</p>
+            <h2 class="section-heading" data-i18n="how-heading" data-tr="Üç adımda kullanıma hazır" data-en="Ready in three steps">Üç adımda kullanıma hazır</h2>
+            <div class="steps">
+              <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                  <h3 data-i18n="s1-title" data-tr="Uygulamayı indirin" data-en="Download the app">Uygulamayı indirin</h3>
+                  <p data-i18n="fresh-s1-body" data-tr="FreshStart'ı App Store'dan indirin." data-en="Download FreshStart from the App Store.">FreshStart'ı App Store'dan indirin.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                  <h3 data-i18n="fresh-s2-title" data-tr="Hedeflerinizi seçin" data-en="Set your goals">Hedeflerinizi seçin</h3>
+                  <p data-i18n="fresh-s2-body" data-tr="Diyet tercihleri ve yaşam tarzınıza göre plan oluşturun." data-en="Build a plan from your diet preferences and lifestyle.">Diyet tercihleri ve yaşam tarzınıza göre plan oluşturun.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">3</div>
+                <div>
+                  <h3 data-i18n="fresh-s3-title" data-tr="Takip edin" data-en="Track progress">Takip edin</h3>
+                  <p data-i18n="fresh-s3-body" data-tr="Öğünleri takip edin, ilerlemenizi görün, motive kalın." data-en="Follow meals, watch progress, stay motivated.">Öğünleri takip edin, ilerlemenizi görün, motive kalın.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="app-panel" data-app="hud" id="panel-hud" hidden>
+        <section class="hero">
+          <div class="container hero-grid">
+            <div>
+              <div class="badge-row">
+                <span class="badge" data-i18n="hud-b1" data-tr="Heads-up display" data-en="Heads-up display">Heads-up display</span>
+                <span class="badge" data-i18n="badge-ios" data-tr="iOS" data-en="iOS">iOS</span>
+              </div>
+              <h1 data-i18n-html="hud-hero-title"
+                data-tr-html="Hızı camdan okuyun: <em>HUD Car Speedometer</em>"
+                data-en-html="Read speed on the glass with <em>HUD Car Speedometer</em>.">
+                Hızı camdan okuyun: <em>HUD Car Speedometer</em>
+              </h1>
+              <p class="lead" data-i18n="hud-hero-lead"
+                data-tr="Telefonu panele koyun, ayna modunda cam yansımasıyla hızı net görün. km/sa veya mph, hız limiti rozeti, limit aşım uyarısı — hesap yok, sade arayüz."
+                data-en="Mount your phone on the dash and see speed clearly via mirror reflection. km/h or mph, speed limit badge, overspeed alert — no account, minimal UI.">
+                Telefonu panele koyun, ayna modunda cam yansımasıyla hızı net görün. km/sa veya mph, hız limiti rozeti, limit aşım uyarısı — hesap yok, sade arayüz.
+              </p>
+              <div class="hero-cta">
+                <a class="btn btn-primary app-store-cta" href="https://apps.apple.com/tr/app/hud-car-speedometer/id6753988482?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="cta-appstore"
+                  data-tr="App Store'da indir"
+                  data-en="Get on the App Store">App Store'da indir</a>
+              </div>
+            </div>
+            <div class="phone-mock" aria-hidden="true">
+              <div class="screen">
+                <div class="mock-title" data-i18n="hud-mock-label" data-tr="Anlık hız" data-en="Live speed">Anlık hız</div>
+                <div class="mock-code">97</div>
+                <div class="mock-pills">
+                  <span class="mock-pill"><strong>50</strong> <span data-i18n="hud-m1" data-tr="Limit" data-en="Limit">Limit</span></span>
+                  <span class="mock-pill"><strong>km/h</strong></span>
+                  <span class="mock-pill"><strong>↻</strong> <span data-i18n="hud-m2" data-tr="Ayna" data-en="Mirror">Ayna</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="features-hud">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-features" data-tr="Özellikler" data-en="Features">Özellikler</p>
+            <h2 class="section-heading" data-i18n="hud-features-heading"
+              data-tr="Yola odaklanın"
+              data-en="Focus on the road">Yola odaklanın</h2>
+            <div class="features">
+              <article class="feature-card">
+                <div class="icon">🪞</div>
+                <h3 data-i18n="hf1-title" data-tr="Ayna modu" data-en="Mirror mode">Ayna modu</h3>
+                <p data-i18n="hf1-body" data-tr="Ön camda net yansıma için optimize edildi." data-en="Optimized for a crisp windshield reflection.">Ön camda net yansıma için optimize edildi.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">🚗</div>
+                <h3 data-i18n="hf2-title" data-tr="Hız limiti" data-en="Speed limits">Hız limiti</h3>
+                <p data-i18n="hf2-body" data-tr="Şehir paketleriyle (İstanbul, Ankara, İzmir vb.) çevrimdışı limit rozeti." data-en="Offline limit badge with city packs (Istanbul, Ankara, Izmir, etc.).">Şehir paketleriyle (İstanbul, Ankara, İzmir vb.) çevrimdışı limit rozeti.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">⚠️</div>
+                <h3 data-i18n="hf3-title" data-tr="Limit aşım uyarısı" data-en="Overspeed alert">Limit aşım uyarısı</h3>
+                <p data-i18n="hf3-body" data-tr="Limit üstünde dikkat çekici ama sade arka plan uyarısı." data-en="Subtle high-contrast flash when you exceed the limit.">Limit üstünde dikkat çekici ama sade arka plan uyarısı.</p>
+              </article>
+              <article class="feature-card">
+                <div class="icon">🎨</div>
+                <h3 data-i18n="hf4-title" data-tr="Tema &amp; parlaklık" data-en="Themes &amp; brightness">Tema &amp; parlaklık</h3>
+                <p data-i18n="hf4-body" data-tr="Beyaz, turuncu, yeşil, mor; ekran uyanık ve hızlı parlaklık." data-en="White, orange, green, purple; keep awake and max brightness boost.">Beyaz, turuncu, yeşil, mor; ekran uyanık ve hızlı parlaklık.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+        <section id="how-hud">
+          <div class="container">
+            <p class="section-title" data-i18n="sec-how" data-tr="Başlangıç" data-en="Getting started">Başlangıç</p>
+            <h2 class="section-heading" data-i18n="how-heading" data-tr="Üç adımda kullanıma hazır" data-en="Ready in three steps">Üç adımda kullanıma hazır</h2>
+            <div class="steps">
+              <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                  <h3 data-i18n="s1-title" data-tr="Uygulamayı indirin" data-en="Download the app">Uygulamayı indirin</h3>
+                  <p data-i18n="hud-s1-body" data-tr="HUD Car Speedometer'ı App Store'dan indirin." data-en="Download HUD Car Speedometer from the App Store.">HUD Car Speedometer'ı App Store'dan indirin.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                  <h3 data-i18n="hud-s2-title" data-tr="Telefonu yerleştirin" data-en="Mount your phone">Telefonu yerleştirin</h3>
+                  <p data-i18n="hud-s2-body" data-tr="Panele sabitleyin, ayna modunu açın, km/sa veya mph seçin." data-en="Mount on the dash, enable mirror mode, pick km/h or mph.">Panele sabitleyin, ayna modunu açın, km/sa veya mph seçin.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num">3</div>
+                <div>
+                  <h3 data-i18n="hud-s3-title" data-tr="Güvenle sürün" data-en="Drive safely">Güvenle sürün</h3>
+                  <p data-i18n="hud-s3-body" data-tr="Şehir paketini indirin; limit ve hızı camdan takip edin." data-en="Download your city pack; track speed and limits on the glass.">Şehir paketini indirin; limit ve hızı camdan takip edin.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <p>© <span id="year"></span> Mika Technology</p>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="/privacy.html" data-i18n="footer-privacy" data-tr="Gizlilik" data-en="Privacy">Gizlilik</a>
+          <a href="/support.html" data-i18n="footer-support" data-tr="Destek" data-en="Support">Destek</a>
+          <a href="mailto:hello@mika.technology">hello@mika.technology</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+    <script src="/js/site.js?v=5"></script>
+    <script src="/js/apps.js?v=5"></script>
+  </body>
+</html>

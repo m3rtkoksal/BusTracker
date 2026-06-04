@@ -113,6 +113,35 @@ enum L10n {
     static var settingsServiceCode: String { L.t("Servis Kodu", "Shuttle Code") }
     static var settingsYourName: String { L.t("Adınız", "Your Name") }
     static var settingsShuttle: String { L.t("Servis", "Shuttle") }
+    static var holidayModeTitle: String { L.t("Tatil Modu", "Holiday Mode") }
+    static var holidayModeOff: String { L.t("Kapalı", "Off") }
+    static var holidayModeBadgeActive: String { L.t("AKTİF", "ON") }
+    static func holidayModeUntil(_ date: String) -> String { L.t("\(date) tarihine kadar", "Until \(date)") }
+    static var holidayModeCardDetailOff: String {
+        L.t(
+            "Açın; seçmediğiniz günler gelmiyorum sayılır. İstediğiniz günleri geliyorum seçebilirsiniz.",
+            "Turn on to count unselected days as not coming. You can still mark individual days as coming."
+        )
+    }
+    static func holidayModeCardDetailActive(_ date: String) -> String {
+        L.t(
+            "\(date) tarihine kadar seçmediğiniz günler gelmiyorum.",
+            "Until \(date), unselected days count as not coming."
+        )
+    }
+    static var holidayModeCalendarHint: String {
+        L.t(
+            "Tatilin biteceği günü seçin. Bu tarihe kadar seçmediğiniz günler \"Gelmiyorum\" sayılır; sadece \"Geliyorum\" seçtiğiniz günler sürücü haritasında görünürsünüz.",
+            "Pick the last day of your holiday. Until then, days you don't choose count as \"Not coming\"; only days you select \"Coming\" appear on the driver's map."
+        )
+    }
+    static var holidayModeEndDateLabel: String { L.t("Bitiş tarihi", "End date") }
+    static var holidayModeSave: String { L.t("Kaydet", "Save") }
+    static var holidayModeEndEarly: String { L.t("Tatili bitir", "End holiday now") }
+    static var holidayModeSaved: String {
+        L.t("Tatil modu kaydedildi.", "Holiday mode saved.")
+    }
+    static var holidayModeEnded: String { L.t("Tatil modu kapatıldı.", "Holiday mode turned off.") }
     static var signOut: String { L.t("Çıkış Yap", "Sign Out") }
     static var deleteAccount: String { L.t("Hesabı Sil", "Delete Account") }
     static var inviteLinkShare: String { L.t("DAVET LİNKİ PAYLAŞ", "SHARE INVITE LINK") }

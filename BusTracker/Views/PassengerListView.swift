@@ -18,8 +18,8 @@ struct PassengerListView: View {
         } else {
             List(passengers) { member in
                 HStack(spacing: 12) {
-                    Image(systemName: member.attendance.iconName)
-                        .foregroundStyle(color(for: member.attendance))
+                    Image(systemName: member.effectiveAttendance.iconName)
+                        .foregroundStyle(color(for: member.effectiveAttendance))
                         .font(.title3)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -34,7 +34,7 @@ struct PassengerListView: View {
                                     .background(Capsule().fill(.blue.opacity(0.15)))
                             }
                         }
-                        Text(member.attendance.title)
+                        Text(member.effectiveAttendance.title)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

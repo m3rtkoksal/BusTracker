@@ -20,14 +20,39 @@ struct PassengerHomeView: BaseView {
     @State private var pickupWeather: PassengerWeatherCardModel?
     @State private var pickupWeatherLoading = false
     @State private var showLanguagePicker = false
+    @State private var showHolidayModePicker = false
+    @State private var holidayModeSelectedEndDate = Date()
+    @State private var isSavingHolidayMode = false
 
     private var profile: UserProfile? { session.profile }
 
+    private var myMember: ShuttleMember? {
+        guard let memberID = profile?.memberID else { return nil }
+        return store.members.first(where: { $0.id == memberID })
+    }
+
     private var myAttendance: AttendanceStatus {
-        guard let memberID = profile?.memberID,
-              let member = store.members.first(where: { $0.id == memberID })
-        else { return .unknown }
-        return member.attendance
+        myMember?.effectiveAttendance ?? .unknown
+    }
+
+    private var isHolidayModeActive: Bool {
+        myMember?.isHolidayModeActive == true
+    }
+
+    private var holidayModeCardSubtitle: String {
+        guard isHolidayModeActive,
+              let key = myMember?.holidayModeEndDate,
+              let display = HolidayMode.displayDate(endDateKey: key)
+        else { return L10n.holidayModeOff }
+        return L10n.holidayModeUntil(display)
+    }
+
+    private var holidayModeCardDetail: String {
+        guard isHolidayModeActive,
+              let key = myMember?.holidayModeEndDate,
+              let display = HolidayMode.displayDate(endDateKey: key)
+        else { return L10n.holidayModeCardDetailOff }
+        return L10n.holidayModeCardDetailActive(display)
     }
 
     private var savedMorningPickup: MorningPickup? {
@@ -38,6 +63,7 @@ struct PassengerHomeView: BaseView {
     func content() -> some View {
         passengerTabRoot
             .overlay { tripAttendanceOverlay }
+            .overlay { holidayModePickerOverlay }
             .modifier(PassengerSmlerInviteModifier(
                 showMyServices: $showMyServices,
                 myServicesInviteCode: $myServicesInviteCode,
@@ -294,6 +320,8 @@ struct PassengerHomeView: BaseView {
 
                 attendanceSection
 
+                holidayModeSection
+
                 pickupSummarySection
 
                 clothingAdviceSection
@@ -409,6 +437,15 @@ struct PassengerHomeView: BaseView {
             Rectangle()
                 .strokeBorder(NeonTheme.secondary.opacity(0.22), lineWidth: 1)
         }
+    }
+
+    private var holidayModeSection: some View {
+        HolidayModeServiceCard(
+            isActive: isHolidayModeActive,
+            subtitle: holidayModeCardSubtitle,
+            detailLine: holidayModeCardDetail,
+            showPicker: $showHolidayModePicker
+        )
     }
 
     private var pickupSummarySection: some View {
@@ -583,6 +620,67 @@ struct PassengerHomeView: BaseView {
                 LanguagePickerOverlay(isPresented: $showLanguagePicker)
                     .animation(.easeInOut(duration: 0.28), value: showLanguagePicker)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var holidayModePickerOverlay: some View {
+        if showHolidayModePicker {
+            HolidayModePickerOverlay(
+                isPresented: $showHolidayModePicker,
+                isHolidayActive: isHolidayModeActive,
+                activeEndDateKey: myMember?.holidayModeEndDate,
+                selectedEndDate: $holidayModeSelectedEndDate,
+                isSaving: isSavingHolidayMode,
+                onConfirm: {
+                    Task { await saveHolidayMode() }
+                },
+                onEndHoliday: {
+                    Task { await clearHolidayMode() }
+                }
+            )
+            .animation(.easeInOut(duration: 0.28), value: showHolidayModePicker)
+        }
+    }
+
+    private func saveHolidayMode() async {
+        guard let profile = session.profile else { return }
+        let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
+        guard !groupID.isEmpty else {
+            viewModel.showError(L10n.shuttleInfoNotFound)
+            return
+        }
+
+        isSavingHolidayMode = true
+        defer { isSavingHolidayMode = false }
+
+        do {
+            try await store.setHolidayMode(
+                groupID: groupID,
+                memberID: profile.memberID,
+                endDate: holidayModeSelectedEndDate
+            )
+            showHolidayModePicker = false
+            viewModel.showSuccess(L10n.holidayModeSaved)
+        } catch {
+            viewModel.showError(error.localizedDescription)
+        }
+    }
+
+    private func clearHolidayMode() async {
+        guard let profile = session.profile else { return }
+        let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
+        guard !groupID.isEmpty else { return }
+
+        isSavingHolidayMode = true
+        defer { isSavingHolidayMode = false }
+
+        do {
+            try await store.clearHolidayMode(groupID: groupID, memberID: profile.memberID)
+            showHolidayModePicker = false
+            viewModel.showSuccess(L10n.holidayModeEnded)
+        } catch {
+            viewModel.showError(error.localizedDescription)
         }
     }
 

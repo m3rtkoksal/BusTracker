@@ -14,7 +14,7 @@ enum SmlerConfig {
     static let inviteOGDescription = L10n.smlerOGDescription
     /// Shuttle Live marka ikonu (Firebase Hosting — Smler OG / ara sayfa).
     static let inviteOGImageURL =
-        "https://bustracker-717a3.web.app/shuttle-live-og.png"
+        "https://mika.technology/shuttle-live-og.png"
 
     /// Uygulama içi hedef URL (Smler `url` alanı); çözümlenince servis kodu okunur.
     static func destinationURL(serviceCode: String) -> String {

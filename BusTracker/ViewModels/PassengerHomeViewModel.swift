@@ -118,6 +118,7 @@ final class PassengerHomeViewModel: BaseViewModel {
         session: UserSession
     ) async {
         guard let profile = session.profile else { return }
+
         pendingAttendanceSelection = status
         isUpdatingAttendance = true
         defer {

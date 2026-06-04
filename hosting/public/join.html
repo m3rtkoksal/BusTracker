@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shuttle Live — Servis daveti</title>
+    <meta property="og:title" content="Shuttle Live — Servis daveti" />
+    <meta
+      property="og:description"
+      content="Resmi Shuttle Live uygulaması. Servis kodunuzla güvenle katılın."
+    />
+    <meta property="og:image" content="https://mika.technology/shuttle-live-og.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="icon" href="/shuttle-live-og.png" type="image/png" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container inner">
+        <a href="/" class="brand" style="text-decoration: none; color: inherit">
+          <strong>Mika Technology</strong>
+          <span>Shuttle Live</span>
+        </a>
+        <div class="nav-actions">
+          <div class="lang-toggle" role="group" aria-label="Language">
+            <button type="button" data-lang="tr">TR</button>
+            <button type="button" data-lang="en">EN</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="join-hero">
+      <div class="container">
+        <p class="section-title" data-i18n="join-label" data-tr="Servis daveti" data-en="Shuttle invite">Servis daveti</p>
+        <h1 data-i18n="join-title" data-tr="Shuttle Live'a katılın" data-en="Join Shuttle Live">Shuttle Live'a katılın</h1>
+        <p class="hint" data-i18n="join-hint"
+          data-tr="Aşağıdaki servis kodunu uygulamada girin veya uygulama yüklüyse doğrudan açmayı deneyin."
+          data-en="Enter the shuttle code below in the app, or try opening the app directly if installed.">
+          Aşağıdaki servis kodunu uygulamada girin veya uygulama yüklüyse doğrudan açmayı deneyin.
+        </p>
+        <div class="code-display" id="service-code">——</div>
+        <div class="join-actions">
+          <a class="btn btn-primary" id="open-app" href="#" data-i18n="join-open"
+            data-tr="Uygulamada aç"
+            data-en="Open in app">Uygulamada aç</a>
+          <a class="btn btn-secondary" id="app-store" href="https://apps.apple.com/tr/app/shuttle-live/id6772752037?l=tr" target="_blank" rel="noopener noreferrer" data-i18n="join-download"
+            data-tr="Uygulamayı indir"
+            data-en="Download app">Uygulamayı indir</a>
+        </div>
+        <p class="hint" id="no-code" hidden data-i18n="join-missing"
+          data-tr="Davet linkinde servis kodu bulunamadı. Sürücünüzden kodu isteyin."
+          data-en="No shuttle code in this invite link. Ask your driver for the code.">
+          Davet linkinde servis kodu bulunamadı. Sürücünüzden kodu isteyin.
+        </p>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <p>© <span id="year"></span> Mika Technology</p>
+        <nav class="footer-links">
+          <a href="/">mika.technology</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      function normalizedCode(raw) {
+        return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const code =
+        normalizedCode(params.get("code")) ||
+        normalizedCode(params.get("c")) ||
+        (function () {
+          const parts = window.location.pathname.split("/").filter(Boolean);
+          const last = parts[parts.length - 1];
+          if (last && last !== "join" && last !== "join.html") return normalizedCode(last);
+          return "";
+        })();
+
+      const display = document.getElementById("service-code");
+      const openApp = document.getElementById("open-app");
+      const noCode = document.getElementById("no-code");
+
+      if (code.length >= 4) {
+        display.textContent = code;
+        const deepLink = "shuttlelive://passenger/join?code=" + encodeURIComponent(code);
+        openApp.href = deepLink;
+        openApp.addEventListener("click", function (e) {
+          e.preventDefault();
+          window.location.href = deepLink;
+          setTimeout(function () {
+            window.location.href = "/";
+          }, 1800);
+        });
+      } else {
+        display.textContent = "——";
+        openApp.classList.add("disabled");
+        openApp.setAttribute("aria-disabled", "true");
+        noCode.hidden = false;
+      }
+    </script>
+    <script src="/js/site.js"></script>
+  </body>
+</html>
