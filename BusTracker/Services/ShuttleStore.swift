@@ -35,9 +35,11 @@ final class ShuttleStore {
     private var locationListener: ListenerRegistration?
     private var routeListener: ListenerRegistration?
     private var attendanceListener: ListenerRegistration?
+    private var attendanceTomorrowListener: ListenerRegistration?
     private var morningPickupsListener: ListenerRegistration?
     private var locationUploadTask: Task<Void, Never>?
     private var latestAttendanceResponses: [String: [String: Any]] = [:]
+    private var attendanceResponsesByDate: [String: [String: [String: Any]]] = [:]
     private var activeTripGroupID: String?
     private var activeTripDriverName: String?
     private var lastLocationUploadAt: Date?
@@ -48,19 +50,16 @@ final class ShuttleStore {
     private var tripAutoStopTask: Task<Void, Never>?
     private static let minRoutePointDistanceMeters: CLLocationDistance = 20
     private(set) var plannedTripEndAt: Date?
+    private(set) var attendanceRevision = 0
 
     private var todayKey: String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "tr_TR")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
+        HolidayMode.dateKey(from: Date())
     }
 
     func startListening(groupID: String) {
         stopListening()
 
-        Task {
+        Task { @MainActor in
             do {
                 try await FirebaseSession.shared.ensureAuthenticated()
             } catch {
@@ -107,14 +106,8 @@ final class ShuttleStore {
                     }
                 }
 
-            attendanceListener = db.collection("groups").document(groupID)
-                .collection("attendance").document(todayKey)
-                .addSnapshotListener { [weak self] snapshot, _ in
-                    Task { @MainActor in
-                        guard let self else { return }
-                        self.applyAttendance(from: snapshot?.data())
-                    }
-                }
+            attendanceListener = listenAttendance(groupID: groupID, dateKey: todayKey)
+            attendanceTomorrowListener = listenAttendance(groupID: groupID, dateKey: HolidayMode.tomorrowDateKey())
 
             morningPickupsListener = db.collection("groups").document(groupID)
                 .collection("morningPickups")
@@ -131,17 +124,31 @@ final class ShuttleStore {
         }
     }
 
+    private func listenAttendance(groupID: String, dateKey: String) -> ListenerRegistration {
+        db.collection("groups").document(groupID)
+            .collection("attendance").document(dateKey)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.onAttendanceSnapshot(dateKey: dateKey, data: snapshot?.data())
+                }
+            }
+    }
+
     func stopListening() {
         membersListener?.remove()
         locationListener?.remove()
         routeListener?.remove()
         attendanceListener?.remove()
+        attendanceTomorrowListener?.remove()
         morningPickupsListener?.remove()
         membersListener = nil
         locationListener = nil
         routeListener = nil
         attendanceListener = nil
+        attendanceTomorrowListener = nil
         morningPickupsListener = nil
+        attendanceResponsesByDate = [:]
         morningPickups = []
         driverRoute = []
         lastAppendedRoutePoint = nil
@@ -574,11 +581,43 @@ final class ShuttleStore {
         return appleUserID
     }
 
-    func setAttendance(groupID: String, memberID: String, name: String, status: AttendanceStatus) async throws {
+    func planningAttendanceDateKey(holidayModeActive: Bool) -> String {
+        HolidayMode.attendancePlanningDateKey(holidayModeActive: holidayModeActive)
+    }
+
+    func rawAttendance(for memberID: String, dateKey: String) -> AttendanceStatus {
+        let response = attendanceResponsesByDate[dateKey]?[memberID]
+        return response.flatMap { Self.attendanceStatus(from: $0) } ?? .unknown
+    }
+
+    func effectiveAttendance(for memberID: String, dateKey: String) -> AttendanceStatus {
+        guard let member = members.first(where: { $0.id == memberID }) else { return .unknown }
+        let raw = rawAttendance(for: memberID, dateKey: dateKey)
+        var updated = member
+        updated.attendance = raw
+        return updated.effectiveAttendance
+    }
+
+    /// Sürücü: bugünün attendance belgesi (yolcuyla aynı anahtar) + tatil kuralı.
+    func serviceDayAttendance(for member: ShuttleMember) -> AttendanceStatus {
+        let raw = rawAttendance(for: member.id, dateKey: todayKey)
+        var updated = member
+        updated.attendance = raw
+        return updated.effectiveAttendance
+    }
+
+    func setAttendance(
+        groupID: String,
+        memberID: String,
+        name: String,
+        status: AttendanceStatus,
+        dateKey: String? = nil
+    ) async throws {
         try await FirebaseSession.shared.ensureAuthenticated()
 
+        let attendanceKey = dateKey ?? todayKey
         let ref = db.collection("groups").document(groupID)
-            .collection("attendance").document(todayKey)
+            .collection("attendance").document(attendanceKey)
 
         try await ref.setData([
             "updatedAt": FieldValue.serverTimestamp()
@@ -590,11 +629,17 @@ final class ShuttleStore {
             FieldPath(["responses", memberID, "updatedAt"]): FieldValue.serverTimestamp()
         ])
 
-        var response = latestAttendanceResponses[memberID] ?? [:]
+        var response = attendanceResponsesByDate[attendanceKey]?[memberID] ?? [:]
         response["status"] = status.rawValue
         response["name"] = name
-        latestAttendanceResponses[memberID] = response
-        applyAttendance(from: ["responses": latestAttendanceResponses])
+        var dateResponses = attendanceResponsesByDate[attendanceKey] ?? [:]
+        dateResponses[memberID] = response
+        attendanceResponsesByDate[attendanceKey] = dateResponses
+        if attendanceKey == todayKey {
+            latestAttendanceResponses = dateResponses
+        }
+        refreshMembersAttendanceForServiceDay()
+        notifyAttendanceChanged()
         // Gelmiyorum: biniş noktası silinmez; sürücü haritasında katılıma göre gizlenir.
     }
 
@@ -615,6 +660,7 @@ final class ShuttleStore {
             updated.holidayModeEndDate = endKey
             return updated
         }
+        try await clearMemberAttendanceStatus(groupID: groupID, memberID: memberID)
     }
 
     func clearHolidayMode(groupID: String, memberID: String) async throws {
@@ -633,6 +679,43 @@ final class ShuttleStore {
             updated.holidayModeEndDate = nil
             return updated
         }
+        try await clearMemberAttendanceStatus(groupID: groupID, memberID: memberID)
+    }
+
+    private func clearMemberAttendanceStatus(groupID: String, memberID: String) async throws {
+        let dateKeys = [todayKey, HolidayMode.tomorrowDateKey()]
+        for dateKey in dateKeys {
+            let ref = db.collection("groups").document(groupID)
+                .collection("attendance").document(dateKey)
+            do {
+                try await ref.updateData([
+                    FieldPath(["responses", memberID, "status"]): FieldValue.delete(),
+                    FieldPath(["responses", memberID, "updatedAt"]): FieldValue.delete()
+                ])
+            } catch {
+                // Belge veya alan yoksa yoksay
+            }
+
+            var updated = attendanceResponsesByDate
+            var dayMap = updated[dateKey] ?? [:]
+            var memberResp = dayMap[memberID] ?? [:]
+            memberResp.removeValue(forKey: "status")
+            memberResp.removeValue(forKey: "updatedAt")
+            if memberResp.isEmpty {
+                dayMap.removeValue(forKey: memberID)
+            } else {
+                dayMap[memberID] = memberResp
+            }
+            if dayMap.isEmpty {
+                updated.removeValue(forKey: dateKey)
+            } else {
+                updated[dateKey] = dayMap
+            }
+            attendanceResponsesByDate = updated
+        }
+        latestAttendanceResponses = attendanceResponsesByDate[todayKey] ?? [:]
+        refreshMembersAttendanceForServiceDay()
+        notifyAttendanceChanged()
     }
 
     private func handleLocationUpdate(_ location: CLLocation) async {
@@ -717,7 +800,7 @@ final class ShuttleStore {
             guard !pickupReachLoggedMemberIDs.contains(pickup.memberID) else { continue }
 
             if let member = members.first(where: { $0.id == pickup.memberID }),
-               member.effectiveAttendance == .notComing {
+               serviceDayAttendance(for: member) == .notComing {
                 continue
             }
 
@@ -945,12 +1028,14 @@ final class ShuttleStore {
 
     private func mergeMembers(_ fetched: [ShuttleMember]) {
         let attendanceByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.attendance) })
+        let boardedByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.boardedAt) })
         members = fetched.map { member in
             var updated = member
             updated.attendance = attendanceByID[member.id] ?? member.attendance
+            updated.boardedAt = boardedByID[member.id] ?? member.boardedAt
             return updated
         }
-        applyAttendance(from: ["responses": latestAttendanceResponses])
+        refreshMembersAttendanceForServiceDay()
     }
 
     func setMorningPickup(
@@ -976,19 +1061,29 @@ final class ShuttleStore {
         morningPickups.first { $0.memberID == memberID }
     }
 
-    private func applyAttendance(from data: [String: Any]?) {
-        guard let data else {
-            latestAttendanceResponses = [:]
+    private func onAttendanceSnapshot(dateKey: String, data: [String: Any]?) {
+        if let data {
+            let parsed = Self.parseAttendanceResponses(from: data)
+            if !parsed.isEmpty {
+                attendanceResponsesByDate[dateKey] = parsed
+            }
+        } else {
+            attendanceResponsesByDate.removeValue(forKey: dateKey)
+        }
+        refreshMembersAttendanceForServiceDay()
+        notifyAttendanceChanged()
+    }
+
+    private func notifyAttendanceChanged() {
+        attendanceRevision += 1
+    }
+
+    private func refreshMembersAttendanceForServiceDay() {
+        latestAttendanceResponses = attendanceResponsesByDate[todayKey] ?? [:]
+        guard !latestAttendanceResponses.isEmpty || !attendanceResponsesByDate.isEmpty else {
             resetPassengerAttendance()
             return
         }
-
-        let parsed = Self.parseAttendanceResponses(from: data)
-        if !parsed.isEmpty {
-            latestAttendanceResponses = parsed
-        }
-
-        guard !latestAttendanceResponses.isEmpty else { return }
 
         members = members.map { member in
             var updated = member

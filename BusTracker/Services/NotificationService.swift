@@ -184,7 +184,11 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound, .list]
+        let type = Self.notificationType(from: notification.request.content.userInfo)
+        if type == SparseModeSuggestion.intentType {
+            return []
+        }
+        return [.banner, .sound, .list]
     }
 
     nonisolated func userNotificationCenter(
@@ -202,13 +206,13 @@ extension NotificationService {
     /// Servis çağrısı — korna sesi (bundle: approach_tink.caf).
     static let approachSoundName = "approach_tink.caf"
 
-    static func notificationType(from userInfo: [AnyHashable: Any]) -> String? {
+    nonisolated static func notificationType(from userInfo: [AnyHashable: Any]) -> String? {
         if let type = userInfo["type"] as? String { return type }
         if let gcm = userInfo["gcm.notification.type"] as? String { return gcm }
         return nil
     }
 
-    static func isShuttleCallNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
+    nonisolated static func isShuttleCallNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
         notificationType(from: userInfo) == "driver_approaching"
     }
 }
@@ -217,19 +221,34 @@ extension NotificationService {
 @MainActor
 enum PushNotificationRouter {
     static let openPassengerMapNotification = Notification.Name("PushNotificationRouter.openPassengerMap")
+    static let openSparseModeSheetNotification = Notification.Name("PushNotificationRouter.openSparseModeSheet")
 
     private static var pendingOpenPassengerMap = false
+    private static var pendingOpenSparseModeSheet = false
 
     static func handle(userInfo: [AnyHashable: Any]) {
         let type = NotificationService.notificationType(from: userInfo)
-        guard type == "trip_started" || type == "passenger_boarded" else { return }
-        pendingOpenPassengerMap = true
-        NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
+        switch type {
+        case "trip_started", "passenger_boarded":
+            pendingOpenPassengerMap = true
+            NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
+        case SparseModeSuggestionNotifier.notificationType, "open_holiday_mode":
+            pendingOpenSparseModeSheet = true
+            NotificationCenter.default.post(name: openSparseModeSheetNotification, object: nil)
+        default:
+            break
+        }
     }
 
     static func consumePendingOpenPassengerMap() -> Bool {
         guard pendingOpenPassengerMap else { return false }
         pendingOpenPassengerMap = false
+        return true
+    }
+
+    static func consumePendingOpenSparseModeSheet() -> Bool {
+        guard pendingOpenSparseModeSheet else { return false }
+        pendingOpenSparseModeSheet = false
         return true
     }
 }

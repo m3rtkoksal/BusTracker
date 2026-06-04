@@ -21,6 +21,8 @@ struct PassengerHomeView: BaseView {
     @State private var pickupWeatherLoading = false
     @State private var showLanguagePicker = false
     @State private var showHolidayModePicker = false
+    @State private var showSparseModeSuggestionSheet = false
+    @State private var sparseModeComingDays = 0
     @State private var holidayModeSelectedEndDate = Date()
     @State private var isSavingHolidayMode = false
 #if canImport(UIKit)
@@ -34,12 +36,55 @@ struct PassengerHomeView: BaseView {
         return store.members.first(where: { $0.id == memberID })
     }
 
-    private var myAttendance: AttendanceStatus {
-        myMember?.effectiveAttendance ?? .unknown
+    private var planningAttendanceDateKey: String {
+        store.planningAttendanceDateKey(holidayModeActive: isHolidayModeActive)
+    }
+
+    private var myRawAttendance: AttendanceStatus {
+        guard let memberID = profile?.memberID else { return .unknown }
+        return store.rawAttendance(for: memberID, dateKey: planningAttendanceDateKey)
+    }
+
+    private var myEffectiveAttendance: AttendanceStatus {
+        guard let memberID = profile?.memberID else { return .unknown }
+        return store.effectiveAttendance(for: memberID, dateKey: planningAttendanceDateKey)
+    }
+
+    private var comingAttendanceButtonSelected: Bool {
+        myRawAttendance == .coming
+    }
+
+    /// Tatilde ham seçim yokken varsayılan gelmiyorum kutusu seçili görünür.
+    private var notComingAttendanceButtonSelected: Bool {
+        myRawAttendance == .notComing ||
+            (isHolidayModeActive && myRawAttendance == .unknown && myEffectiveAttendance == .notComing)
+    }
+
+    private var attendanceQuestion: String {
+        if isHolidayModeActive {
+            let label = HolidayMode.displayDateLabel(dateKey: planningAttendanceDateKey)
+            return L10n.attendanceQuestionForDate("BUGÜN · \(label)")
+        }
+        return L10n.attendanceTodayQuestion
     }
 
     private var isHolidayModeActive: Bool {
         myMember?.isHolidayModeActive == true
+    }
+
+    private var memberLoaded: Bool {
+        guard let memberID = profile?.memberID else { return false }
+        return store.members.contains { $0.id == memberID }
+    }
+
+    private var sparseSuggestionTaskKey: String {
+        "\(memberLoaded)-\(isHolidayModeActive)-\(profile?.memberID ?? "")-\(resolvedGroupID)"
+    }
+
+    private var resolvedGroupID: String {
+        let primary = profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !primary.isEmpty { return primary }
+        return profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     private var holidayModeCardSubtitle: String {
@@ -66,6 +111,7 @@ struct PassengerHomeView: BaseView {
     func content() -> some View {
         passengerTabRoot
             .overlay { tripAttendanceOverlay }
+            .overlay { sparseModeSuggestionOverlay }
             .overlay { holidayModePickerOverlay }
             .modifier(PassengerSmlerInviteModifier(
                 showMyServices: $showMyServices,
@@ -108,9 +154,12 @@ struct PassengerHomeView: BaseView {
             if PushNotificationRouter.consumePendingOpenPassengerMap() {
                 openMapFromTripStartedNotification()
             }
+            if PushNotificationRouter.consumePendingOpenSparseModeSheet() {
+                openSparseModeSheetFromNotification()
+            }
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
-                attendance: myAttendance
+                attendance: myRawAttendance
             )
             updatePassengerMotionMonitoring()
         }
@@ -118,22 +167,44 @@ struct PassengerHomeView: BaseView {
         .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openPassengerMapNotification)) { _ in
             openMapFromTripStartedNotification()
         }
+        .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openSparseModeSheetNotification)) { _ in
+            openSparseModeSheetFromNotification()
+        }
 #endif
+        .task(id: sparseSuggestionTaskKey) {
+            let groupID = resolvedGroupID
+            guard memberLoaded,
+                  let memberID = profile?.memberID,
+                  !groupID.isEmpty
+            else { return }
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let prompt = await SparseModeSuggestion.evaluate(
+                groupID: groupID,
+                memberID: memberID,
+                holidayModeActive: isHolidayModeActive
+            ) else { return }
+            sparseModeComingDays = prompt.comingDays
+            showSparseModeSuggestionSheet = true
+            await SparseModeSuggestionNotifier.postNotificationIfNeeded(
+                memberID: memberID,
+                prompt: prompt
+            )
+        }
         .task(id: tripAttendancePromptKey) {
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
-                attendance: myAttendance
+                attendance: myRawAttendance
             )
         }
 #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
-                attendance: myAttendance
+                attendance: myRawAttendance
             )
         }
 #endif
-        .onChange(of: myAttendance) { _, attendance in
+        .onChange(of: myRawAttendance) { _, attendance in
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
                 attendance: attendance
@@ -142,7 +213,7 @@ struct PassengerHomeView: BaseView {
         .onChange(of: store.members.count) { _, _ in
             viewModel.presentTripAttendanceSheetIfNeeded(
                 isTripActive: store.isTripActive,
-                attendance: myAttendance
+                attendance: myRawAttendance
             )
         }
         .onChange(of: tabBar.selectedTab) { _, tab in
@@ -164,7 +235,7 @@ struct PassengerHomeView: BaseView {
             viewModel.onTripActiveChanged(
                 wasActive: wasActive,
                 isActive: isActive,
-                attendance: myAttendance
+                attendance: myRawAttendance
             )
             updatePassengerMotionMonitoring()
         }
@@ -195,6 +266,31 @@ struct PassengerHomeView: BaseView {
             memberID: memberID,
             store: store
         )
+    }
+
+    @ViewBuilder
+    private var sparseModeSuggestionOverlay: some View {
+        if showSparseModeSuggestionSheet {
+            ZStack(alignment: .bottom) {
+                Color.black.opacity(0.55)
+                    .ignoresSafeArea()
+                    .onTapGesture { showSparseModeSuggestionSheet = false }
+
+                SparseModeSuggestionSheet(
+                    comingDays: sparseModeComingDays,
+                    onConfirm: {
+                        showSparseModeSuggestionSheet = false
+                        tabBar.select(.service)
+                        showHolidayModePicker = true
+                    },
+                    onLater: { showSparseModeSuggestionSheet = false }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .zIndex(4)
+            .animation(.easeInOut(duration: 0.28), value: showSparseModeSuggestionSheet)
+        }
     }
 
     @ViewBuilder
@@ -244,7 +340,7 @@ struct PassengerHomeView: BaseView {
     private var tripAttendancePromptKey: String {
         let memberID = profile?.memberID ?? ""
         let memberLoaded = store.members.contains { $0.id == memberID }
-        return "\(store.isTripActive)-\(myAttendance.rawValue)-\(memberLoaded)-\(store.members.count)"
+        return "\(store.isTripActive)-\(myRawAttendance.rawValue)-\(memberLoaded)-\(store.members.count)-\(store.attendanceRevision)"
     }
 
     /// Konum oku: kayıtlı biniş noktası; yoksa cihaz konumu.
@@ -296,6 +392,23 @@ struct PassengerHomeView: BaseView {
         tabBar.select(.map)
         hasInitializedMapCamera = true
         focusMapOnPickup(animated: false)
+    }
+
+    /// Seyrek kullanım bildirimine basınca öneri sheet'i açılır.
+    private func openSparseModeSheetFromNotification() {
+        tabBar.select(.service)
+        Task {
+            guard let memberID = profile?.memberID,
+                  !resolvedGroupID.isEmpty,
+                  let prompt = await SparseModeSuggestion.evaluate(
+                    groupID: resolvedGroupID,
+                    memberID: memberID,
+                    holidayModeActive: isHolidayModeActive
+                  )
+            else { return }
+            sparseModeComingDays = prompt.comingDays
+            showSparseModeSuggestionSheet = true
+        }
     }
 
     /// Harita sekmesine dönünce biniş noktasına odaklan; servis pasifken yalnızca yolcu pini.
@@ -437,16 +550,19 @@ struct PassengerHomeView: BaseView {
 
     private var attendanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(L10n.attendanceTodayQuestion)
+            Text(attendanceQuestion)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.onSurfaceVariant)
 
-            if myAttendance != .unknown {
+            let showChoice = myRawAttendance != .unknown ||
+                (isHolidayModeActive && myEffectiveAttendance != .unknown)
+            let choiceStatus: AttendanceStatus = myRawAttendance != .unknown ? myRawAttendance : myEffectiveAttendance
+            if showChoice {
                 HStack(spacing: 6) {
-                    Image(systemName: myAttendance.iconName)
-                        .foregroundStyle(attendanceColor(myAttendance))
-                    Text(L10n.yourChoice(myAttendance.title))
+                    Image(systemName: choiceStatus.iconName)
+                        .foregroundStyle(attendanceColor(choiceStatus))
+                    Text(L10n.yourChoice(choiceStatus.selfChoiceLabel))
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(NeonTheme.onSurface)
                 }
@@ -458,18 +574,18 @@ struct PassengerHomeView: BaseView {
                     icon: "checkmark.circle.fill",
                     accent: NeonTheme.secondary,
                     status: .coming,
-                    isSelected: myAttendance == .coming
+                    isSelected: comingAttendanceButtonSelected
                 )
                 attendanceButton(
                     title: L10n.attendanceNotComingSelf,
                     icon: "xmark.circle.fill",
                     accent: Color(hex: 0xFF4444),
                     status: .notComing,
-                    isSelected: myAttendance == .notComing
+                    isSelected: notComingAttendanceButtonSelected
                 )
             }
 
-            Text(L10n.attendanceHint)
+            Text(isHolidayModeActive ? L10n.attendanceHolidayHint : L10n.attendanceHint)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(NeonTheme.outline)
@@ -708,7 +824,7 @@ struct PassengerHomeView: BaseView {
             showHolidayModePicker = false
             viewModel.showSuccess(L10n.holidayModeSaved)
         } catch {
-            viewModel.showError(error.localizedDescription)
+            viewModel.showError(L10n.saveFailed)
         }
     }
 
@@ -725,7 +841,7 @@ struct PassengerHomeView: BaseView {
             showHolidayModePicker = false
             viewModel.showSuccess(L10n.holidayModeEnded)
         } catch {
-            viewModel.showError(error.localizedDescription)
+            viewModel.showError(L10n.updateFailed)
         }
     }
 
@@ -850,9 +966,9 @@ struct PassengerHomeView: BaseView {
 
     private var compactAttendanceInfoBox: some View {
         let isBoarded = myMember?.isBoardedToday == true
-        let accent = isBoarded ? NeonTheme.secondary : attendanceColor(myAttendance)
-        let label = myAttendance.mapTabLabel(isBoarded: isBoarded)
-        let icon = isBoarded ? "bus.fill" : myAttendance.iconName
+        let accent = isBoarded ? NeonTheme.secondary : attendanceColor(myEffectiveAttendance)
+        let label = myEffectiveAttendance.mapTabLabel(isBoarded: isBoarded)
+        let icon = isBoarded ? "bus.fill" : myEffectiveAttendance.iconName
         return Button {
             tabBar.select(.service)
         } label: {
@@ -977,7 +1093,8 @@ struct PassengerHomeView: BaseView {
             Task { await viewModel.updateAttendance(status: status, store: store, session: session) }
         } label: {
             VStack(spacing: 8) {
-                if viewModel.isUpdatingAttendance && myAttendance != status {
+                if viewModel.isUpdatingAttendance &&
+                    !(status == .coming ? comingAttendanceButtonSelected : notComingAttendanceButtonSelected) {
                     ProgressView().tint(accent)
                 } else {
                     Image(systemName: icon)

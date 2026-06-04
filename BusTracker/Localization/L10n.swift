@@ -94,11 +94,20 @@ enum L10n {
     static var waitingForLocation: String { L.t("Konum bekleniyor", "Waiting for location") }
     static var shuttleInactive: String { L.t("Servis pasif", "Shuttle inactive") }
     static var attendanceTodayQuestion: String { L.t("BUGÜN GELECEK MİSİNİZ?", "ARE YOU COMING TODAY?") }
+    static func attendanceQuestionForDate(_ dateLabel: String) -> String {
+        L.t("\(dateLabel) GELECEK MİSİNİZ?", "ARE YOU COMING ON \(dateLabel)?")
+    }
     static func yourChoice(_ choice: String) -> String { L.t("Seçiminiz: \(choice)", "Your choice: \(choice)") }
     static var attendanceHint: String {
         L.t(
             "Seçiminiz sürücüye kaydedilir. Servis bitince yeniden seçmeniz gerekir.",
             "Your choice is saved for the driver. You must choose again after the shuttle ends."
+        )
+    }
+    static var attendanceHolidayHint: String {
+        L.t(
+            "Seçiminiz yalnızca bugün için geçerli. Mod açıkken diğer günler varsayılan gelmiyorum.",
+            "Your choice is for today only. While this mode is on, other days default to not coming."
         )
     }
     static var pickupPoint: String { L.t("BİNİŞ NOKTASI", "PICKUP POINT") }
@@ -124,20 +133,20 @@ enum L10n {
     static func holidayModeUntil(_ date: String) -> String { L.t("\(date) tarihine kadar", "Until \(date)") }
     static var holidayModeCardDetailOff: String {
         L.t(
-            "Açın; seçmediğiniz günler gelmiyorum sayılır. İstediğiniz günleri geliyorum seçebilirsiniz.",
-            "Turn on to count unselected days as not coming. You can still mark individual days as coming."
+            "Seyrek kullanıyorsanız açın: her gün işaretlemeden varsayılan gelmiyorum; servise bineceğiniz günlerde Geliyorum seçin.",
+            "For occasional use: default is not coming without daily taps; mark Coming only on shuttle days."
         )
     }
     static func holidayModeCardDetailActive(_ date: String) -> String {
         L.t(
-            "\(date) tarihine kadar seçmediğiniz günler gelmiyorum.",
-            "Until \(date), unselected days count as not coming."
+            "\(date) tarihine kadar seçmediğiniz her gün gelmiyorum; bineceğiniz gün Geliyorum yeterli.",
+            "Until \(date), unselected days are not coming; on shuttle days, tap Coming."
         )
     }
     static var holidayModeCalendarHint: String {
         L.t(
-            "Tatilin biteceği günü seçin. Bu tarihe kadar seçmediğiniz günler \"Gelmiyorum\" sayılır; sadece \"Geliyorum\" seçtiğiniz günler sürücü haritasında görünürsünüz.",
-            "Pick the last day of your holiday. Until then, days you don't choose count as \"Not coming\"; only days you select \"Coming\" appear on the driver's map."
+            "Modun biteceği son günü seçin (ör. 3 ay). Bu sürede her gün Gelmiyorum işaretlemeniz gerekmez; servise bineceğiniz gün uygulamadan Geliyorum seçin, sürücü anında görür.",
+            "Pick when this mode ends (e.g. 3 months). Unselected days count as not coming; on days you ride, choose Coming and the driver sees it right away."
         )
     }
     static var holidayModeEndDateLabel: String { L.t("Bitiş tarihi", "End date") }
@@ -147,6 +156,23 @@ enum L10n {
         L.t("Tatil modu kaydedildi.", "Holiday mode saved.")
     }
     static var holidayModeEnded: String { L.t("Tatil modu kapatıldı.", "Holiday mode turned off.") }
+    static var sparseModeSuggestionTitle: String {
+        L.t("Servisi az kullanıyor musunuz?", "Rarely use the shuttle?")
+    }
+    static func sparseModeSuggestionBody(comingDays: Int) -> String {
+        L.t(
+            "Son 1 ayda servise yalnızca \(comingDays) kez \"Geliyorum\" seçtiniz. Tatil Modu ile her gün \"Gelmiyorum\" demek zorunda kalmazsınız; geleceğiniz günlerde sadece \"Geliyorum\" yeterli.",
+            "In the last month you chose \"I'm coming\" only \(comingDays) times. With Holiday Mode you don't need to tap \"Not coming\" every day — on days you ride, just tap \"I'm coming\"."
+        )
+    }
+    static var sparseModeSheetTitle: String { L.t("Servisi az kullanıyorsunuz", "You rarely use the shuttle") }
+    static func sparseModeSheetMessage(comingDays: Int) -> String {
+        L.t(
+            "Son 1 ayda yalnızca \(comingDays) kez \"Geliyorum\" seçtiniz. İsterseniz Tatil Modu açarak genel durumunuzu gelmiyorum yapabilirsiniz; servise bineceğiniz günlerde sadece \"Geliyorum\" seçmeniz yeterli.",
+            "In the last month you chose \"I'm coming\" only \(comingDays) times. You can turn on Holiday Mode so your default is not coming — on days you ride, just choose \"I'm coming\"."
+        )
+    }
+    static var sparseModeSheetOk: String { L.t("Tamam", "OK") }
     static var signOut: String { L.t("Çıkış Yap", "Sign Out") }
     static var deleteAccount: String { L.t("Hesabı Sil", "Delete Account") }
     static var inviteLinkShare: String { L.t("DAVET LİNKİ PAYLAŞ", "SHARE INVITE LINK") }
@@ -202,6 +228,13 @@ enum L10n {
     }
     static var markPickupOnMap: String { L.t("Haritada sabah biniş noktanızı işaretleyin.", "Mark your morning pickup point on the map.") }
     static var shuttleInfoNotFound: String { L.t("Servis bilgisi bulunamadı.", "Shuttle information not found.") }
+    static var updateFailed: String { L.t("Güncellenemedi.", "Could not update.") }
+    static var saveFailed: String { L.t("Kaydedilemedi.", "Could not save.") }
+    static var signOutFailed: String { L.t("Çıkış yapılamadı.", "Could not sign out.") }
+    static var googleVerificationFailed: String {
+        L.t("Google doğrulaması tamamlanamadı.", "Google verification could not be completed.")
+    }
+    static var shuttleStartFailed: String { L.t("Servis başlatılamadı.", "Could not start the shuttle.") }
     static var pickupSavedComing: String {
         L.t("Biniş noktanız kaydedildi. Durumunuz: Geliyorum.", "Pickup point saved. Your status: I'm coming.")
     }

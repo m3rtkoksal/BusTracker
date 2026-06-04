@@ -84,10 +84,10 @@ final class PassengerHomeViewModel: BaseViewModel {
             try await authService.reauthenticateForAccountDeletion()
         } catch let error as AppleSignInError {
             if case .cancelled = error { return }
-            showError(error.localizedDescription)
+            showError(L10n.googleVerificationFailed)
             return
         } catch {
-            showError(error.localizedDescription)
+            showError(L10n.googleVerificationFailed)
             return
         }
 #endif
@@ -127,16 +127,25 @@ final class PassengerHomeViewModel: BaseViewModel {
         }
 
         do {
+            let holidayActive = store.members.first(where: { $0.id == profile.memberID })?.isHolidayModeActive == true
+            let dateKey = store.planningAttendanceDateKey(holidayModeActive: holidayActive)
+            let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
             try await store.setAttendance(
-                groupID: profile.groupID ?? "",
+                groupID: groupID,
                 memberID: profile.memberID,
                 name: profile.name,
+                status: status,
+                dateKey: dateKey
+            )
+            AttendanceUsageTracker.record(
+                memberID: profile.memberID,
+                dateKey: dateKey,
                 status: status
             )
             showTripStartedAttendanceSheet = false
-            showSuccess(L10n.choiceSaved(status.title))
+            showSuccess(L10n.choiceSaved(status.selfChoiceLabel))
         } catch {
-            showError(error.localizedDescription)
+            showError(L10n.updateFailed)
         }
     }
 
@@ -175,16 +184,24 @@ final class PassengerHomeViewModel: BaseViewModel {
                 name: profile.name,
                 coordinate: coordinate
             )
+            let holidayActive = store.members.first(where: { $0.id == profile.memberID })?.isHolidayModeActive == true
+            let dateKey = store.planningAttendanceDateKey(holidayModeActive: holidayActive)
             try await store.setAttendance(
                 groupID: groupID,
                 memberID: profile.memberID,
                 name: profile.name,
+                status: .coming,
+                dateKey: dateKey
+            )
+            AttendanceUsageTracker.record(
+                memberID: profile.memberID,
+                dateKey: dateKey,
                 status: .coming
             )
             showTripStartedAttendanceSheet = false
             showSuccess(L10n.pickupSavedComing)
         } catch {
-            showError(error.localizedDescription)
+            showError(L10n.saveFailed)
         }
     }
 

@@ -15,6 +15,10 @@ struct HolidayModeCalendarBottomSheet: View {
         HolidayMode.calendar.startOfDay(for: Date())
     }
 
+    private var canEndHoliday: Bool {
+        isHolidayActive || (activeEndDateKey.map { HolidayMode.isActive(endDateKey: $0) } == true)
+    }
+
     var body: some View {
         panel
             .offset(y: dragOffset)
@@ -73,43 +77,11 @@ struct HolidayModeCalendarBottomSheet: View {
             .padding(.horizontal, 4)
             .padding(.bottom, 12)
 
-            Button(action: onConfirm) {
-                Group {
-                    if isSaving {
-                        ProgressView().tint(NeonTheme.secondary)
-                    } else {
-                        Text(L10n.holidayModeSave)
-                            .tracking(1)
-                    }
-                }
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                .foregroundStyle(NeonTheme.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(NeonTheme.secondary.opacity(0.14))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(NeonTheme.secondary.opacity(0.55), lineWidth: 1)
-            }
-            .disabled(isSaving)
-            .opacity(isSaving ? 0.6 : 1)
-            .buttonStyle(.plain)
+            holidayNeonButton(title: L10n.holidayModeSave, accent: NeonTheme.secondary, action: onConfirm)
 
-            if isHolidayActive {
-                Button(action: onEndHoliday) {
-                    Text(L10n.holidayModeEndEarly)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                }
-                .disabled(isSaving)
-                .buttonStyle(.plain)
-                .padding(.top, 4)
+            if canEndHoliday {
+                holidayNeonButton(title: L10n.holidayModeEndEarly, accent: NeonTheme.primary, action: onEndHoliday)
+                    .padding(.top, 10)
             }
         }
         .padding(.horizontal, 28)
@@ -142,6 +114,34 @@ struct HolidayModeCalendarBottomSheet: View {
                 selectedEndDate = minimumSelectableDate
             }
         }
+    }
+
+    private func holidayNeonButton(title: String, accent: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Group {
+                if isSaving {
+                    ProgressView().tint(accent)
+                } else {
+                    Text(title.uppercased())
+                        .tracking(1)
+                }
+            }
+            .font(.system(size: 13, weight: .heavy, design: .rounded))
+            .foregroundStyle(accent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(accent.opacity(0.18))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(accent.opacity(0.85), lineWidth: 2)
+        }
+        .disabled(isSaving)
+        .opacity(isSaving ? 0.6 : 1)
+        .buttonStyle(.plain)
     }
 
     private var sheetBackground: some View {

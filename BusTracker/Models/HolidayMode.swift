@@ -1,5 +1,7 @@
 import Foundation
 
+/// Seyrek servis modu (UI: Tatil Modu): Bitiş tarihine kadar her takvim günü ayrı kayıt.
+/// Seçim yok → sürücüde gelmiyorum; servise binecek gün Geliyorum seçilir (yalnızca o gün).
 enum HolidayMode {
     static var calendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
@@ -39,6 +41,24 @@ enum HolidayMode {
         formatter.dateFormat = "dd.MM.yyyy"
         return formatter.string(from: date)
     }
+
+    static func tomorrowDateKey(from reference: Date = Date()) -> String {
+        let day = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: reference)) ?? reference
+        return dateKey(from: day)
+    }
+
+    /// Bugünün tarih anahtarı (yolcu seçimi + sürücü listesi aynı gün belgesi).
+    static func attendancePlanningDateKey(holidayModeActive: Bool, reference: Date = Date()) -> String {
+        dateKey(from: reference)
+    }
+
+    static func displayDateLabel(dateKey: String) -> String {
+        guard let date = date(fromKey: dateKey) else { return dateKey }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.dateFormat = "dd.MM.yyyy"
+        return formatter.string(from: date)
+    }
 }
 
 extension ShuttleMember {
@@ -47,7 +67,7 @@ extension ShuttleMember {
         return HolidayMode.isActive(endDateKey: key)
     }
 
-    /// Tatil süresince: yalnızca o gün için açıkça seçilen geliyorum geçerli; belirsiz = gelmiyorum.
+    /// Mod açıkken: bu gün için açık Geliyorum geçerli; seçim yoksa gelmiyorum (günlük kayıt).
     var effectiveAttendance: AttendanceStatus {
         guard isHolidayModeActive else { return attendance }
         switch attendance {

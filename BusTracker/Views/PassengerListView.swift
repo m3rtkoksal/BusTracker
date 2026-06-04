@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PassengerListView: View {
+    @Environment(ShuttleStore.self) private var store
     let members: [ShuttleMember]
     var showDriver: Bool = true
 
@@ -18,9 +19,10 @@ struct PassengerListView: View {
         } else {
             List(passengers) { member in
                 HStack(spacing: 12) {
-                    Image(systemName: member.isBoardedToday ? "bus.fill" : member.effectiveAttendance.iconName)
+                    let attendance = store.serviceDayAttendance(for: member)
+                    Image(systemName: member.isBoardedToday ? "bus.fill" : attendance.iconName)
                         .foregroundStyle(
-                            member.isBoardedToday ? .green : color(for: member.effectiveAttendance)
+                            member.isBoardedToday ? .green : color(for: attendance)
                         )
                         .font(.title3)
 
@@ -36,7 +38,7 @@ struct PassengerListView: View {
                                     .background(Capsule().fill(.blue.opacity(0.15)))
                             }
                         }
-                        Text(member.isBoardedToday ? L10n.attendanceBoarded : member.effectiveAttendance.title)
+                        Text(member.isBoardedToday ? L10n.attendanceBoarded : attendance.title)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -62,4 +64,5 @@ struct PassengerListView: View {
         ShuttleMember(id: "2", name: "Mehmet", role: .passenger, attendance: .notComing),
         ShuttleMember(id: "3", name: "Ali", role: .driver, attendance: .unknown)
     ])
+    .environment(ShuttleStore())
 }

@@ -37,12 +37,12 @@ final class DriverHomeViewModel: BaseViewModel {
         usesLargeTitle = false
     }
 
-    func passengerStats(from members: [ShuttleMember]) -> DriverPassengerStats {
+    func passengerStats(from members: [ShuttleMember], store: ShuttleStore) -> DriverPassengerStats {
         let passengers = members.filter { $0.role == .passenger }
         return DriverPassengerStats(
-            coming: passengers.filter { $0.effectiveAttendance == .coming }.count,
-            notComing: passengers.filter { $0.effectiveAttendance == .notComing }.count,
-            unknown: passengers.filter { $0.effectiveAttendance == .unknown }.count
+            coming: passengers.filter { store.serviceDayAttendance(for: $0) == .coming }.count,
+            notComing: passengers.filter { store.serviceDayAttendance(for: $0) == .notComing }.count,
+            unknown: passengers.filter { store.serviceDayAttendance(for: $0) == .unknown }.count
         )
     }
 
@@ -101,10 +101,10 @@ final class DriverHomeViewModel: BaseViewModel {
             try await authService.reauthenticateForAccountDeletion()
         } catch let error as AppleSignInError {
             if case .cancelled = error { return }
-            showError(error.localizedDescription)
+            showError(L10n.googleVerificationFailed)
             return
         } catch {
-            showError(error.localizedDescription)
+            showError(L10n.googleVerificationFailed)
             return
         }
 #endif
@@ -208,7 +208,7 @@ final class DriverHomeViewModel: BaseViewModel {
             let hoursLabel = L10n.hoursLabel(selectedTripDurationHours)
             showSuccess(L10n.shuttleStartedAutoStop(hoursLabel))
         } catch {
-            showError(error.localizedDescription)
+            showError(L10n.shuttleStartFailed)
         }
     }
 

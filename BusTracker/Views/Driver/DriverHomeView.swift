@@ -19,7 +19,8 @@ struct DriverHomeView: BaseView {
     }
 
     private var stats: DriverPassengerStats {
-        viewModel.passengerStats(from: store.members)
+        _ = store.attendanceRevision
+        return viewModel.passengerStats(from: store.members, store: store)
     }
 
     private func updateDriverMotionMonitoring() {
@@ -400,17 +401,18 @@ struct DriverHomeView: BaseView {
 
             VStack(spacing: 0) {
                 ForEach(passengers) { member in
+                    let attendance = store.serviceDayAttendance(for: member)
                     HStack(spacing: 12) {
-                        Image(systemName: member.effectiveAttendance.iconName)
+                        Image(systemName: attendance.iconName)
                             .font(.title3)
-                            .foregroundStyle(attendanceColor(member.effectiveAttendance))
+                            .foregroundStyle(attendanceColor(attendance))
                             .frame(width: 28)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(member.name)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(NeonTheme.onSurface)
-                            Text(member.effectiveAttendance.title)
+                            Text(attendance.title)
                                 .font(.caption)
                                 .foregroundStyle(NeonTheme.onSurfaceVariant)
                         }
@@ -541,8 +543,8 @@ struct DriverHomeView: BaseView {
         let passengerIDs = Set(passengers.map(\.id))
         return store.morningPickups.filter { pickup in
             guard passengerIDs.contains(pickup.memberID) else { return false }
-            let attendance = passengers.first { $0.id == pickup.memberID }?.effectiveAttendance
-            return attendance != .notComing
+            guard let member = passengers.first(where: { $0.id == pickup.memberID }) else { return false }
+            return store.serviceDayAttendance(for: member) != .notComing
         }
     }
 

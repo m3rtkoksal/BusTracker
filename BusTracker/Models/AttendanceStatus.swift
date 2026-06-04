@@ -33,4 +33,7 @@ enum AttendanceStatus: String, Codable, CaseIterable {
     func mapTabLabel(isBoarded: Bool) -> String {
         isBoarded ? L10n.attendanceBoardedSelf : mapTabLabel
     }
+
+    /// Yolcunun kendi ekranında “Seçiminiz” satırı.
+    var selfChoiceLabel: String { mapTabLabel }
 }
