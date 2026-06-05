@@ -205,6 +205,7 @@ final class DriverHomeViewModel: BaseViewModel {
                 durationHours: selectedTripDurationHours,
                 locationTracker: locationTracker
             )
+            BusTrackerAnalytics.tripStarted(durationHours: selectedTripDurationHours)
             let hoursLabel = L10n.hoursLabel(selectedTripDurationHours)
             showSuccess(L10n.shuttleStartedAutoStop(hoursLabel))
         } catch {

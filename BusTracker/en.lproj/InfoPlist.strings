@@ -1,0 +1,4 @@
+/* System permission dialogs — English */
+"NSMotionUsageDescription" = "Motion data is used to detect when you board the shuttle automatically; continuous location sharing is not required.";
+"NSLocationWhenInUseUsageDescription" = "Location access is required to share your shuttle position with passengers.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "\"Always\" location permission is required to share your position with passengers while the shuttle is active, even when the app is in the background.";

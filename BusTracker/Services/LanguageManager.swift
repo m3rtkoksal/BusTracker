@@ -43,6 +43,13 @@ final class LanguageManager {
             let preferred = Locale.preferredLanguages.first ?? "en"
             language = preferred.hasPrefix("tr") ? .turkish : .english
         }
+        applyPreferredLocalization()
+    }
+
+    /// Sistem izin pencereleri (konum, hareket) uygulama diline uysun.
+    func applyPreferredLocalization() {
+        let code = language.rawValue
+        UserDefaults.standard.set([code, "en", "tr"], forKey: "AppleLanguages")
     }
 
     func t(_ turkish: String, _ english: String) -> String {
@@ -51,5 +58,6 @@ final class LanguageManager {
 
     func setLanguage(_ language: AppLanguage) {
         self.language = language
+        applyPreferredLocalization()
     }
 }

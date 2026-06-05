@@ -12,6 +12,7 @@
 		A6DF1CD02FC3394E008B17BC /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1C762FC33800008B17BC /* FirebaseFirestore */; };
 		A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1CD22FC3394E008B17BC /* FirebaseAuth */; };
 		A6DF1D042FC34100008B17BC /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D052FC34100008B17BC /* FirebaseMessaging */; };
+		A6DF1D062FC34200008B17BC /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D072FC34200008B17BC /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +51,7 @@
 				A6DF1CD02FC3394E008B17BC /* FirebaseFirestore in Frameworks */,
 				A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */,
 				A6DF1CCF2FC3394E008B17BC /* FirebaseCore in Frameworks */,
+				A6DF1D062FC34200008B17BC /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,6 +99,7 @@
 				A6DF1CD22FC3394E008B17BC /* FirebaseAuth */,
 				A6DF1D052FC34100008B17BC /* FirebaseMessaging */,
 				A697E1D52FC8AC2A0071889D /* Lottie */,
+				A6DF1D072FC34200008B17BC /* FirebaseAnalytics */,
 			);
 			productName = BusTracker;
 			productReference = A6DF1C642FC33796008B17BC /* BusTracker.app */;
@@ -122,6 +125,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				tr,
 				Base,
 			);
 			mainGroup = A6DF1C5B2FC33795008B17BC;
@@ -284,7 +288,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 79G38KD48M;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -338,7 +342,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTrackerRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 79G38KD48M;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -452,6 +456,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		A6DF1D072FC34200008B17BC /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

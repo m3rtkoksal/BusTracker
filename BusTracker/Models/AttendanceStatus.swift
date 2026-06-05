@@ -36,4 +36,12 @@ enum AttendanceStatus: String, Codable, CaseIterable {
 
     /// Yolcunun kendi ekranında “Seçiminiz” satırı.
     var selfChoiceLabel: String { mapTabLabel }
+
+    var analyticsValue: String {
+        switch self {
+        case .coming: "coming"
+        case .notComing: "not_coming"
+        case .unknown: "unknown"
+        }
+    }
 }

@@ -142,6 +142,7 @@ final class PassengerHomeViewModel: BaseViewModel {
                 dateKey: dateKey,
                 status: status
             )
+            BusTrackerAnalytics.attendanceSelected(status: status.analyticsValue)
             showTripStartedAttendanceSheet = false
             showSuccess(L10n.choiceSaved(status.selfChoiceLabel))
         } catch {
@@ -198,6 +199,7 @@ final class PassengerHomeViewModel: BaseViewModel {
                 dateKey: dateKey,
                 status: .coming
             )
+            BusTrackerAnalytics.pickupSaved()
             showTripStartedAttendanceSheet = false
             showSuccess(L10n.pickupSavedComing)
         } catch {

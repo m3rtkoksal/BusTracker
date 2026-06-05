@@ -54,6 +54,12 @@
          identifier = "../../BusTracker/SimulatorLocations/SancaktepeAtaturk.gpx"
          referenceType = "0">
       </LocationScenarioReference>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "-FIRAnalyticsDebugEnabled"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

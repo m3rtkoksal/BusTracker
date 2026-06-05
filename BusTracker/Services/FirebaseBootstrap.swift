@@ -1,3 +1,4 @@
+import FirebaseAnalytics
 import FirebaseCore
 import FirebaseFirestore
 
@@ -37,6 +38,13 @@ enum FirebaseManager {
             print("❌ [BusTracker] FirebaseApp.configure sonrası app nil")
             return
         }
+
+        Analytics.setAnalyticsCollectionEnabled(true)
+        #if DEBUG
+        print("✅ [BusTracker] Firebase Analytics etkin (debug mode)")
+        #else
+        print("✅ [BusTracker] Firebase Analytics etkin")
+        #endif
 
         var settings = FirestoreSettings()
         settings.cacheSettings = PersistentCacheSettings()

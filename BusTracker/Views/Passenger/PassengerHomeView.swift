@@ -279,11 +279,15 @@ struct PassengerHomeView: BaseView {
                 SparseModeSuggestionSheet(
                     comingDays: sparseModeComingDays,
                     onConfirm: {
+                        BusTrackerAnalytics.sparseModePrompt(action: "ok")
                         showSparseModeSuggestionSheet = false
                         tabBar.select(.service)
                         showHolidayModePicker = true
                     },
-                    onLater: { showSparseModeSuggestionSheet = false }
+                    onLater: {
+                        BusTrackerAnalytics.sparseModePrompt(action: "later")
+                        showSparseModeSuggestionSheet = false
+                    }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -822,6 +826,7 @@ struct PassengerHomeView: BaseView {
                 endDate: holidayModeSelectedEndDate
             )
             showHolidayModePicker = false
+            BusTrackerAnalytics.holidayModeSaved()
             viewModel.showSuccess(L10n.holidayModeSaved)
         } catch {
             viewModel.showError(L10n.saveFailed)
@@ -839,6 +844,7 @@ struct PassengerHomeView: BaseView {
         do {
             try await store.clearHolidayMode(groupID: groupID, memberID: profile.memberID)
             showHolidayModePicker = false
+            BusTrackerAnalytics.holidayModeEnded()
             viewModel.showSuccess(L10n.holidayModeEnded)
         } catch {
             viewModel.showError(L10n.updateFailed)

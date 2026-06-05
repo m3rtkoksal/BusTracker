@@ -8,6 +8,7 @@ struct BusTrackerApp: App {
 
     init() {
         _ = FirebaseAppConfigurator.activated
+        LanguageManager.shared.applyPreferredLocalization()
     }
 
     @State private var session = UserSession.shared

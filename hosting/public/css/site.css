@@ -486,15 +486,20 @@ section {
 }
 
 .app-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
   padding: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 861px) {
   .app-tabs {
+    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow-x: visible;
   }
 }
 
@@ -514,6 +519,8 @@ section {
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
   text-align: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .app-tab:hover {
@@ -689,15 +696,48 @@ body[data-app="hud"] .hero::before {
     order: -1;
   }
 
-  .app-tabs-wrap {
-    top: 52px;
+  .container {
+    width: min(1120px, 100% - 32px);
   }
 
-  .app-tabs {
-    grid-template-columns: 1fr;
+  .site-header {
+    position: relative;
+  }
+
+  .site-header .inner {
+    padding: 12px 0;
+    gap: 12px;
+  }
+
+  .brand span {
+    display: none;
+  }
+
+  .nav-actions {
+    gap: 8px;
+  }
+
+  .nav-actions .btn-primary {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+
+  .app-tabs-wrap {
+    top: 0;
+    padding: 8px 0 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-tabs-label {
+    display: none;
   }
 
   .app-tab {
-    width: 100%;
+    font-size: 0.84rem;
+    padding: 10px 14px;
+  }
+
+  .hero {
+    padding-top: 40px;
   }
 }
