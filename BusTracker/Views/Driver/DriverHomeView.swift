@@ -48,7 +48,7 @@ struct DriverHomeView: BaseView {
         locationTracker.refreshAuthorizationStatus()
         let motion = MotionActivityService.shared
         motion.refreshAuthorization()
-        return locationTracker.canDriverStartTrip && (!motion.isAvailable || motion.isAuthorized)
+        return locationTracker.canDriverStartTrip && (!motion.canRequestAuthorization || motion.isAuthorized)
     }
 
     func content() -> some View {

@@ -18,7 +18,7 @@ struct ContentView: View {
         session.profile != nil && authService.isSignedIn
     }
 
-    /// Sürücü: yalnızca bildirim (açılışta). Konum/hareket → Servisi başlat akışı.
+    /// Sürücü: yalnızca bildirim (açılışta). Yolcu: konum harita sekmesinde; bildirim/hareket aksiyon zincirinde.
     private var appPermissionsNotificationsOnly: Bool {
         guard isAuthenticatedWithProfile, let profile = session.profile else {
             return true

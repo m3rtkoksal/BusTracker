@@ -7,8 +7,24 @@ enum DriverLocationForegroundGuidePhase: Equatable {
 
 struct DriverLocationForegroundGuideSheet: View {
     let phase: DriverLocationForegroundGuidePhase
+    let title: String
+    let bodyGuide: String
     let onOpenSettings: () -> Void
     let onDismiss: () -> Void
+
+    init(
+        phase: DriverLocationForegroundGuidePhase,
+        title: String = L10n.driverLocationForegroundTitle,
+        bodyGuide: String = L10n.driverLocationForegroundBody,
+        onOpenSettings: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.phase = phase
+        self.title = title
+        self.bodyGuide = bodyGuide
+        self.onOpenSettings = onOpenSettings
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -17,7 +33,7 @@ struct DriverLocationForegroundGuideSheet: View {
                 .frame(width: 48, height: 4)
                 .padding(.top, 12)
 
-            Text(L10n.driverLocationForegroundTitle)
+            Text(title)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
                 .multilineTextAlignment(.center)
@@ -48,7 +64,7 @@ struct DriverLocationForegroundGuideSheet: View {
     private var bodyText: String {
         switch phase {
         case .guide:
-            L10n.driverLocationForegroundBody
+            bodyGuide
         case .waitingSettingsReturn:
             L10n.locationPermissionBodySettings
         }

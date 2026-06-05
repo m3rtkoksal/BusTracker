@@ -36,8 +36,8 @@ struct AppRootView: View {
         guard firebaseSession.isReady else { return }
 
         await AuthSessionReconciler.reconcile(session: session, authService: authService)
-        await loadSignedInUserIfNeeded()
         isBootstrapped = true
+        await loadSignedInUserIfNeeded()
         await processSmlerDeferredInviteIfNeeded()
     }
 
@@ -66,7 +66,7 @@ struct AppRootView: View {
         }
 
         do {
-            if let profile = try await store.fetchUserProfile(userID: userID) {
+            if let profile = try await fetchProfileWithTimeout(userID: userID, store: store) {
                 session.save(profile)
             } else {
                 print("⚠️ [Shuttle Live] Firestore'da profil yok — oturum kapatılıyor")
@@ -74,9 +74,29 @@ struct AppRootView: View {
                 session.clearLocalProfile()
             }
         } catch {
-            print("⚠️ [Shuttle Live] Firestore profili yüklenemedi — oturum kapatılıyor")
+            print("⚠️ [Shuttle Live] Firestore profili yüklenemedi — oturum kapatılıyor: \(error.localizedDescription)")
             try? authService.signOut()
             session.clearLocalProfile()
+        }
+    }
+
+    private func fetchProfileWithTimeout(
+        userID: String,
+        store: ShuttleStore,
+        seconds: UInt64 = 12
+    ) async throws -> UserProfile? {
+        try await withThrowingTaskGroup(of: UserProfile?.self) { group in
+            group.addTask {
+                try await store.fetchUserProfile(userID: userID)
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw URLError(.timedOut)
+            }
+
+            defer { group.cancelAll() }
+            guard let profile = try await group.next() else { return nil }
+            return profile
         }
     }
 }

@@ -302,6 +302,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Servis aktifken uygulama arka plandayken de konumunuzu yolcularla paylaşmak için \"Her Zaman\" konum izni gereklidir.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Servis konumunuzu yolcularla paylaşmak için konum erişimi gereklidir.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Servise bindiğinizi otomatik anlamak için hareket veriniz kullanılır; sürekli konum paylaşımı gerekmez.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -356,6 +357,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Servis aktifken uygulama arka plandayken de konumunuzu yolcularla paylaşmak için \"Her Zaman\" konum izni gereklidir.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Servis konumunuzu yolcularla paylaşmak için konum erişimi gereklidir.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Servise bindiğinizi otomatik anlamak için hareket veriniz kullanılır; sürekli konum paylaşımı gerekmez.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

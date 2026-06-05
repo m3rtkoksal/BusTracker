@@ -5,8 +5,8 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Açılış izinleri: yolcu/kayıt → konum → hareket → bildirim; sürücü → yalnızca bildirim.
-/// Sürücü konum/hareket → Servisi başlat bottom sheet zinciri.
+/// Açılış izinleri: yolcu → (harita sekmesinde konum; bildirim/hareket aksiyon zincirinde);
+/// sürücü → yalnızca bildirim. Sürücü konum/hareket → Servisi başlat bottom sheet zinciri.
 struct AppPermissionsHandlerModifier: ViewModifier {
     var enabled: Bool = true
     let profile: UserProfile?
@@ -121,14 +121,16 @@ struct AppPermissionsHandlerModifier: ViewModifier {
 
     @MainActor
     private func nextMissingStep() async -> PermissionStep {
-        if !notificationsOnly {
+        let isPassenger = profile?.role == .passenger
+
+        if !notificationsOnly, !isPassenger {
             locationTracker.refreshAuthorizationStatus()
             if PermissionPromptSession.mayPromptLocation, needsLocationPrompt {
                 return .location
             }
 
             let motion = MotionActivityService.shared
-            if motion.isAvailable {
+            if motion.canRequestAuthorization {
                 motion.refreshAuthorization()
                 if PermissionPromptSession.mayPromptMotion,
                    motion.authorizationStatus == .notDetermined {
@@ -203,7 +205,7 @@ struct AppPermissionsHandlerModifier: ViewModifier {
         PermissionPromptSession.markMotionPromptHandled()
         flowBusy = true
         let motion = MotionActivityService.shared
-        guard motion.isAvailable else {
+        guard motion.canRequestAuthorization else {
             flowBusy = false
             resumePermissionFlow()
             return
@@ -227,6 +229,12 @@ struct AppPermissionsHandlerModifier: ViewModifier {
 
     @MainActor
     private func promptNotificationsOnly() async {
+        guard profile?.role != .passenger else {
+            PermissionPromptSession.markNotificationPromptHandled()
+            flowBusy = false
+            return
+        }
+
         flowBusy = true
         NotificationService.shared.configure()
         let snapshot = await NotificationService.shared.authorizationSnapshot()

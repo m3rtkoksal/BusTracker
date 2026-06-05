@@ -113,6 +113,12 @@ enum L10n {
     static var pickupPoint: String { L.t("BİNİŞ NOKTASI", "PICKUP POINT") }
     static func savedAt(_ time: String) -> String { L.t("Kayıtlı: \(time)", "Saved: \(time)") }
     static var noPickupSaved: String { L.t("Henüz biniş noktası kaydetmediniz.", "You haven't saved a pickup point yet.") }
+    static var comingBlockedWithoutPickup: String {
+        L.t(
+            "Kayıtlı biniş noktanız olmadığı için seçim yapamazsınız.",
+            "You can't make a selection because you haven't saved a pickup point."
+        )
+    }
     static var setOnMap: String { L.t("HARİTADA BELİRLE", "SET ON MAP") }
     static var editOnMap: String { L.t("HARİTADA DÜZENLE", "EDIT ON MAP") }
     static var tapMapToSelectPickup: String {
@@ -338,6 +344,12 @@ enum L10n {
             "Enable notifications to know when passengers board and when the shuttle starts."
         )
     }
+    static var passengerNotificationPermissionBody: String {
+        L.t(
+            "Bildirimleri açmadan konum ve kayıt adımlarına devam edemezsiniz.",
+            "You must enable notifications before continuing with location and saving."
+        )
+    }
     static var notificationPermissionBodySettings: String {
         L.t(
             "Ayarlar açıldıysa aşağıdaki adımları uygulayın, sonra bu ekrana dönün.",
@@ -364,6 +376,12 @@ enum L10n {
         L.t(
             "Yolcuların servise bindiğini anlamak için hareket izni gerekir.",
             "Motion permission is required to detect when passengers board the shuttle."
+        )
+    }
+    static var passengerMotionPermissionBody: String {
+        L.t(
+            "Servise bindiğinizi otomatik anlamak için hareket izni gerekir.",
+            "Motion permission is required to detect when you board the shuttle automatically."
         )
     }
     static var motionPermissionBodySettings: String {
@@ -451,6 +469,12 @@ enum L10n {
         L.t(
             "Servisi başlatmak için önce konum izni vermeniz gerekir.",
             "Location permission is required before you can start the shuttle."
+        )
+    }
+    static var passengerLocationForegroundBody: String {
+        L.t(
+            "Biniş noktası kaydetmek, geliyorum/gelmiyorum seçmek ve sürücünün sizi haritada görebilmesi için konum izni gerekir.",
+            "Location permission is required to save your pickup, set attendance, and appear on the map for the driver."
         )
     }
     static var locationForegroundSettingsStep1: String {

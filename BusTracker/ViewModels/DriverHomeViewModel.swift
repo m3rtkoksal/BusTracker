@@ -59,7 +59,7 @@ final class DriverHomeViewModel: BaseViewModel {
         }
 
         let motion = MotionActivityService.shared
-        if motion.isAvailable {
+        if motion.canRequestAuthorization {
             motion.refreshAuthorization()
             if !motion.isAuthorized {
                 return .motion
@@ -109,18 +109,15 @@ final class DriverHomeViewModel: BaseViewModel {
     /// Motion: önce sistem diyaloğu; reddedilirse bottom sheet.
     private func presentMotionStep(locationTracker: LocationTracker) async {
         let motion = MotionActivityService.shared
-        guard motion.isAvailable else {
+        guard motion.canRequestAuthorization else {
             presentStartTripPermissionGate(.ready, locationTracker: locationTracker)
             return
         }
         motion.refreshAuthorization()
         switch motion.authorizationStatus {
         case .notDetermined:
-            guard !isRequestingMotionAuthorization else { return }
-            isRequestingMotionAuthorization = true
             activeStartPermissionSheet = nil
             await motion.requestAuthorizationIfNeeded()
-            isRequestingMotionAuthorization = false
             motion.refreshAuthorization()
             guard pendingTripDurationSheetAfterPermissions else { return }
             if motion.isAuthorized {

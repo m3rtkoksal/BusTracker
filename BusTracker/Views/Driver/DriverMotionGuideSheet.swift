@@ -7,8 +7,21 @@ enum DriverMotionGuidePhase: Equatable {
 
 struct DriverMotionGuideSheet: View {
     let phase: DriverMotionGuidePhase
+    let bodyGuide: String
     let onOpenSettings: () -> Void
     let onDismiss: () -> Void
+
+    init(
+        phase: DriverMotionGuidePhase,
+        bodyGuide: String = L10n.driverMotionPermissionBody,
+        onOpenSettings: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.phase = phase
+        self.bodyGuide = bodyGuide
+        self.onOpenSettings = onOpenSettings
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -48,7 +61,7 @@ struct DriverMotionGuideSheet: View {
     private var bodyText: String {
         switch phase {
         case .guide:
-            L10n.driverMotionPermissionBody
+            bodyGuide
         case .waitingSettingsReturn:
             L10n.motionPermissionBodySettings
         }

@@ -1,7 +1,7 @@
 #import <FirebaseCore/FirebaseCore.h>
 
 /// Firebase Messaging/Auth, SwiftUI @main'den önce yüklenebilir — mümkün olan en erken configure.
-__attribute__((constructor(101)))
+__attribute__((constructor(0)))
 static void BusTrackerFirebaseConfigureEarly(void) {
     if ([FIRApp defaultApp] != nil) {
         return;

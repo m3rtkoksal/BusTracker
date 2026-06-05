@@ -28,11 +28,18 @@ final class MotionActivityService {
     private var openAutomotiveStartedAt: Date?
     private var segments: [MotionActivitySegment] = []
     private var uploadLoopTask: Task<Void, Never>?
+    private var permissionProbeActive = false
 
     private init() {}
 
+    /// CMMotionActivityManager ile canlı aktivite takibi mümkün mü?
     var isAvailable: Bool {
         CMMotionActivityManager.isActivityAvailable()
+    }
+
+    /// Hareket & Fitness izni istenebilir mi? (Activity veya Pedometer)
+    var canRequestAuthorization: Bool {
+        isAvailable || CMPedometer.isStepCountingAvailable()
     }
 
     func updateMonitoring(
@@ -65,9 +72,10 @@ final class MotionActivityService {
     func stopMonitoring() {
         uploadLoopTask?.cancel()
         uploadLoopTask = nil
-        if isMonitoring {
+        if isMonitoring || permissionProbeActive {
             manager.stopActivityUpdates()
         }
+        permissionProbeActive = false
         isMonitoring = false
         openAutomotiveStartedAt = nil
         segments = []
@@ -78,7 +86,7 @@ final class MotionActivityService {
     }
 
     func refreshAuthorization() {
-        guard isAvailable else {
+        guard canRequestAuthorization else {
             authorizationStatus = .notDetermined
             isAuthorized = false
             return
@@ -92,26 +100,63 @@ final class MotionActivityService {
         }
     }
 
+    /// Sistem diyaloğunu tetikler ve kullanıcı yanıtını bekler.
     func requestAuthorizationIfNeeded() async {
-        guard isAvailable else { return }
         refreshAuthorization()
         guard authorizationStatus == .notDetermined else { return }
+        guard canRequestAuthorization else { return }
 
-        await withCheckedContinuation { continuation in
-            manager.queryActivityStarting(
-                from: Date().addingTimeInterval(-60),
-                to: Date(),
-                to: OperationQueue.main
-            ) { _, _ in
-                continuation.resume()
-            }
-        }
+        let triggered = await triggerSystemAuthorizationPrompt()
+        guard triggered else { return }
+
+        await waitUntilAuthorizationDetermined(timeout: 60)
+        stopPermissionProbeIfNeeded()
         refreshAuthorization()
+    }
+
+    private func triggerSystemAuthorizationPrompt() async -> Bool {
+        if isAvailable {
+            permissionProbeActive = true
+            manager.startActivityUpdates(to: OperationQueue.main) { _ in }
+            try? await Task.sleep(for: .milliseconds(350))
+            return true
+        }
+
+        if CMPedometer.isStepCountingAvailable() {
+            let pedometer = CMPedometer()
+            await withCheckedContinuation { continuation in
+                pedometer.queryPedometerData(
+                    from: Date().addingTimeInterval(-3600),
+                    to: Date()
+                ) { _, _ in
+                    continuation.resume()
+                }
+            }
+            return true
+        }
+
+        return false
+    }
+
+    private func waitUntilAuthorizationDetermined(timeout: TimeInterval) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            refreshAuthorization()
+            if authorizationStatus != .notDetermined { return }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+    }
+
+    private func stopPermissionProbeIfNeeded() {
+        guard permissionProbeActive, !isMonitoring else { return }
+        manager.stopActivityUpdates()
+        permissionProbeActive = false
     }
 
     private func startMonitoring() {
         guard isAvailable else { return }
         refreshAuthorization()
+        guard isAuthorized else { return }
 
         manager.queryActivityStarting(
             from: Date().addingTimeInterval(-60),

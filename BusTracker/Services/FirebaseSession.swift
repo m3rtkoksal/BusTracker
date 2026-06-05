@@ -1,6 +1,9 @@
 import FirebaseAuth
 import FirebaseCore
 import Foundation
+#if os(iOS) || os(visionOS)
+import UIKit
+#endif
 
 @MainActor
 @Observable
@@ -22,6 +25,12 @@ final class FirebaseSession {
             error = .missingConfiguration
             return
         }
+
+#if os(iOS) || os(visionOS)
+        if !FirebaseAuthLaunch.isReady {
+            FirebaseAuthLaunch.start(in: UIApplication.shared) {}
+        }
+#endif
 
         await AuthService.shared.waitUntilReady()
         isReady = true

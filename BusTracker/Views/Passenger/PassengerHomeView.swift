@@ -1,5 +1,7 @@
+import CoreMotion
 import MapKit
 import SwiftUI
+import UserNotifications
 
 struct PassengerHomeView: BaseView {
     @Environment(ShuttleStore.self) private var store
@@ -25,6 +27,10 @@ struct PassengerHomeView: BaseView {
     @State private var sparseModeComingDays = 0
     @State private var holidayModeSelectedEndDate = Date()
     @State private var isSavingHolidayMode = false
+    @State private var locationForegroundGuidePhase: DriverLocationForegroundGuidePhase = .guide
+    @State private var motionGuidePhase: DriverMotionGuidePhase = .guide
+    @State private var notificationGuidePhase: DriverNotificationGuidePhase = .guide
+    @State private var showComingBlockedWithoutPickupHint = false
 #if canImport(UIKit)
     @Environment(\.scenePhase) private var scenePhase
 #endif
@@ -108,11 +114,16 @@ struct PassengerHomeView: BaseView {
         return store.morningPickup(for: memberID)
     }
 
+    private var hasSavedMorningPickup: Bool {
+        savedMorningPickup != nil
+    }
+
     func content() -> some View {
         passengerTabRoot
             .overlay { tripAttendanceOverlay }
             .overlay { sparseModeSuggestionOverlay }
             .overlay { holidayModePickerOverlay }
+            .overlay { actionPermissionOverlay }
             .modifier(PassengerSmlerInviteModifier(
                 showMyServices: $showMyServices,
                 myServicesInviteCode: $myServicesInviteCode,
@@ -123,6 +134,10 @@ struct PassengerHomeView: BaseView {
     }
 
     private var passengerTabRoot: some View {
+        passengerTabRootWithPermissionObservers
+    }
+
+    private var passengerTabRootContent: some View {
         VStack(spacing: 0) {
             if tabBar.selectedTab != .map {
                 passengerTopBar
@@ -147,94 +162,162 @@ struct PassengerHomeView: BaseView {
 
             PassengerTabBar(controller: tabBar)
         }
-        .onAppear {
-            presentMyServicesForSmlerInviteIfNeeded()
-            viewModel.onAppear(store: store, session: session)
-            viewModel.loadSavedPickup(from: store, session: session)
-            if PushNotificationRouter.consumePendingOpenPassengerMap() {
+    }
+
+    private var passengerTabRootWithAppearAndTasks: some View {
+        passengerTabRootContent
+            .onAppear {
+                presentMyServicesForSmlerInviteIfNeeded()
+                viewModel.onAppear(store: store, session: session)
+                viewModel.loadSavedPickup(from: store, session: session)
+                promptMapTabLocationIfNeeded()
+                if PushNotificationRouter.consumePendingOpenPassengerMap() {
+                    openMapFromTripStartedNotification()
+                }
+                if PushNotificationRouter.consumePendingOpenSparseModeSheet() {
+                    openSparseModeSheetFromNotification()
+                }
+                syncTripAttendanceState()
+                updatePassengerMotionMonitoring()
+            }
+#if canImport(UIKit)
+            .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openPassengerMapNotification)) { _ in
                 openMapFromTripStartedNotification()
             }
-            if PushNotificationRouter.consumePendingOpenSparseModeSheet() {
+            .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openSparseModeSheetNotification)) { _ in
                 openSparseModeSheetFromNotification()
             }
-            syncTripAttendanceState()
-            updatePassengerMotionMonitoring()
-        }
-#if canImport(UIKit)
-        .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openPassengerMapNotification)) { _ in
-            openMapFromTripStartedNotification()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openSparseModeSheetNotification)) { _ in
-            openSparseModeSheetFromNotification()
-        }
 #endif
-        .task(id: sparseSuggestionTaskKey) {
-            let groupID = resolvedGroupID
-            guard memberLoaded,
-                  let memberID = profile?.memberID,
-                  !groupID.isEmpty
-            else { return }
-            try? await Task.sleep(for: .seconds(1.2))
-            guard let prompt = await SparseModeSuggestion.evaluate(
-                groupID: groupID,
-                memberID: memberID,
-                holidayModeActive: isHolidayModeActive
-            ) else { return }
-            sparseModeComingDays = prompt.comingDays
-            showSparseModeSuggestionSheet = true
-            await SparseModeSuggestionNotifier.postNotificationIfNeeded(
-                memberID: memberID,
-                prompt: prompt
-            )
-        }
-        .task(id: tripAttendancePromptKey) {
-            guard memberLoaded else { return }
-            try? await Task.sleep(for: .milliseconds(350))
-            syncTripAttendanceState()
-        }
+            .task(id: sparseSuggestionTaskKey) {
+                let groupID = resolvedGroupID
+                guard memberLoaded,
+                      let memberID = profile?.memberID,
+                      !groupID.isEmpty
+                else { return }
+                try? await Task.sleep(for: .seconds(1.2))
+                guard let prompt = await SparseModeSuggestion.evaluate(
+                    groupID: groupID,
+                    memberID: memberID,
+                    holidayModeActive: isHolidayModeActive
+                ) else { return }
+                sparseModeComingDays = prompt.comingDays
+                showSparseModeSuggestionSheet = true
+                await SparseModeSuggestionNotifier.postNotificationIfNeeded(
+                    memberID: memberID,
+                    prompt: prompt
+                )
+            }
+            .task(id: tripAttendancePromptKey) {
+                guard memberLoaded else { return }
+                try? await Task.sleep(for: .milliseconds(350))
+                syncTripAttendanceState()
+            }
+    }
+
+    private var passengerTabRootWithTripObservers: some View {
+        passengerTabRootWithAppearAndTasks
 #if canImport(UIKit)
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            syncTripAttendanceState()
-        }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                handlePassengerForegroundReturn()
+            }
 #endif
-        .onChange(of: myRawAttendance) { _, _ in
-            syncTripAttendanceState()
-        }
-        .onChange(of: store.members.count) { _, _ in
-            syncTripAttendanceState()
-        }
-        .onChange(of: tabBar.selectedTab) { _, tab in
-            guard tab == .map else { return }
-            focusMapOnPickup(animated: !hasInitializedMapCamera)
-            hasInitializedMapCamera = true
-        }
-        .onChange(of: locationTracker.effectiveLocation?.coordinate.latitude ?? 0) { _, _ in
-            guard tabBar.selectedTab == .map else { return }
-            guard pendingCenterOnPassenger else { return }
-            applyPassengerLocationIfAvailable()
-        }
-        .onChange(of: store.morningPickups.count) { _, _ in
-            viewModel.loadSavedPickup(from: store, session: session)
-            guard tabBar.selectedTab == .map, !store.isTripActive else { return }
-            focusMapOnPickup(animated: false)
-        }
-        .onChange(of: store.isTripActive) { wasActive, isActive in
-            viewModel.onTripActiveChanged(
-                wasActive: wasActive,
-                isActive: isActive,
-                attendance: myRawAttendance,
-                holidayModeActive: isHolidayModeActive
-            )
-            updatePassengerMotionMonitoring()
-        }
+            .onChange(of: myRawAttendance) { _, _ in
+                syncTripAttendanceState()
+            }
+            .onChange(of: store.members.count) { _, _ in
+                syncTripAttendanceState()
+            }
+            .onChange(of: tabBar.selectedTab) { _, tab in
+                guard tab == .map else { return }
+                promptMapTabLocationIfNeeded()
+                focusMapOnPickup(animated: !hasInitializedMapCamera)
+                hasInitializedMapCamera = true
+            }
+            .onChange(of: locationTracker.effectiveLocation?.coordinate.latitude ?? 0) { _, _ in
+                guard tabBar.selectedTab == .map else { return }
+                guard pendingCenterOnPassenger else { return }
+                applyPassengerLocationIfAvailable()
+            }
+            .onChange(of: store.morningPickups.count) { _, _ in
+                viewModel.loadSavedPickup(from: store, session: session)
+                if hasSavedMorningPickup {
+                    showComingBlockedWithoutPickupHint = false
+                }
+                guard tabBar.selectedTab == .map, !store.isTripActive else { return }
+                focusMapOnPickup(animated: false)
+            }
+            .onChange(of: store.isTripActive) { wasActive, isActive in
+                viewModel.onTripActiveChanged(
+                    wasActive: wasActive,
+                    isActive: isActive,
+                    attendance: myRawAttendance,
+                    holidayModeActive: isHolidayModeActive
+                )
+                updatePassengerMotionMonitoring()
+            }
 #if canImport(UIKit)
-        .onChange(of: scenePhase) { _, _ in
-            updatePassengerMotionMonitoring()
-        }
+            .onChange(of: scenePhase) { _, _ in
+                updatePassengerMotionMonitoring()
+            }
 #endif
-        .onDisappear {
-            MotionActivityService.shared.stopMonitoring()
+            .onDisappear {
+                MotionActivityService.shared.stopMonitoring()
+            }
+    }
+
+    private var passengerTabRootWithPermissionObservers: some View {
+        passengerTabRootWithTripObservers
+            .onChange(of: locationTracker.authorizationStatus) { _, _ in
+                refreshPassengerActionPermissions()
+            }
+            .onChange(of: motionAuthorizationStatus) { _, _ in
+                refreshPassengerActionPermissions()
+            }
+            .onChange(of: notificationAuthorizationStatus) { _, _ in
+                refreshPassengerActionPermissions()
+            }
+            .onChange(of: viewModel.activeActionPermissionSheet) { _, sheet in
+                guard sheet != nil else { return }
+                locationForegroundGuidePhase = .guide
+                motionGuidePhase = .guide
+                notificationGuidePhase = .guide
+            }
+    }
+
+    private var motionAuthorizationStatus: CMAuthorizationStatus {
+        MotionActivityService.shared.authorizationStatus
+    }
+
+    private var notificationAuthorizationStatus: UNAuthorizationStatus {
+        NotificationService.shared.authorizationStatus
+    }
+
+    private func handlePassengerForegroundReturn() {
+        syncTripAttendanceState()
+        guard viewModel.hasPendingGatedAction || viewModel.activeActionPermissionSheet != nil else { return }
+        if locationForegroundGuidePhase == .waitingSettingsReturn {
+            locationForegroundGuidePhase = .guide
         }
+        if motionGuidePhase == .waitingSettingsReturn {
+            motionGuidePhase = .guide
+        }
+        if notificationGuidePhase == .waitingSettingsReturn {
+            notificationGuidePhase = .guide
+        }
+        refreshPassengerActionPermissions()
+    }
+
+    private func refreshPassengerActionPermissions() {
+        locationTracker.refreshAuthorizationStatus()
+        MotionActivityService.shared.refreshAuthorization()
+        viewModel.onPassengerPermissionsUpdated(locationTracker: locationTracker)
+    }
+
+    /// Harita sekmesi açılınca konum izni (sistem diyaloğu). Reddedilirse buton akışında bottom sheet.
+    private func promptMapTabLocationIfNeeded() {
+        locationTracker.refreshAuthorizationStatus()
+        guard locationTracker.authorizationStatus == .notDetermined else { return }
+        locationTracker.requestWhenInUsePermissionIfNeeded()
     }
 
     private func updatePassengerMotionMonitoring() {
@@ -304,14 +387,10 @@ struct PassengerHomeView: BaseView {
                 selectedComing: viewModel.pendingAttendanceSelection == .coming,
                 selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
                 onSelectComing: {
-                    Task {
-                        await viewModel.updateAttendance(status: .coming, store: store, session: session)
-                    }
+                    requestComingAttendance()
                 },
                 onSelectNotComing: {
-                    Task {
-                        await viewModel.updateAttendance(status: .notComing, store: store, session: session)
-                    }
+                    requestNotComingAttendance()
                 }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -592,6 +671,16 @@ struct PassengerHomeView: BaseView {
                 .tracking(1)
                 .foregroundStyle(NeonTheme.outline)
                 .frame(maxWidth: .infinity, alignment: .center)
+
+            if showComingBlockedWithoutPickupHint {
+                Text(L10n.comingBlockedWithoutPickup)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(NeonTheme.error)
+                    .shadow(color: NeonTheme.error.opacity(0.75), radius: 8)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
         .padding(16)
         .background(NeonTheme.surfaceContainer)
@@ -1055,9 +1144,72 @@ struct PassengerHomeView: BaseView {
         .buttonStyle(.plain)
     }
 
+    private var actionPermissionOverlay: some View {
+        Group {
+            if let sheet = viewModel.activeActionPermissionSheet {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.dismissActiveActionPermissionSheet() }
+
+                    Group {
+                        switch sheet {
+                        case .notification:
+                            DriverNotificationGuideSheet(
+                                phase: notificationGuidePhase,
+                                bodyGuide: L10n.passengerNotificationPermissionBody,
+                                onOpenSettings: {
+                                    notificationGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    notificationGuidePhase = .guide
+                                    viewModel.dismissActiveActionPermissionSheet()
+                                }
+                            )
+                        case .locationForeground:
+                            DriverLocationForegroundGuideSheet(
+                                phase: locationForegroundGuidePhase,
+                                bodyGuide: L10n.passengerLocationForegroundBody,
+                                onOpenSettings: {
+                                    locationForegroundGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    locationForegroundGuidePhase = .guide
+                                    viewModel.dismissActiveActionPermissionSheet()
+                                }
+                            )
+                        case .motion:
+                            DriverMotionGuideSheet(
+                                phase: motionGuidePhase,
+                                bodyGuide: L10n.passengerMotionPermissionBody,
+                                onOpenSettings: {
+                                    motionGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    motionGuidePhase = .guide
+                                    viewModel.dismissActiveActionPermissionSheet()
+                                }
+                            )
+                        }
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.activeActionPermissionSheet)
+            }
+        }
+    }
+
     private var savePickupButton: some View {
         Button {
-            Task { await viewModel.saveMorningPickup(store: store, session: session) }
+            viewModel.requestSaveMorningPickup(
+                store: store,
+                session: session,
+                locationTracker: locationTracker
+            )
         } label: {
             Group {
                 if viewModel.isSavingPickup {
@@ -1086,6 +1238,33 @@ struct PassengerHomeView: BaseView {
         .buttonStyle(.plain)
     }
 
+    private func requestComingAttendance() {
+        guard hasSavedMorningPickup else {
+            showComingBlockedWithoutPickupHint = true
+            tabBar.select(.service)
+            viewModel.dismissTripAttendanceSheet()
+            return
+        }
+
+        showComingBlockedWithoutPickupHint = false
+        viewModel.requestUpdateAttendance(
+            status: .coming,
+            store: store,
+            session: session,
+            locationTracker: locationTracker
+        )
+    }
+
+    private func requestNotComingAttendance() {
+        showComingBlockedWithoutPickupHint = false
+        viewModel.requestUpdateAttendance(
+            status: .notComing,
+            store: store,
+            session: session,
+            locationTracker: locationTracker
+        )
+    }
+
     private func attendanceButton(
         title: String,
         icon: String,
@@ -1094,7 +1273,11 @@ struct PassengerHomeView: BaseView {
         isSelected: Bool
     ) -> some View {
         Button {
-            Task { await viewModel.updateAttendance(status: status, store: store, session: session) }
+            if status == .coming {
+                requestComingAttendance()
+            } else {
+                requestNotComingAttendance()
+            }
         } label: {
             VStack(spacing: 8) {
                 if viewModel.isUpdatingAttendance &&
