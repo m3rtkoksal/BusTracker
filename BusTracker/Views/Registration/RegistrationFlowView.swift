@@ -8,8 +8,6 @@ struct RegistrationFlowView: View {
 
     @Environment(SmlerInviteCoordinator.self) private var smlerInviteCoordinator
     @State private var path = NavigationPath()
-    @State private var showNotificationSettingsAlert = false
-
     var body: some View {
         NavigationStack(path: $path) {
             RoleSelectionView(
@@ -27,20 +25,6 @@ struct RegistrationFlowView: View {
         .task(id: smlerInviteCoordinator.inviteRevision) {
             openPassengerRegistrationIfInvited()
         }
-        .task { await refreshNotificationAccess() }
-#if canImport(UIKit)
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            Task { await refreshNotificationAccess() }
-        }
-#endif
-        .alert(L10n.notificationsDisabledTitle, isPresented: $showNotificationSettingsAlert) {
-            Button(L10n.openSettings) {
-                NotificationService.shared.openSystemSettings()
-            }
-            Button(L10n.later, role: .cancel) {}
-        } message: {
-            Text(L10n.notificationsDisabledMessage)
-        }
     }
 
     /// Deeplink / deferred davet: rol seçimi yerine doğrudan yolcu kayıt formu.
@@ -51,15 +35,6 @@ struct RegistrationFlowView: View {
         path.append(MemberRole.passenger)
     }
 
-    private func refreshNotificationAccess() async {
-        let result = await NotificationService.shared.ensureNotificationsEnabled(
-            groupID: nil,
-            memberID: nil
-        )
-        if result == .needsSettings {
-            showNotificationSettingsAlert = true
-        }
-    }
 }
 
 #Preview {

@@ -18,6 +18,14 @@ struct ContentView: View {
         session.profile != nil && authService.isSignedIn
     }
 
+    /// Sürücü: yalnızca bildirim (açılışta). Konum/hareket → Servisi başlat akışı.
+    private var appPermissionsNotificationsOnly: Bool {
+        guard isAuthenticatedWithProfile, let profile = session.profile else {
+            return true
+        }
+        return profile.role == .driver
+    }
+
     var body: some View {
         Group {
             if isAuthenticatedWithProfile, let profile = session.profile {
@@ -36,9 +44,11 @@ struct ContentView: View {
                 session.clearLocalProfile()
             }
         }
-        .task(id: locationPermissionTaskID) {
-            locationTracker.requestWhenInUsePermissionIfNeeded()
-        }
+        .appPermissionsHandler(
+            profile: isAuthenticatedWithProfile ? session.profile : nil,
+            notificationsOnly: appPermissionsNotificationsOnly,
+            enabled: isAuthenticatedWithProfile
+        )
         .task(id: smlerInviteRoutingTaskID) {
             await smlerInviteCoordinator.handleIfReady(
                 profile: session.profile,
@@ -65,14 +75,6 @@ struct ContentView: View {
             get: { smlerInviteCoordinator.alreadyMemberMessage != nil },
             set: { if !$0 { smlerInviteCoordinator.dismissAlreadyMemberMessage() } }
         )
-    }
-
-    /// Giriş, kayıt veya ana ekran: Android ile aynı — when-in-use isteği.
-    private var locationPermissionTaskID: String {
-        if isAuthenticatedWithProfile, let memberID = session.profile?.memberID {
-            return "signed-\(memberID)"
-        }
-        return "auth-\(authMode)"
     }
 
     @ViewBuilder

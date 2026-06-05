@@ -157,10 +157,7 @@ struct PassengerHomeView: BaseView {
             if PushNotificationRouter.consumePendingOpenSparseModeSheet() {
                 openSparseModeSheetFromNotification()
             }
-            viewModel.presentTripAttendanceSheetIfNeeded(
-                isTripActive: store.isTripActive,
-                attendance: myRawAttendance
-            )
+            syncTripAttendanceState()
             updatePassengerMotionMonitoring()
         }
 #if canImport(UIKit)
@@ -191,30 +188,20 @@ struct PassengerHomeView: BaseView {
             )
         }
         .task(id: tripAttendancePromptKey) {
-            viewModel.presentTripAttendanceSheetIfNeeded(
-                isTripActive: store.isTripActive,
-                attendance: myRawAttendance
-            )
+            guard memberLoaded else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            syncTripAttendanceState()
         }
 #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            viewModel.presentTripAttendanceSheetIfNeeded(
-                isTripActive: store.isTripActive,
-                attendance: myRawAttendance
-            )
+            syncTripAttendanceState()
         }
 #endif
-        .onChange(of: myRawAttendance) { _, attendance in
-            viewModel.presentTripAttendanceSheetIfNeeded(
-                isTripActive: store.isTripActive,
-                attendance: attendance
-            )
+        .onChange(of: myRawAttendance) { _, _ in
+            syncTripAttendanceState()
         }
         .onChange(of: store.members.count) { _, _ in
-            viewModel.presentTripAttendanceSheetIfNeeded(
-                isTripActive: store.isTripActive,
-                attendance: myRawAttendance
-            )
+            syncTripAttendanceState()
         }
         .onChange(of: tabBar.selectedTab) { _, tab in
             guard tab == .map else { return }
@@ -235,7 +222,8 @@ struct PassengerHomeView: BaseView {
             viewModel.onTripActiveChanged(
                 wasActive: wasActive,
                 isActive: isActive,
-                attendance: myRawAttendance
+                attendance: myRawAttendance,
+                holidayModeActive: isHolidayModeActive
             )
             updatePassengerMotionMonitoring()
         }
@@ -344,7 +332,16 @@ struct PassengerHomeView: BaseView {
     private var tripAttendancePromptKey: String {
         let memberID = profile?.memberID ?? ""
         let memberLoaded = store.members.contains { $0.id == memberID }
-        return "\(store.isTripActive)-\(myRawAttendance.rawValue)-\(memberLoaded)-\(store.members.count)-\(store.attendanceRevision)"
+        return "\(store.isTripActive)-\(myRawAttendance.rawValue)-\(memberLoaded)-\(isHolidayModeActive)-\(store.members.count)-\(store.attendanceRevision)"
+    }
+
+    private func syncTripAttendanceState() {
+        guard memberLoaded else { return }
+        viewModel.syncTripAttendanceState(
+            isTripActive: store.isTripActive,
+            holidayModeActive: isHolidayModeActive,
+            rawAttendance: myRawAttendance
+        )
     }
 
     /// Konum oku: kayıtlı biniş noktası; yoksa cihaz konumu.
@@ -396,6 +393,7 @@ struct PassengerHomeView: BaseView {
         tabBar.select(.map)
         hasInitializedMapCamera = true
         focusMapOnPickup(animated: false)
+        syncTripAttendanceState()
     }
 
     /// Seyrek kullanım bildirimine basınca öneri sheet'i açılır.

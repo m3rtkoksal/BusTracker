@@ -3,6 +3,7 @@ import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
+import CoreMotion
 #endif
 
 struct DriverPassengerStats {
@@ -11,7 +12,6 @@ struct DriverPassengerStats {
     let notComing: Int
     let unknown: Int
 
-    /// Gelmiyorum dışındaki tüm yolcular (geliyorum + belirtmedi).
     var capacityOccupied: Int {
         coming + unknown
     }
@@ -26,9 +26,133 @@ struct DriverPassengerStats {
 @Observable
 final class DriverHomeViewModel: BaseViewModel {
     var showTripDurationSheet = false
-    var showAlwaysLocationGuide = false
-    var pendingTripDurationSheetAfterAlways = false
+    var activeStartPermissionSheet: DriverStartPermissionSheet?
+    var pendingTripDurationSheetAfterPermissions = false
     var selectedTripDurationHours = 2.0
+    private var isRequestingMotionAuthorization = false
+
+    enum DriverStartPermissionSheet: Equatable {
+        case locationForeground
+        case locationAlways
+        case motion
+    }
+
+    private enum StartTripPermissionGate {
+        case locationForeground
+        case locationAlways
+        case motion
+        case ready
+    }
+
+    private func startTripPermissionGate(locationTracker: LocationTracker) -> StartTripPermissionGate {
+        locationTracker.refreshAuthorizationStatus()
+
+        switch locationTracker.authorizationStatus {
+        case .notDetermined, .denied, .restricted:
+            return .locationForeground
+        case .authorizedWhenInUse:
+            return .locationAlways
+        case .authorizedAlways:
+            break
+        @unknown default:
+            return .locationForeground
+        }
+
+        let motion = MotionActivityService.shared
+        if motion.isAvailable {
+            motion.refreshAuthorization()
+            if !motion.isAuthorized {
+                return .motion
+            }
+        }
+        return .ready
+    }
+
+    private func presentStartTripPermissionGate(
+        _ gate: StartTripPermissionGate,
+        locationTracker: LocationTracker
+    ) {
+        switch gate {
+        case .locationForeground:
+            pendingTripDurationSheetAfterPermissions = true
+            locationTracker.refreshAuthorizationStatus()
+            switch locationTracker.authorizationStatus {
+            case .notDetermined:
+                // Yalnızca sistem diyaloğu — bottom sheet kullanıcı cevabından sonra.
+                activeStartPermissionSheet = nil
+                locationTracker.requestWhenInUsePermissionIfNeeded()
+            case .denied, .restricted:
+                activeStartPermissionSheet = .locationForeground
+            default:
+                presentStartTripPermissionGate(
+                    startTripPermissionGate(locationTracker: locationTracker),
+                    locationTracker: locationTracker
+                )
+            }
+        case .locationAlways:
+            pendingTripDurationSheetAfterPermissions = true
+            activeStartPermissionSheet = .locationAlways
+        case .motion:
+            pendingTripDurationSheetAfterPermissions = true
+            Task { await presentMotionStep(locationTracker: locationTracker) }
+        case .ready:
+            activeStartPermissionSheet = nil
+            pendingTripDurationSheetAfterPermissions = false
+            showTripDurationSheet = true
+        }
+    }
+
+    func dismissActiveStartPermissionSheet() {
+        activeStartPermissionSheet = nil
+    }
+
+    /// Motion: önce sistem diyaloğu; reddedilirse bottom sheet.
+    private func presentMotionStep(locationTracker: LocationTracker) async {
+        let motion = MotionActivityService.shared
+        guard motion.isAvailable else {
+            presentStartTripPermissionGate(.ready, locationTracker: locationTracker)
+            return
+        }
+        motion.refreshAuthorization()
+        switch motion.authorizationStatus {
+        case .notDetermined:
+            guard !isRequestingMotionAuthorization else { return }
+            isRequestingMotionAuthorization = true
+            activeStartPermissionSheet = nil
+            await motion.requestAuthorizationIfNeeded()
+            isRequestingMotionAuthorization = false
+            motion.refreshAuthorization()
+            guard pendingTripDurationSheetAfterPermissions else { return }
+            if motion.isAuthorized {
+                presentStartTripPermissionGate(
+                    startTripPermissionGate(locationTracker: locationTracker),
+                    locationTracker: locationTracker
+                )
+            } else if motion.authorizationStatus == .denied || motion.authorizationStatus == .restricted {
+                activeStartPermissionSheet = .motion
+            } else {
+                activeStartPermissionSheet = nil
+            }
+        case .denied, .restricted:
+            activeStartPermissionSheet = .motion
+        case .authorized:
+            presentStartTripPermissionGate(
+                startTripPermissionGate(locationTracker: locationTracker),
+                locationTracker: locationTracker
+            )
+        @unknown default:
+            activeStartPermissionSheet = .motion
+        }
+    }
+
+    private func continueStartTripPermissionFlow(locationTracker: LocationTracker) {
+        let gate = startTripPermissionGate(locationTracker: locationTracker)
+        if gate == .motion {
+            Task { await presentMotionStep(locationTracker: locationTracker) }
+        } else {
+            presentStartTripPermissionGate(gate, locationTracker: locationTracker)
+        }
+    }
 
     func configure(session: UserSession) {
         title = session.profile?.groupName ?? L10n.service
@@ -150,35 +274,28 @@ final class DriverHomeViewModel: BaseViewModel {
         }
 
         locationTracker.refreshAuthorizationStatus()
-        guard locationTracker.canDriverStartTrip else {
-            pendingTripDurationSheetAfterAlways = true
-            showAlwaysLocationGuide = true
-            return
-        }
-        showTripDurationSheet = true
+        MotionActivityService.shared.refreshAuthorization()
+        continueStartTripPermissionFlow(locationTracker: locationTracker)
     }
 
     func requestDriverAlwaysPermission(locationTracker: LocationTracker) {
-        locationTracker.refreshAuthorizationStatus()
-        if locationTracker.canDriverStartTrip {
-            showAlwaysLocationGuide = false
-            return
-        }
-        pendingTripDurationSheetAfterAlways = true
-        showAlwaysLocationGuide = true
+        continueStartTripPermissionFlow(locationTracker: locationTracker)
     }
 
-    func onDriverLocationAuthorizationUpdated(locationTracker: LocationTracker) {
+    func onDriverPermissionsUpdated(locationTracker: LocationTracker) {
         locationTracker.refreshAuthorizationStatus()
+        MotionActivityService.shared.refreshAuthorization()
         if locationTracker.hasWhenInUseAuthorization {
             locationTracker.requestDriverSingleLocation()
         }
-        guard locationTracker.canDriverStartTrip else { return }
-        showAlwaysLocationGuide = false
-        if pendingTripDurationSheetAfterAlways, !showTripDurationSheet {
-            pendingTripDurationSheetAfterAlways = false
-            showTripDurationSheet = true
+        guard pendingTripDurationSheetAfterPermissions else { return }
+        if locationTracker.authorizationStatus == .notDetermined {
+            return
         }
+        if isRequestingMotionAuthorization {
+            return
+        }
+        continueStartTripPermissionFlow(locationTracker: locationTracker)
     }
 
     func confirmStartTrip(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
@@ -186,16 +303,20 @@ final class DriverHomeViewModel: BaseViewModel {
               let groupID = profile.groupID else { return }
         let driverName = profile.name
 
-        let hasAlways = await locationTracker.waitForDriverAlwaysAuthorization()
-        guard hasAlways else {
-            pendingTripDurationSheetAfterAlways = true
-            showAlwaysLocationGuide = true
-            showError(L10n.alwaysLocationRequiredToStart)
+        let gate = startTripPermissionGate(locationTracker: locationTracker)
+        guard gate == .ready else {
+            pendingTripDurationSheetAfterPermissions = true
+            showTripDurationSheet = false
+            if gate == .motion {
+                Task { await presentMotionStep(locationTracker: locationTracker) }
+            } else {
+                presentStartTripPermissionGate(gate, locationTracker: locationTracker)
+            }
             return
         }
 
-        showAlwaysLocationGuide = false
-        pendingTripDurationSheetAfterAlways = false
+        activeStartPermissionSheet = nil
+        pendingTripDurationSheetAfterPermissions = false
         showTripDurationSheet = false
 
         do {

@@ -17,17 +17,17 @@ final class LoginViewModel: BaseViewModel {
         defer { setLoading(false) }
 
         do {
-            await NotificationService.shared.requestPermissionIfNeeded()
             _ = try await authService.signInWithApple()
             guard let userID = authService.currentUserID else { return }
 
             if let profile = try await store.fetchUserProfile(userID: userID) {
                 session.save(profile)
-                await NotificationService.shared.requestPermissionIfNeeded()
 
-                let groupID = profile.groupID ?? profile.primaryGroupID
+                let groupID = profile.primaryGroupID.isEmpty
+                    ? (profile.groupID ?? "")
+                    : profile.primaryGroupID
                 if !groupID.isEmpty {
-                    await NotificationService.shared.saveTokenToProfile(
+                    await NotificationService.shared.syncTokenIfAuthorized(
                         groupID: groupID,
                         memberID: profile.memberID
                     )

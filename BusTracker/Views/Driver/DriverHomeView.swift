@@ -11,6 +11,9 @@ struct DriverHomeView: BaseView {
     @State private var showMyServices = false
     @State private var isCreatingInviteLink = false
     @State private var showLanguagePicker = false
+    @State private var locationForegroundGuidePhase: DriverLocationForegroundGuidePhase = .guide
+    @State private var alwaysLocationGuidePhase: DriverAlwaysLocationGuidePhase = .guide
+    @State private var motionGuidePhase: DriverMotionGuidePhase = .guide
 
     private var profile: UserProfile? { session.profile }
 
@@ -39,6 +42,13 @@ struct DriverHomeView: BaseView {
             memberID: memberID,
             store: store
         )
+    }
+
+    private var canConfirmTripStart: Bool {
+        locationTracker.refreshAuthorizationStatus()
+        let motion = MotionActivityService.shared
+        motion.refreshAuthorization()
+        return locationTracker.canDriverStartTrip && (!motion.isAvailable || motion.isAuthorized)
     }
 
     func content() -> some View {
@@ -71,25 +81,64 @@ struct DriverHomeView: BaseView {
         .onDisappear {
             MotionActivityService.shared.stopMonitoring()
         }
+        .onChange(of: viewModel.activeStartPermissionSheet) { _, sheet in
+            guard sheet != nil else { return }
+            locationForegroundGuidePhase = .guide
+            alwaysLocationGuidePhase = .guide
+            motionGuidePhase = .guide
+        }
         .overlay {
-            if viewModel.showAlwaysLocationGuide {
+            if let sheet = viewModel.activeStartPermissionSheet {
                 ZStack(alignment: .bottom) {
                     Color.black.opacity(0.55)
                         .ignoresSafeArea()
-                        .onTapGesture { viewModel.showAlwaysLocationGuide = false }
+                        .onTapGesture { viewModel.dismissActiveStartPermissionSheet() }
 
-                    DriverAlwaysLocationGuideSheet(
-                        waitingForSettingsReturn: false,
-                        onRequestPermission: {
-                            locationTracker.requestDriverAlwaysPermissionIfNeeded()
-                        },
-                        onOpenSettings: { locationTracker.openAppSettings() },
-                        onDismiss: { viewModel.showAlwaysLocationGuide = false }
-                    )
+                    Group {
+                        switch sheet {
+                        case .locationForeground:
+                            DriverLocationForegroundGuideSheet(
+                                phase: locationForegroundGuidePhase,
+                                onOpenSettings: {
+                                    locationForegroundGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    locationForegroundGuidePhase = .guide
+                                    viewModel.dismissActiveStartPermissionSheet()
+                                }
+                            )
+                        case .locationAlways:
+                            DriverAlwaysLocationGuideSheet(
+                                phase: alwaysLocationGuidePhase,
+                                needsAlwaysUpgradeFromWhenInUse: true,
+                                onOpenSettings: {
+                                    alwaysLocationGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    alwaysLocationGuidePhase = .guide
+                                    viewModel.dismissActiveStartPermissionSheet()
+                                }
+                            )
+                        case .motion:
+                            DriverMotionGuideSheet(
+                                phase: motionGuidePhase,
+                                onOpenSettings: {
+                                    motionGuidePhase = .waitingSettingsReturn
+                                    locationTracker.openAppSettings()
+                                },
+                                onDismiss: {
+                                    motionGuidePhase = .guide
+                                    viewModel.dismissActiveStartPermissionSheet()
+                                }
+                            )
+                        }
+                    }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 .ignoresSafeArea(edges: .bottom)
-                .animation(.easeInOut(duration: 0.28), value: viewModel.showAlwaysLocationGuide)
+                .animation(.easeInOut(duration: 0.28), value: viewModel.activeStartPermissionSheet)
             }
         }
         .overlay {
@@ -102,7 +151,7 @@ struct DriverHomeView: BaseView {
                     TripDurationBottomSheet(
                         selectedHours: $viewModel.selectedTripDurationHours,
                         isLoading: store.isLoading,
-                        canStartTrip: locationTracker.canDriverStartTrip,
+                        canStartTrip: canConfirmTripStart,
                         onConfirm: {
                             Task {
                                 await viewModel.confirmStartTrip(
@@ -121,11 +170,33 @@ struct DriverHomeView: BaseView {
             }
         }
         .onChange(of: locationTracker.authorizationStatus) { _, _ in
-            viewModel.onDriverLocationAuthorizationUpdated(locationTracker: locationTracker)
+            locationTracker.refreshAuthorizationStatus()
+            MotionActivityService.shared.refreshAuthorization()
+            viewModel.onDriverPermissionsUpdated(locationTracker: locationTracker)
         }
 #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            viewModel.onDriverLocationAuthorizationUpdated(locationTracker: locationTracker)
+            locationTracker.refreshAuthorizationStatus()
+            MotionActivityService.shared.refreshAuthorization()
+            if viewModel.activeStartPermissionSheet != nil {
+                switch viewModel.activeStartPermissionSheet {
+                case .locationForeground:
+                    if locationForegroundGuidePhase == .waitingSettingsReturn {
+                        locationForegroundGuidePhase = .guide
+                    }
+                case .locationAlways:
+                    if alwaysLocationGuidePhase == .waitingSettingsReturn {
+                        alwaysLocationGuidePhase = .guide
+                    }
+                case .motion:
+                    if motionGuidePhase == .waitingSettingsReturn {
+                        motionGuidePhase = .guide
+                    }
+                case .none:
+                    break
+                }
+            }
+            viewModel.onDriverPermissionsUpdated(locationTracker: locationTracker)
         }
 #endif
         .sheet(isPresented: $showMyServices) {
@@ -440,12 +511,6 @@ struct DriverHomeView: BaseView {
     private var tripControlSection: some View {
         VStack(spacing: 12) {
             Button {
-                locationTracker.refreshAuthorizationStatus()
-                if !store.isTripActive, !locationTracker.canDriverStartTrip {
-                    viewModel.requestDriverAlwaysPermission(locationTracker: locationTracker)
-                    locationTracker.requestDriverAlwaysPermissionIfNeeded()
-                    return
-                }
                 Task {
                     await viewModel.handleTripControlTap(
                         store: store,
@@ -506,7 +571,6 @@ struct DriverHomeView: BaseView {
                 .foregroundStyle(Color(hex: 0xFFE04A))
             Button(L10n.enableAlwaysLocation) {
                 viewModel.requestDriverAlwaysPermission(locationTracker: locationTracker)
-                locationTracker.requestDriverAlwaysPermissionIfNeeded()
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(NeonTheme.secondary)

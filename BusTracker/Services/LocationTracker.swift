@@ -28,13 +28,15 @@ final class LocationTracker: NSObject {
         }
     }
 
+    /// Sürücü seferi: yalnızca "Her zaman". "Uygulama kullanılırken" yetmez.
+    var driverHasAlwaysLocationForTrip: Bool {
+        refreshAuthorizationStatus()
+        return authorizationStatus == .authorizedAlways
+    }
+
     /// Her kontrol öncesi canlı okunur (izin penceresi kapandıktan hemen sonra güncellenir).
     var canDriverStartTrip: Bool {
-        let live = manager.authorizationStatus
-        if authorizationStatus != live {
-            authorizationStatus = live
-        }
-        return live == .authorizedAlways
+        driverHasAlwaysLocationForTrip
     }
 
     /// Sistem izin penceresi kapandıktan sonra kısa süre gecikme olabilir.
@@ -77,16 +79,47 @@ final class LocationTracker: NSObject {
         }
     }
 
-    /// Sürücü sefer başlatma: "Her zaman" izni.
+    /// Sürücü: tek çağrı — iOS önce "Kullanırken", ardından otomatik "Her Zaman" sorar.
     func requestDriverAlwaysPermissionIfNeeded() {
         refreshAuthorizationStatus()
+        if canDriverStartTrip { return }
         switch authorizationStatus {
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse:
+        case .notDetermined, .authorizedWhenInUse:
             manager.requestAlwaysAuthorization()
+        case .denied, .restricted:
+            break
         default:
             break
+        }
+    }
+
+    enum DriverAlwaysPermissionOutcome {
+        case alreadyAuthorized
+        case systemPromptShown
+        /// Sistem diyaloğu yok; kullanıcı "Ayarlara git"e basmalı.
+        case needsSettings
+    }
+
+    /// Bottom sheet "İZİN VER" — Ayarlar yalnızca kullanıcı isteyince açılır.
+    func requestDriverAlwaysPermission() async -> DriverAlwaysPermissionOutcome {
+        refreshAuthorizationStatus()
+        if canDriverStartTrip { return .alreadyAuthorized }
+
+        switch authorizationStatus {
+        case .notDetermined, .authorizedWhenInUse:
+            manager.requestAlwaysAuthorization()
+            if await waitForDriverAlwaysAuthorization(maxWaitSeconds: 15.0) {
+                return .alreadyAuthorized
+            }
+            refreshAuthorizationStatus()
+            if canDriverStartTrip { return .alreadyAuthorized }
+            return .needsSettings
+        case .denied, .restricted:
+            return .needsSettings
+        case .authorizedAlways:
+            return .alreadyAuthorized
+        @unknown default:
+            return .needsSettings
         }
     }
 

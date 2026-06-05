@@ -7,7 +7,10 @@ const {
   buildReturneeTripNotification,
   fetchYesterdayNotComingMemberIds,
 } = require("./weather");
-const { buildDriverApproachingMessage } = require("./notifications");
+const {
+  buildDriverApproachingMessage,
+  buildTripStartedMessage,
+} = require("./notifications");
 const { evaluateGroupBoarding } = require("./boarding");
 
 initializeApp();
@@ -27,14 +30,66 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return 2 * earthRadius * Math.asin(Math.sqrt(a));
 }
 
-function passengerMembers(membersSnapshot) {
-  return membersSnapshot.docs
-    .filter((doc) => doc.data().role === "passenger")
-    .map((doc) => ({
+function istanbulDateKey(reference = new Date()) {
+  return reference.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+}
+
+function isHolidayModeActive(holidayModeEndDate, reference = new Date()) {
+  if (!holidayModeEndDate) {
+    return false;
+  }
+  const todayKey = istanbulDateKey(reference);
+  return todayKey <= holidayModeEndDate;
+}
+
+/** Uygulamadaki effectiveAttendance ile aynı (tatilde seçim yoksa gelmiyorum). */
+function effectiveAttendanceStatus(rawStatus, holidayActive) {
+  const status = rawStatus || "unknown";
+  if (!holidayActive) {
+    return status;
+  }
+  if (status === "coming" || status === "notComing") {
+    return status;
+  }
+  return "notComing";
+}
+
+/**
+ * Gelmiyorum (veya tatilde seçim yok → effective gelmiyorum) → bildirim yok.
+ * Normal modda belirsiz/geliyorum → bildirim var.
+ */
+function shouldNotifyPassengerOnTripStart(memberData, attendanceStatus) {
+  const holidayActive = isHolidayModeActive(memberData.holidayModeEndDate);
+  const effective = effectiveAttendanceStatus(attendanceStatus, holidayActive);
+  return effective !== "notComing";
+}
+
+function passengerMembers(membersSnapshot, attendanceResponses) {
+  const passengers = [];
+  for (const doc of membersSnapshot.docs) {
+    const member = doc.data();
+    if (member.role !== "passenger" || !member.fcmToken) {
+      continue;
+    }
+    const rawStatus = attendanceResponses[doc.id]?.status;
+    if (!shouldNotifyPassengerOnTripStart(member, rawStatus)) {
+      console.log("[notifyTripStarted] skip", doc.id, {
+        holidayModeEndDate: member.holidayModeEndDate || null,
+        holidayActive: isHolidayModeActive(member.holidayModeEndDate),
+        rawStatus: rawStatus || "unknown",
+        effective: effectiveAttendanceStatus(
+          rawStatus,
+          isHolidayModeActive(member.holidayModeEndDate)
+        ),
+      });
+      continue;
+    }
+    passengers.push({
       memberID: doc.id,
-      token: doc.data().fcmToken,
-    }))
-    .filter((entry) => Boolean(entry.token));
+      token: member.fcmToken,
+    });
+  }
+  return passengers;
 }
 
 exports.notifyTripStarted = onDocumentCreated(
@@ -49,11 +104,11 @@ exports.notifyTripStarted = onDocumentCreated(
     const driverName = data.driverName || "Şoför";
     const db = getFirestore();
 
-    const membersSnapshot = await db
-      .collection("groups")
-      .doc(groupId)
-      .collection("members")
-      .get();
+    const tripDateKey = data.date || istanbulDateKey();
+    const [membersSnapshot, attendanceSnapshot] = await Promise.all([
+      db.collection("groups").doc(groupId).collection("members").get(),
+      db.collection("groups").doc(groupId).collection("attendance").doc(tripDateKey).get(),
+    ]);
 
     await Promise.all(
       membersSnapshot.docs.map((memberDoc) =>
@@ -64,15 +119,20 @@ exports.notifyTripStarted = onDocumentCreated(
       )
     );
 
-    const passengers = passengerMembers(membersSnapshot);
+    const attendanceResponses = attendanceSnapshot.data()?.responses || {};
+    const passengers = passengerMembers(membersSnapshot, attendanceResponses);
+
+    console.log(
+      "[notifyTripStarted] recipients:",
+      passengers.length,
+      "of",
+      membersSnapshot.docs.filter((doc) => doc.data().role === "passenger").length,
+      "passengers"
+    );
 
     if (passengers.length === 0) {
       return;
     }
-
-    const tripDateKey = data.date || new Date().toLocaleDateString("en-CA", {
-      timeZone: "Europe/Istanbul",
-    });
     const [defaultNotification, returneeYesterday] = await Promise.all([
       buildTripStartedMessageForGroup(db, groupId, driverName),
       fetchYesterdayNotComingMemberIds(db, groupId, tripDateKey),
@@ -80,18 +140,16 @@ exports.notifyTripStarted = onDocumentCreated(
 
     const returneeNotification = buildReturneeTripNotification(driverName);
 
-    const messages = passengers.map(({ memberID, token }) => ({
-      token,
-      notification: returneeYesterday.has(memberID)
-        ? returneeNotification
-        : defaultNotification,
-      data: {
-        type: "trip_started",
+    const messages = passengers.map(({ memberID, token }) => {
+      const isReturnee = returneeYesterday.has(memberID);
+      return buildTripStartedMessage({
+        token,
         groupId,
         memberID,
-        returnee: returneeYesterday.has(memberID) ? "1" : "0",
-      },
-    }));
+        notification: isReturnee ? returneeNotification : defaultNotification,
+        returnee: isReturnee,
+      });
+    });
 
     const result = await getMessaging().sendEach(messages);
     const failed = result.responses.filter((r) => !r.success).length;

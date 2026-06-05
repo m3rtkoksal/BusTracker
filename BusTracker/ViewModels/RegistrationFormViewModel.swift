@@ -107,7 +107,6 @@ final class RegistrationFormViewModel: BaseViewModel {
         defer { authService.setCompletingRegistration(false) }
 
         do {
-            await NotificationService.shared.requestPermissionIfNeeded()
             let appleResult = try await authService.signInWithApple()
 
             if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -135,9 +134,11 @@ final class RegistrationFormViewModel: BaseViewModel {
             }
 
             session.save(profile)
-            await NotificationService.shared.requestPermissionIfNeeded()
-            await NotificationService.shared.saveTokenToProfile(
-                groupID: profile.groupID ?? "",
+            let groupID = profile.primaryGroupID.isEmpty
+                ? (profile.groupID ?? "")
+                : profile.primaryGroupID
+            await NotificationService.shared.syncTokenIfAuthorized(
+                groupID: groupID,
                 memberID: profile.memberID
             )
         } catch let error as AppleSignInError {

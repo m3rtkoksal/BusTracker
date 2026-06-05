@@ -1,15 +1,12 @@
 import SwiftUI
 
-enum DriverAlwaysLocationGuidePhase: Equatable {
-    /// Ayarlardan konum talimatları.
+enum DriverLocationForegroundGuidePhase: Equatable {
     case guide
-    /// Kullanıcı Ayarlar'a gitti, dönmesi bekleniyor.
     case waitingSettingsReturn
 }
 
-struct DriverAlwaysLocationGuideSheet: View {
-    let phase: DriverAlwaysLocationGuidePhase
-    var needsAlwaysUpgradeFromWhenInUse: Bool = false
+struct DriverLocationForegroundGuideSheet: View {
+    let phase: DriverLocationForegroundGuidePhase
     let onOpenSettings: () -> Void
     let onDismiss: () -> Void
 
@@ -20,7 +17,7 @@ struct DriverAlwaysLocationGuideSheet: View {
                 .frame(width: 48, height: 4)
                 .padding(.top, 12)
 
-            Text(L10n.locationPermissionTitle)
+            Text(L10n.driverLocationForegroundTitle)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(NeonTheme.onSurface)
                 .multilineTextAlignment(.center)
@@ -51,18 +48,14 @@ struct DriverAlwaysLocationGuideSheet: View {
     private var bodyText: String {
         switch phase {
         case .guide:
-            if needsAlwaysUpgradeFromWhenInUse {
-                L10n.driverLocationWhenInUseUpgradeBody
-            } else {
-                L10n.driverLocationPermissionBody
-            }
+            L10n.driverLocationForegroundBody
         case .waitingSettingsReturn:
             L10n.locationPermissionBodySettings
         }
     }
 
     private var steps: [String] {
-        [L10n.locationSettingsStep1, L10n.locationSettingsStep2, L10n.locationSettingsStep3]
+        [L10n.locationForegroundSettingsStep1, L10n.locationForegroundSettingsStep2, L10n.locationForegroundSettingsStep3]
     }
 
     private func actionButton(title: String, action: @escaping () -> Void) -> some View {

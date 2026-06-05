@@ -25,27 +25,59 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     func onAppear(store: ShuttleStore, session: UserSession) {
         configure(session: session)
-        let groupID = session.profile?.primaryGroupID ?? ""
+        let groupID = resolvedGroupID(from: session.profile)
         if !groupID.isEmpty {
             store.startListening(groupID: groupID)
         }
     }
 
-    func onTripActiveChanged(wasActive: Bool, isActive: Bool, attendance: AttendanceStatus) {
+    private func resolvedGroupID(from profile: UserProfile?) -> String {
+        let primary = profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !primary.isEmpty { return primary }
+        return profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    func onTripActiveChanged(
+        wasActive: Bool,
+        isActive: Bool,
+        attendance: AttendanceStatus,
+        holidayModeActive: Bool
+    ) {
         if !isActive {
             didPromptAttendanceThisTrip = false
             showTripStartedAttendanceSheet = false
             return
         }
         if isActive && !wasActive {
-            presentTripAttendanceSheetIfNeeded(isTripActive: true, attendance: attendance)
+            syncTripAttendanceState(
+                isTripActive: true,
+                holidayModeActive: holidayModeActive,
+                rawAttendance: attendance
+            )
         }
     }
 
-    func presentTripAttendanceSheetIfNeeded(isTripActive: Bool, attendance: AttendanceStatus) {
-        guard isTripActive, attendance == .unknown, !didPromptAttendanceThisTrip else { return }
+    func presentTripAttendanceSheetIfNeeded(
+        isTripActive: Bool,
+        attendance: AttendanceStatus,
+        holidayModeActive: Bool
+    ) {
+        guard isTripActive, !holidayModeActive, attendance == .unknown, !didPromptAttendanceThisTrip else { return }
         didPromptAttendanceThisTrip = true
         showTripStartedAttendanceSheet = true
+    }
+
+    func syncTripAttendanceState(
+        isTripActive: Bool,
+        holidayModeActive: Bool,
+        rawAttendance: AttendanceStatus
+    ) {
+        guard isTripActive else { return }
+        presentTripAttendanceSheetIfNeeded(
+            isTripActive: isTripActive,
+            attendance: rawAttendance,
+            holidayModeActive: holidayModeActive
+        )
     }
 
     func dismissTripAttendanceSheet() {
@@ -112,12 +144,24 @@ final class PassengerHomeViewModel: BaseViewModel {
         }
     }
 
+    private func promptNotificationIfNeeded(for status: AttendanceStatus, session: UserSession) async {
+        guard status == .coming, let profile = session.profile else { return }
+        let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
+        guard !groupID.isEmpty else { return }
+        await NotificationService.shared.promptForPassengerAction(
+            groupID: groupID,
+            memberID: profile.memberID
+        )
+    }
+
     func updateAttendance(
         status: AttendanceStatus,
         store: ShuttleStore,
         session: UserSession
     ) async {
         guard let profile = session.profile else { return }
+
+        await promptNotificationIfNeeded(for: status, session: session)
 
         pendingAttendanceSelection = status
         isUpdatingAttendance = true
@@ -169,14 +213,19 @@ final class PassengerHomeViewModel: BaseViewModel {
             return
         }
 
-        isSavingPickup = true
-        defer { isSavingPickup = false }
-
         let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
         guard !groupID.isEmpty else {
             showError(L10n.shuttleInfoNotFound)
             return
         }
+
+        await NotificationService.shared.promptForPassengerAction(
+            groupID: groupID,
+            memberID: profile.memberID
+        )
+
+        isSavingPickup = true
+        defer { isSavingPickup = false }
 
         do {
             try await store.setMorningPickup(

@@ -117,8 +117,36 @@ final class NotificationService: NSObject {
         }
     }
 
-    /// Geriye dönük uyumluluk — kayıt / giriş akışları.
+    /// Kayıt / giriş sonrası: yalnızca izin zaten verilmişse token kaydet (tekrar popup yok).
+    func syncTokenIfAuthorized(groupID: String?, memberID: String?) async {
+        let snapshot = await authorizationSnapshot()
+        guard snapshot.isEnabled else { return }
+        await syncTokenIfPossible(groupID: groupID, memberID: memberID)
+    }
+
+    /// Yolcu "Geliyorum" / biniş kaydı: izin yoksa sistem diyaloğu (oturum bayrağına bakmaz).
+    func promptForPassengerAction(groupID: String?, memberID: String?) async {
+        configure()
+        let snapshot = await authorizationSnapshot()
+        if snapshot.isEnabled {
+            await syncTokenIfPossible(groupID: groupID, memberID: memberID)
+            return
+        }
+        guard snapshot.status == .notDetermined else { return }
+        await requestPermissionAndRegister()
+        let updated = await authorizationSnapshot()
+        if updated.isEnabled {
+            await syncTokenIfPossible(groupID: groupID, memberID: memberID)
+        }
+    }
+
+    /// Geriye dönük uyumluluk — oturumda en fazla bir kez sistem popup'ı.
     func requestPermissionIfNeeded() async {
+        guard PermissionPromptSession.mayPromptNotifications else {
+            await refreshStatus()
+            return
+        }
+        PermissionPromptSession.markNotificationPromptHandled()
         _ = await ensureNotificationsEnabled(groupID: nil, memberID: nil)
     }
 
@@ -259,14 +287,14 @@ extension NotificationService: MessagingDelegate {
         guard let token = fcmToken else { return }
         // Optionally, you could compare with Messaging.messaging().fcmToken, but saving on callback is fine
         Task { @MainActor in
-            // You might want to persist the token immediately to Firestore under the current user/group
-            if let profile = UserSession.shared.profile {
-                if let groupID = profile.groupID as? String, let memberID = profile.memberID as? String {
-                    if let token = fcmToken ?? Messaging.messaging().fcmToken {
-                        await self.saveTokenToProfile(token: token, groupID: groupID, memberID: memberID)
-                    }
-                }
-            }
+            guard let profile = UserSession.shared.profile else { return }
+            let groupID = profile.primaryGroupID.isEmpty
+                ? (profile.groupID ?? "")
+                : profile.primaryGroupID
+            guard !groupID.isEmpty,
+                  let token = fcmToken ?? Messaging.messaging().fcmToken
+            else { return }
+            await self.saveTokenToProfile(token: token, groupID: groupID, memberID: profile.memberID)
         }
     }
 }

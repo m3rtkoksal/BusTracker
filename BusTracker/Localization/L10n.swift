@@ -327,7 +327,65 @@ enum L10n {
     static var notificationsUnknown: String { L.t("Bilinmiyor", "Unknown") }
     static var notificationsDisabledTitle: String { L.t("Bildirimler kapalı", "Notifications are off") }
     static var notificationsDisabledMessage: String {
-        L.t("Servis başladığında haberdar olmak için bildirimleri açın.", "Enable notifications to know when the shuttle starts.")
+        L.t(
+            "Servis başladığında ve sürücü yaklaştığında haberdar olmak için bildirimleri açın.",
+            "Enable notifications to know when the shuttle starts and when the driver is nearby."
+        )
+    }
+    static var driverNotificationPermissionBody: String {
+        L.t(
+            "Yolcular katıldığında ve servis başladığında haberdar olmak için bildirimleri açın.",
+            "Enable notifications to know when passengers board and when the shuttle starts."
+        )
+    }
+    static var notificationPermissionBodySettings: String {
+        L.t(
+            "Ayarlar açıldıysa aşağıdaki adımları uygulayın, sonra bu ekrana dönün.",
+            "If Settings opened, follow the steps below, then return to this screen."
+        )
+    }
+    static var notificationSettingsStep1: String {
+        L.t("\"Ayarlara git\"e basın.", "Tap \"Go to Settings\".")
+    }
+    static var notificationSettingsStep2: String {
+        L.t("Bildirimler → BusTracker'ı açın.", "Notifications → enable BusTracker.")
+    }
+    static var notificationSettingsStep3: String {
+        L.t("Uygulamaya dönün.", "Return to the app.")
+    }
+    static var motionPermissionTitle: String { L.t("Hareket izni gerekli", "Motion permission required") }
+    static var motionPermissionDisabledMessage: String {
+        L.t(
+            "Servise bindiğinizi anlamak için hareket izni gerekir. Ayarlardan açın.",
+            "Motion permission is required to detect boarding. Enable it in Settings."
+        )
+    }
+    static var driverMotionPermissionBody: String {
+        L.t(
+            "Yolcuların servise bindiğini anlamak için hareket izni gerekir.",
+            "Motion permission is required to detect when passengers board the shuttle."
+        )
+    }
+    static var motionPermissionBodySettings: String {
+        L.t(
+            "Ayarlar açıldıysa aşağıdaki adımları uygulayın, sonra bu ekrana dönün.",
+            "If Settings opened, follow the steps below, then return to this screen."
+        )
+    }
+    static var motionSettingsStep1: String {
+        L.t("\"Ayarlara git\"e basın.", "Tap \"Go to Settings\".")
+    }
+    static var motionSettingsStep2: String {
+        L.t("Hareket ve Fitness → BusTracker'ı açın.", "Motion & Fitness → enable BusTracker.")
+    }
+    static var motionSettingsStep3: String {
+        L.t("Uygulamaya dönün.", "Return to the app.")
+    }
+    static var driverLocationPermissionDenied: String {
+        L.t(
+            "Konum izni kapalı. Servis başlatmak ve konum paylaşmak için izin gerekli.",
+            "Location permission is off. Permission is required to start the shuttle and share your location."
+        )
     }
     static var openSettings: String { L.t("Ayarları Aç", "Open Settings") }
     static var later: String { L.t("Sonra", "Later") }
@@ -370,22 +428,70 @@ enum L10n {
     }
     static var locationPermissionBodyInitial: String {
         L.t(
-            "Yolcular sizi haritada görebilsin diye tek seferlik izin gerekir.",
-            "One-time permission is required so passengers can see you on the map."
+            "Haritada görünmek için konum izni gerekir.",
+            "Location permission is required to appear on the map."
+        )
+    }
+    static var driverLocationPermissionBody: String {
+        L.t(
+            "Servis için \"Her Zaman\" konum izni gerekir. Sistem iki soru sorarsa önce izin verin, sonra Her Zaman'ı seçin.",
+            "\"Always\" location is required for the shuttle. If iOS asks twice, allow access then choose Always."
+        )
+    }
+    static var driverLocationWhenInUseUpgradeBody: String {
+        L.t(
+            "Şu an yalnızca \"Uygulama Kullanılırken\" izni var. Servis için Ayarlardan \"Her Zaman\"a yükseltmeniz gerekir.",
+            "You only have \"While Using the App\" access. Upgrade to \"Always\" in Settings to start the shuttle."
+        )
+    }
+    static var driverLocationForegroundTitle: String {
+        L.t("Konum izni gerekli", "Location permission required")
+    }
+    static var driverLocationForegroundBody: String {
+        L.t(
+            "Servisi başlatmak için önce konum izni vermeniz gerekir.",
+            "Location permission is required before you can start the shuttle."
+        )
+    }
+    static var locationForegroundSettingsStep1: String {
+        L.t("\"Ayarlara git\"e basın.", "Tap \"Go to Settings\".")
+    }
+    static var locationForegroundSettingsStep2: String {
+        L.t("Konum → \"Uygulama Kullanılırken\" veya \"Her Zaman\" seçin.", "Location → select \"While Using\" or \"Always\".")
+    }
+    static var locationForegroundSettingsStep3: String {
+        L.t("Uygulamaya dönün.", "Return to the app.")
+    }
+    static var locationPermissionBodyNeedsSettings: String {
+        L.t(
+            "Sistem izin penceresi açılmadı. Ayarlardan konumu \"Her Zaman\" yapın:",
+            "The permission dialog did not appear. Set location to \"Always\" in Settings:"
         )
     }
     static var locationStep1: String {
         L.t("Açılan pencerede Konum veya İzinler'e dokunun.", "In the dialog, tap Location or Permissions.")
     }
     static var locationStep2: String {
-        L.t("\"Her zaman izin ver\" seçeneğini işaretleyin.", "Select \"Always allow\".")
+        L.t("\"Her Zaman\" seçeneğini işaretleyin.", "Select \"Always\".")
     }
     static var locationStep3: String {
         L.t("Geri gelip Servisi başlat'a tekrar basın.", "Come back and tap Start Shuttle again.")
     }
+    static var locationSettingsStep1: String {
+        L.t("\"Ayarlara git\"e basın.", "Tap \"Go to Settings\".")
+    }
+    static var locationSettingsStep2: String {
+        L.t("Konum → \"Her Zaman\" seçin.", "Location → select \"Always\".")
+    }
+    static var locationSettingsStep3: String {
+        L.t("Uygulamaya dönün.", "Return to the app.")
+    }
     static var grantPermission: String { L.t("İZİN VER", "GRANT PERMISSION") }
     static var ifWindowDidNotOpen: String { L.t("Pencere açılmadıysa", "If the dialog didn't open") }
     static var goToSettings: String { L.t("Ayarlara git", "Go to Settings") }
+    static var locationPermissionChecking: String {
+        L.t("Konum izni kontrol ediliyor…", "Checking location permission…")
+    }
 
     // MARK: - Trip attendance sheet
 

@@ -1,10 +1,12 @@
-/** FCM — servis çağrısı (korna sesi) vs genel servis bildirimleri. */
+/** FCM — servis başladı + servis çağrısı (özel ses: approach_tink). */
 
-const CHANNEL_TRIP = "bustracker_trip";
+const CHANNEL_TRIP = "bustracker_trip_v2";
 const CHANNEL_APPROACHING = "bustracker_approaching";
 
-const SOUND_APPROACH_IOS = "approach_tink.caf";
-const SOUND_APPROACH_ANDROID = "approach_tink";
+const SOUND_TRIP_IOS = "approach_tink.caf";
+const SOUND_TRIP_ANDROID = "approach_tink";
+const SOUND_APPROACH_IOS = SOUND_TRIP_IOS;
+const SOUND_APPROACH_ANDROID = SOUND_TRIP_ANDROID;
 
 const APPROACH_TITLE = "Servis seni çağırıyor";
 const APPROACH_SUBTITLE = "Korna = senin vanın, dışarı çık";
@@ -17,6 +19,50 @@ const APPROACH_BODIES = [
 
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+/**
+ * Sürücü servisi başlattı — tüm yolculara (tatil/coming kuralları index.js'te).
+ */
+function buildTripStartedMessage({
+  token,
+  groupId,
+  memberID,
+  notification,
+  returnee = false,
+}) {
+  const { title, body } = notification;
+  return {
+    token,
+    notification: { title, body },
+    data: {
+      type: "trip_started",
+      groupId,
+      memberID,
+      returnee: returnee ? "1" : "0",
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: CHANNEL_TRIP,
+        sound: SOUND_TRIP_ANDROID,
+        priority: "high",
+        tag: `trip_started_${groupId}_${memberID}`,
+        ticker: title,
+        visibility: "public",
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: SOUND_TRIP_IOS,
+          "thread-id": `trip_${groupId}`,
+        },
+      },
+    },
+  };
 }
 
 /**
@@ -113,6 +159,7 @@ function buildPassengerBoardedMessage({ token, groupId, boardedMemberID, boarded
 module.exports = {
   CHANNEL_TRIP,
   CHANNEL_APPROACHING,
+  buildTripStartedMessage,
   buildDriverApproachingMessage,
   buildPassengerBoardedMessage,
 };

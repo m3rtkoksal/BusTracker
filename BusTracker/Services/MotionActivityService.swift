@@ -14,6 +14,7 @@ final class MotionActivityService {
 
     private(set) var isMonitoring = false
     private(set) var isAuthorized = false
+    private(set) var authorizationStatus: CMAuthorizationStatus = .notDetermined
 
     private let manager = CMMotionActivityManager()
     private let uploadIntervalSeconds: TimeInterval = 45
@@ -76,14 +77,41 @@ final class MotionActivityService {
         store = nil
     }
 
-    private func startMonitoring() {
-        guard isAvailable else { return }
-
+    func refreshAuthorization() {
+        guard isAvailable else {
+            authorizationStatus = .notDetermined
+            isAuthorized = false
+            return
+        }
         if #available(iOS 11.0, *) {
-            isAuthorized = CMMotionActivityManager.authorizationStatus() == .authorized
+            authorizationStatus = CMMotionActivityManager.authorizationStatus()
+            isAuthorized = authorizationStatus == .authorized
         } else {
+            authorizationStatus = .authorized
             isAuthorized = true
         }
+    }
+
+    func requestAuthorizationIfNeeded() async {
+        guard isAvailable else { return }
+        refreshAuthorization()
+        guard authorizationStatus == .notDetermined else { return }
+
+        await withCheckedContinuation { continuation in
+            manager.queryActivityStarting(
+                from: Date().addingTimeInterval(-60),
+                to: Date(),
+                to: OperationQueue.main
+            ) { _, _ in
+                continuation.resume()
+            }
+        }
+        refreshAuthorization()
+    }
+
+    private func startMonitoring() {
+        guard isAvailable else { return }
+        refreshAuthorization()
 
         manager.queryActivityStarting(
             from: Date().addingTimeInterval(-60),

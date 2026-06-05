@@ -50,16 +50,16 @@
             ReferencedContainer = "container:BusTracker.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <LocationScenarioReference
-         identifier = "../../BusTracker/SimulatorLocations/SancaktepeAtaturk.gpx"
-         referenceType = "0">
-      </LocationScenarioReference>
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-FIRAnalyticsDebugEnabled"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
+      <LocationScenarioReference
+         identifier = "../../BusTracker/SimulatorLocations/SancaktepeAtaturk.gpx"
+         referenceType = "0">
+      </LocationScenarioReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
