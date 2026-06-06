@@ -44,6 +44,19 @@ final class DriverHomeViewModel: BaseViewModel {
         case ready
     }
 
+    private func needsDriverAlwaysLocationUpgrade(locationTracker: LocationTracker) -> Bool {
+        locationTracker.refreshAuthorizationStatus()
+        return locationTracker.hasWhenInUseAuthorization && !locationTracker.canDriverStartTrip
+    }
+
+    @discardableResult
+    private func presentDriverAlwaysLocationSheetIfNeeded(locationTracker: LocationTracker) -> Bool {
+        guard needsDriverAlwaysLocationUpgrade(locationTracker: locationTracker) else { return false }
+        pendingTripDurationSheetAfterPermissions = true
+        activeStartPermissionSheet = .locationAlways
+        return true
+    }
+
     private func startTripPermissionGate(locationTracker: LocationTracker) -> StartTripPermissionGate {
         locationTracker.refreshAuthorizationStatus()
 
@@ -83,6 +96,9 @@ final class DriverHomeViewModel: BaseViewModel {
                 locationTracker.requestWhenInUsePermissionIfNeeded()
             case .denied, .restricted:
                 activeStartPermissionSheet = .locationForeground
+            case .authorizedWhenInUse:
+                pendingTripDurationSheetAfterPermissions = true
+                activeStartPermissionSheet = .locationAlways
             default:
                 presentStartTripPermissionGate(
                     startTripPermissionGate(locationTracker: locationTracker),
@@ -143,6 +159,7 @@ final class DriverHomeViewModel: BaseViewModel {
     }
 
     private func continueStartTripPermissionFlow(locationTracker: LocationTracker) {
+        if presentDriverAlwaysLocationSheetIfNeeded(locationTracker: locationTracker) { return }
         let gate = startTripPermissionGate(locationTracker: locationTracker)
         if gate == .motion {
             Task { await presentMotionStep(locationTracker: locationTracker) }
@@ -290,6 +307,9 @@ final class DriverHomeViewModel: BaseViewModel {
             return
         }
         if isRequestingMotionAuthorization {
+            return
+        }
+        if presentDriverAlwaysLocationSheetIfNeeded(locationTracker: locationTracker) {
             return
         }
         continueStartTripPermissionFlow(locationTracker: locationTracker)
