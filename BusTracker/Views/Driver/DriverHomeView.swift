@@ -658,60 +658,58 @@ struct DriverHomeView: BaseView {
     // MARK: - Settings Tab
 
     private var settingsTab: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    if let code = profile?.groupCode, !code.isEmpty {
-                        SettingsServiceCodeRow(code: code) {
-                            viewModel.copyServiceCode(code)
-                        }
-                        SettingsInviteShareRow(serviceCode: code) { message in
-                            viewModel.showError(message)
-                        }
+        ScrollView {
+            VStack(spacing: 16) {
+                if let code = profile?.groupCode, !code.isEmpty {
+                    SettingsServiceCodeRow(code: code) {
+                        viewModel.copyServiceCode(code)
                     }
-
-                    if let memberID = profile?.memberID,
-                       let name = store.members.first(where: { $0.id == memberID })?.name ?? profile?.name {
-                        SettingsEditableNameRow(
-                            title: L10n.settingsYourName,
-                            value: .constant(name)
-                        ) { newName in
-                            viewModel.updateName(newName, store: store, session: session)
-                        }
+                    SettingsInviteShareRow(serviceCode: code) { message in
+                        viewModel.showError(message)
                     }
+                }
 
-                    SettingsNavigationRow(
-                        title: L10n.myShuttles,
-                        value: profile?.groupName
-                    ) {
-                        showMyServices = true
+                if let memberID = profile?.memberID,
+                   let name = store.members.first(where: { $0.id == memberID })?.name ?? profile?.name {
+                    SettingsEditableNameRow(
+                        title: L10n.settingsYourName,
+                        value: .constant(name)
+                    ) { newName in
+                        viewModel.updateName(newName, store: store, session: session)
                     }
+                }
 
-                    NotificationSettingsRow()
+                SettingsNavigationRow(
+                    title: L10n.myShuttles,
+                    value: profile?.groupName
+                ) {
+                    showMyServices = true
+                }
 
-                    LanguageSettingsRow(showPicker: $showLanguagePicker)
+                NotificationSettingsRow()
 
-                    SettingsSignOutRow {
-                        viewModel.requestSignOut {
-                            Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                LanguageSettingsRow(showPicker: $showLanguagePicker)
+
+                SettingsSignOutRow {
+                    viewModel.requestSignOut {
+                        Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                    }
+                }
+
+                SettingsDeleteAccountLink {
+                    viewModel.requestDeleteAccount {
+                        Task {
+                            await viewModel.deleteAccount(
+                                store: store,
+                                session: session,
+                                authService: authService,
+                                locationTracker: locationTracker
+                            )
                         }
                     }
                 }
-                .padding(24)
             }
-
-            SettingsDeleteAccountFooter {
-                viewModel.requestDeleteAccount {
-                    Task {
-                        await viewModel.deleteAccount(
-                            store: store,
-                            session: session,
-                            authService: authService,
-                            locationTracker: locationTracker
-                        )
-                    }
-                }
-            }
+            .padding(24)
         }
         .overlay {
             if showLanguagePicker {

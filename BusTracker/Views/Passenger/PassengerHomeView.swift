@@ -212,8 +212,12 @@ struct PassengerHomeView: BaseView {
             .onChange(of: store.members.count) { _, _ in
                 syncTripAttendanceState()
             }
-            .onChange(of: tabBar.selectedTab) { _, tab in
-                guard tab == .map else { return }
+            .onChange(of: tabBar.selectedTab) { oldTab, newTab in
+                // Harita tab'dan çıkınca kaydedilmemiş pin'i temizle
+                if oldTab == .map && newTab != .map {
+                    viewModel.clearDraftPickup()
+                }
+                guard newTab == .map else { return }
                 promptMapTabLocationIfNeeded()
                 focusMapOnPickup(animated: !hasInitializedMapCamera)
                 hasInitializedMapCamera = true

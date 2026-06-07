@@ -347,10 +347,13 @@ final class PassengerHomeViewModel: BaseViewModel {
     }
 
     func loadSavedPickup(from store: ShuttleStore, session: UserSession) {
-        guard let memberID = session.profile?.memberID else { return }
-        if draftPickupCoordinate == nil, let pickup = store.morningPickup(for: memberID) {
-            draftPickupCoordinate = pickup.coordinate
-        }
+        // This function is kept for compatibility but no longer sets draftPickupCoordinate.
+        // The saved pickup is shown directly from savedMorningPickup,
+        // draftPickupCoordinate is only for NEW locations selected by the user.
+    }
+
+    func clearDraftPickup() {
+        draftPickupCoordinate = nil
     }
 
     func requestSaveMorningPickup(
@@ -626,6 +629,7 @@ final class PassengerHomeViewModel: BaseViewModel {
             )
             BusTrackerAnalytics.pickupSaved()
             showTripStartedAttendanceSheet = false
+            draftPickupCoordinate = nil
             showSuccess(L10n.pickupSavedComing)
         } catch {
             showError(L10n.saveFailed)
