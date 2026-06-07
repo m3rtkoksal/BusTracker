@@ -8,28 +8,29 @@ struct LanguageSettingsRow: View {
         Button {
             showPicker = true
         } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.settingsLanguage.uppercased())
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                    Text(languageManager.language.displayName)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NeonTheme.onSurface)
-                }
+            HStack {
+                Text(L10n.settingsLanguage.uppercased())
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(NeonTheme.secondary)
+                HStack(spacing: 4) {
+                    Text(languageManager.language.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NeonTheme.onSurface)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NeonTheme.onSurfaceVariant)
+                }
             }
             .padding(16)
             .background(NeonTheme.surfaceContainer)
             .overlay {
                 Rectangle()
-                    .strokeBorder(NeonTheme.outline.opacity(0.35), lineWidth: 1)
+                    .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)

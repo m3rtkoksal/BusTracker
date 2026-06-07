@@ -276,6 +276,23 @@ final class DriverHomeViewModel: BaseViewModel {
         }
     }
 
+    func updateName(_ newName: String, store: ShuttleStore, session: UserSession) {
+        guard let memberID = session.profile?.memberID else { return }
+        let groupID = session.profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fallback = session.profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedGroupID = groupID.isEmpty ? fallback : groupID
+        guard !resolvedGroupID.isEmpty else { return }
+
+        Task {
+            do {
+                try await store.updateMemberName(groupID: resolvedGroupID, memberID: memberID, newName: newName)
+                showSuccess(L10n.nameUpdated)
+            } catch {
+                showError(error.localizedDescription)
+            }
+        }
+    }
+
     func handleTripControlTap(store: ShuttleStore, session: UserSession, locationTracker: LocationTracker) async {
         guard let profile = session.profile,
               let groupID = profile.groupID else { return }

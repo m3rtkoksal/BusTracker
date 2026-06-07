@@ -34,8 +34,7 @@ final class ShuttleStore {
     private var membersListener: ListenerRegistration?
     private var locationListener: ListenerRegistration?
     private var routeListener: ListenerRegistration?
-    private var attendanceListener: ListenerRegistration?
-    private var attendanceTomorrowListener: ListenerRegistration?
+    private var attendanceListeners: [String: ListenerRegistration] = [:]
     private var morningPickupsListener: ListenerRegistration?
     private var locationUploadTask: Task<Void, Never>?
     private var latestAttendanceResponses: [String: [String: Any]] = [:]
@@ -106,8 +105,7 @@ final class ShuttleStore {
                     }
                 }
 
-            attendanceListener = listenAttendance(groupID: groupID, dateKey: todayKey)
-            attendanceTomorrowListener = listenAttendance(groupID: groupID, dateKey: HolidayMode.tomorrowDateKey())
+            startAttendanceListeners(groupID: groupID)
 
             morningPickupsListener = db.collection("groups").document(groupID)
                 .collection("morningPickups")
@@ -135,18 +133,48 @@ final class ShuttleStore {
             }
     }
 
+    /// Gerekli tüm attendance dateKey'leri için listener açar
+    private func startAttendanceListeners(groupID: String) {
+        stopAttendanceListeners()
+
+        var dateKeysToListen: Set<String> = []
+
+        // Yolcu için: sonraki 2 servis
+        let nextServices = ServiceSchedule.nextTwoServices()
+        for service in nextServices {
+            dateKeysToListen.insert(service.dateKey)
+        }
+
+        // Sürücü için: şu anki servis
+        let driverService = ServiceSchedule.currentDriverSession()
+        dateKeysToListen.insert(driverService.dateKey)
+
+        // Bugün sabah ve akşam (her zaman dinle)
+        let (todayAm, todayPm) = ServiceSchedule.todayDateKeys()
+        dateKeysToListen.insert(todayAm)
+        dateKeysToListen.insert(todayPm)
+
+        for dateKey in dateKeysToListen {
+            attendanceListeners[dateKey] = listenAttendance(groupID: groupID, dateKey: dateKey)
+        }
+    }
+
+    private func stopAttendanceListeners() {
+        for (_, listener) in attendanceListeners {
+            listener.remove()
+        }
+        attendanceListeners.removeAll()
+    }
+
     func stopListening() {
         membersListener?.remove()
         locationListener?.remove()
         routeListener?.remove()
-        attendanceListener?.remove()
-        attendanceTomorrowListener?.remove()
+        stopAttendanceListeners()
         morningPickupsListener?.remove()
         membersListener = nil
         locationListener = nil
         routeListener = nil
-        attendanceListener = nil
-        attendanceTomorrowListener = nil
         morningPickupsListener = nil
         attendanceResponsesByDate = [:]
         morningPickups = []
@@ -509,14 +537,8 @@ final class ShuttleStore {
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
 
-        try? await resetTodayAttendance(groupID: groupID)
-    }
-
-    private func resetTodayAttendance(groupID: String) async throws {
-        try await db.collection("groups").document(groupID)
-            .collection("attendance").document(todayKey).delete()
-        latestAttendanceResponses = [:]
-        resetPassengerAttendance()
+        // Artık attendance reset yapılmıyor - her servis (sabah/akşam) ayrı dateKey'de tutulduğu için
+        // yolcuların akşam seçimleri sabah servisi bittiğinde korunuyor
     }
 
     /// Uygulama açıldığında süresi dolmuş aktif servisi kapatır.
@@ -599,11 +621,18 @@ final class ShuttleStore {
     }
 
     /// Sürücü: bugünün attendance belgesi (yolcuyla aynı anahtar) + tatil kuralı.
+    /// Sürücünün aktif servisi için attendance durumu
     func serviceDayAttendance(for member: ShuttleMember) -> AttendanceStatus {
-        let raw = rawAttendance(for: member.id, dateKey: todayKey)
+        let currentService = ServiceSchedule.currentDriverSession()
+        let raw = rawAttendance(for: member.id, dateKey: currentService.dateKey)
         var updated = member
         updated.attendance = raw
         return updated.effectiveAttendance
+    }
+
+    /// Sürücünün şu an hangi serviste olduğu
+    var currentDriverService: UpcomingService {
+        ServiceSchedule.currentDriverSession()
     }
 
     func setAttendance(
@@ -680,6 +709,27 @@ final class ShuttleStore {
             return updated
         }
         try await clearMemberAttendanceStatus(groupID: groupID, memberID: memberID)
+    }
+
+    func updateMemberName(groupID: String, memberID: String, newName: String) async throws {
+        let trimmedName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        try await db.collection("groups").document(groupID)
+            .collection("members").document(memberID)
+            .updateData([
+                "name": trimmedName,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+
+        members = members.map { member in
+            guard member.id == memberID else { return member }
+            var updated = member
+            updated.name = trimmedName
+            return updated
+        }
     }
 
     private func clearMemberAttendanceStatus(groupID: String, memberID: String) async throws {

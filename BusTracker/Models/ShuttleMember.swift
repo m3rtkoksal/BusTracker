@@ -2,7 +2,7 @@ import Foundation
 
 struct ShuttleMember: Identifiable, Codable, Hashable {
     let id: String
-    let name: String
+    var name: String
     let role: MemberRole
     var attendance: AttendanceStatus
     /// `yyyy-MM-dd` — bitiş günü dahil tatil.

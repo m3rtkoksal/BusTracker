@@ -13,16 +13,11 @@ struct NotificationSettingsRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.notifications)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                    Text(statusLabel)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                }
+            HStack {
+                Text(L10n.notifications.uppercased())
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
 
                 Spacer()
 
@@ -34,7 +29,7 @@ struct NotificationSettingsRow: View {
             .background(NeonTheme.surfaceContainer)
             .overlay {
                 Rectangle()
-                    .strokeBorder(NeonTheme.outline.opacity(0.35), lineWidth: 1)
+                    .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
             }
 
             if showsHelperLink {

@@ -23,6 +23,10 @@ final class PassengerHomeViewModel: BaseViewModel {
     private var didRequestMotionForPendingAction = false
     private var actionPermissionFlowTask: Task<Void, Never>?
 
+    // Store ve session referansları
+    private(set) weak var store: ShuttleStore?
+    private(set) weak var session: UserSession?
+
     var hasPendingGatedAction: Bool { pendingGatedAction != nil }
 
     enum PassengerActionPermissionSheet: Equatable {
@@ -33,8 +37,96 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     private enum PendingGatedAction: Equatable {
         case savePickup
-        case updateAttendance(AttendanceStatus)
+        case updateAttendance(AttendanceStatus, dateKey: String)
     }
+
+    // MARK: - Computed Properties
+
+    var profile: UserProfile? { session?.profile }
+
+    var myMember: ShuttleMember? {
+        guard let memberID = profile?.memberID, let store else { return nil }
+        return store.members.first { $0.id == memberID }
+    }
+
+    var nextTwoServices: [UpcomingService] {
+        ServiceSchedule.nextTwoServices()
+    }
+
+    var currentDriverService: UpcomingService {
+        ServiceSchedule.currentDriverSession()
+    }
+
+    func rawAttendance(for service: UpcomingService) -> AttendanceStatus {
+        guard let memberID = profile?.memberID, let store else { return .unknown }
+        return store.rawAttendance(for: memberID, dateKey: service.dateKey)
+    }
+
+    func effectiveAttendance(for service: UpcomingService) -> AttendanceStatus {
+        guard let memberID = profile?.memberID, let store else { return .unknown }
+        return store.effectiveAttendance(for: memberID, dateKey: service.dateKey)
+    }
+
+    var currentServiceRawAttendance: AttendanceStatus {
+        rawAttendance(for: currentDriverService)
+    }
+
+    var currentServiceEffectiveAttendance: AttendanceStatus {
+        effectiveAttendance(for: currentDriverService)
+    }
+
+    func isComingSelected(for service: UpcomingService) -> Bool {
+        rawAttendance(for: service) == .coming
+    }
+
+    func isNotComingSelected(for service: UpcomingService) -> Bool {
+        let raw = rawAttendance(for: service)
+        let effective = effectiveAttendance(for: service)
+        return raw == .notComing ||
+            (isHolidayModeActive && raw == .unknown && effective == .notComing)
+    }
+
+    var isHolidayModeActive: Bool {
+        myMember?.isHolidayModeActive == true
+    }
+
+    var memberLoaded: Bool {
+        guard let memberID = profile?.memberID, let store else { return false }
+        return store.members.contains { $0.id == memberID }
+    }
+
+    var resolvedGroupID: String {
+        let primary = profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !primary.isEmpty { return primary }
+        return profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    var holidayModeCardSubtitle: String {
+        guard isHolidayModeActive,
+              let key = myMember?.holidayModeEndDate,
+              let display = HolidayMode.displayDate(endDateKey: key)
+        else { return L10n.holidayModeOff }
+        return L10n.holidayModeUntil(display)
+    }
+
+    var holidayModeCardDetail: String {
+        guard isHolidayModeActive,
+              let key = myMember?.holidayModeEndDate,
+              let display = HolidayMode.displayDate(endDateKey: key)
+        else { return L10n.holidayModeCardDetailOff }
+        return L10n.holidayModeCardDetailActive(display)
+    }
+
+    var savedMorningPickup: MorningPickup? {
+        guard let memberID = profile?.memberID, let store else { return nil }
+        return store.morningPickup(for: memberID)
+    }
+
+    var hasSavedMorningPickup: Bool {
+        savedMorningPickup != nil
+    }
+
+    // MARK: - Configuration
 
     func configure(session: UserSession) {
         title = session.profile?.groupName ?? L10n.service
@@ -45,6 +137,8 @@ final class PassengerHomeViewModel: BaseViewModel {
     }
 
     func onAppear(store: ShuttleStore, session: UserSession) {
+        self.store = store
+        self.session = session
         configure(session: session)
         let groupID = resolvedGroupID(from: session.profile)
         if !groupID.isEmpty {
@@ -56,6 +150,21 @@ final class PassengerHomeViewModel: BaseViewModel {
         let primary = profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !primary.isEmpty { return primary }
         return profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    func updateName(_ newName: String) {
+        guard let memberID = profile?.memberID else { return }
+        let groupID = resolvedGroupID
+        guard !groupID.isEmpty else { return }
+
+        Task {
+            do {
+                try await store?.updateMemberName(groupID: groupID, memberID: memberID, newName: newName)
+                showSuccess(L10n.nameUpdated)
+            } catch {
+                showError(error.localizedDescription)
+            }
+        }
     }
 
     func onTripActiveChanged(
@@ -169,18 +278,19 @@ final class PassengerHomeViewModel: BaseViewModel {
         switch action {
         case .savePickup:
             return true
-        case .updateAttendance(let status):
+        case .updateAttendance(let status, _):
             return status == .coming
         }
     }
 
     func requestUpdateAttendance(
         status: AttendanceStatus,
+        dateKey: String,
         store: ShuttleStore,
         session: UserSession,
         locationTracker: LocationTracker
     ) {
-        pendingGatedAction = .updateAttendance(status)
+        pendingGatedAction = .updateAttendance(status, dateKey: dateKey)
         pendingActionStore = store
         pendingActionSession = session
         didRequestMotionForPendingAction = false
@@ -189,6 +299,7 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     func updateAttendance(
         status: AttendanceStatus,
+        dateKey: String,
         store: ShuttleStore,
         session: UserSession,
         locationTracker: LocationTracker
@@ -209,8 +320,6 @@ final class PassengerHomeViewModel: BaseViewModel {
         }
 
         do {
-            let holidayActive = store.members.first(where: { $0.id == profile.memberID })?.isHolidayModeActive == true
-            let dateKey = store.planningAttendanceDateKey(holidayModeActive: holidayActive)
             let groupID = profile.primaryGroupID.isEmpty ? (profile.groupID ?? "") : profile.primaryGroupID
             try await store.setAttendance(
                 groupID: groupID,
@@ -467,8 +576,8 @@ final class PassengerHomeViewModel: BaseViewModel {
         switch action {
         case .savePickup:
             Task { await saveMorningPickup(store: store, session: session, locationTracker: locationTracker) }
-        case .updateAttendance(let status):
-            Task { await updateAttendance(status: status, store: store, session: session, locationTracker: locationTracker) }
+        case .updateAttendance(let status, let dateKey):
+            Task { await updateAttendance(status: status, dateKey: dateKey, store: store, session: session, locationTracker: locationTracker) }
         }
     }
 
@@ -501,18 +610,18 @@ final class PassengerHomeViewModel: BaseViewModel {
                 name: profile.name,
                 coordinate: coordinate
             )
-            let holidayActive = store.members.first(where: { $0.id == profile.memberID })?.isHolidayModeActive == true
-            let dateKey = store.planningAttendanceDateKey(holidayModeActive: holidayActive)
+            // Biniş noktası kaydedildiğinde en yakın servis için "geliyorum" kaydedilir
+            let nextService = ServiceSchedule.nextTwoServices().first!
             try await store.setAttendance(
                 groupID: groupID,
                 memberID: profile.memberID,
                 name: profile.name,
                 status: .coming,
-                dateKey: dateKey
+                dateKey: nextService.dateKey
             )
             AttendanceUsageTracker.record(
                 memberID: profile.memberID,
-                dateKey: dateKey,
+                dateKey: nextService.dateKey,
                 status: .coming
             )
             BusTrackerAnalytics.pickupSaved()

@@ -35,87 +35,36 @@ struct PassengerHomeView: BaseView {
     @Environment(\.scenePhase) private var scenePhase
 #endif
 
-    private var profile: UserProfile? { session.profile }
+    // MARK: - ViewModel Shortcuts
+    private var profile: UserProfile? { viewModel.profile }
+    private var myMember: ShuttleMember? { viewModel.myMember }
+    private var nextTwoServices: [UpcomingService] { viewModel.nextTwoServices }
+    private var currentDriverService: UpcomingService { viewModel.currentDriverService }
+    private var currentServiceRawAttendance: AttendanceStatus { viewModel.currentServiceRawAttendance }
+    private var currentServiceEffectiveAttendance: AttendanceStatus { viewModel.currentServiceEffectiveAttendance }
+    private var isHolidayModeActive: Bool { viewModel.isHolidayModeActive }
+    private var memberLoaded: Bool { viewModel.memberLoaded }
+    private var resolvedGroupID: String { viewModel.resolvedGroupID }
+    private var holidayModeCardSubtitle: String { viewModel.holidayModeCardSubtitle }
+    private var holidayModeCardDetail: String { viewModel.holidayModeCardDetail }
+    private var savedMorningPickup: MorningPickup? { viewModel.savedMorningPickup }
+    private var hasSavedMorningPickup: Bool { viewModel.hasSavedMorningPickup }
 
-    private var myMember: ShuttleMember? {
-        guard let memberID = profile?.memberID else { return nil }
-        return store.members.first(where: { $0.id == memberID })
+    private func rawAttendance(for service: UpcomingService) -> AttendanceStatus {
+        viewModel.rawAttendance(for: service)
     }
-
-    private var planningAttendanceDateKey: String {
-        store.planningAttendanceDateKey(holidayModeActive: isHolidayModeActive)
+    private func effectiveAttendance(for service: UpcomingService) -> AttendanceStatus {
+        viewModel.effectiveAttendance(for: service)
     }
-
-    private var myRawAttendance: AttendanceStatus {
-        guard let memberID = profile?.memberID else { return .unknown }
-        return store.rawAttendance(for: memberID, dateKey: planningAttendanceDateKey)
+    private func isComingSelected(for service: UpcomingService) -> Bool {
+        viewModel.isComingSelected(for: service)
     }
-
-    private var myEffectiveAttendance: AttendanceStatus {
-        guard let memberID = profile?.memberID else { return .unknown }
-        return store.effectiveAttendance(for: memberID, dateKey: planningAttendanceDateKey)
-    }
-
-    private var comingAttendanceButtonSelected: Bool {
-        myRawAttendance == .coming
-    }
-
-    /// Tatilde ham seçim yokken varsayılan gelmiyorum kutusu seçili görünür.
-    private var notComingAttendanceButtonSelected: Bool {
-        myRawAttendance == .notComing ||
-            (isHolidayModeActive && myRawAttendance == .unknown && myEffectiveAttendance == .notComing)
-    }
-
-    private var attendanceQuestion: String {
-        if isHolidayModeActive {
-            let label = HolidayMode.displayDateLabel(dateKey: planningAttendanceDateKey)
-            return L10n.attendanceQuestionForDate("BUGÜN · \(label)")
-        }
-        return L10n.attendanceTodayQuestion
-    }
-
-    private var isHolidayModeActive: Bool {
-        myMember?.isHolidayModeActive == true
-    }
-
-    private var memberLoaded: Bool {
-        guard let memberID = profile?.memberID else { return false }
-        return store.members.contains { $0.id == memberID }
+    private func isNotComingSelected(for service: UpcomingService) -> Bool {
+        viewModel.isNotComingSelected(for: service)
     }
 
     private var sparseSuggestionTaskKey: String {
         "\(memberLoaded)-\(isHolidayModeActive)-\(profile?.memberID ?? "")-\(resolvedGroupID)"
-    }
-
-    private var resolvedGroupID: String {
-        let primary = profile?.primaryGroupID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !primary.isEmpty { return primary }
-        return profile?.groupID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-
-    private var holidayModeCardSubtitle: String {
-        guard isHolidayModeActive,
-              let key = myMember?.holidayModeEndDate,
-              let display = HolidayMode.displayDate(endDateKey: key)
-        else { return L10n.holidayModeOff }
-        return L10n.holidayModeUntil(display)
-    }
-
-    private var holidayModeCardDetail: String {
-        guard isHolidayModeActive,
-              let key = myMember?.holidayModeEndDate,
-              let display = HolidayMode.displayDate(endDateKey: key)
-        else { return L10n.holidayModeCardDetailOff }
-        return L10n.holidayModeCardDetailActive(display)
-    }
-
-    private var savedMorningPickup: MorningPickup? {
-        guard let memberID = profile?.memberID else { return nil }
-        return store.morningPickup(for: memberID)
-    }
-
-    private var hasSavedMorningPickup: Bool {
-        savedMorningPickup != nil
     }
 
     func content() -> some View {
@@ -146,22 +95,58 @@ struct PassengerHomeView: BaseView {
             Group {
                 switch tabBar.selectedTab {
                 case .map:
-                    mapTab
-                        .id("passenger-map-tab")
+                    PassengerMapTab(
+                        viewModel: viewModel,
+                        savedMorningPickup: savedMorningPickup,
+                        hasSavedMorningPickup: hasSavedMorningPickup,
+                        currentServiceEffectiveAttendance: currentServiceEffectiveAttendance,
+                        onSelectServiceTab: { tabBar.select(.service) },
+                        onSavePickup: {
+                            viewModel.requestSaveMorningPickup(
+                                store: store,
+                                session: session,
+                                locationTracker: locationTracker
+                            )
+                        },
+                        mapPosition: $mapPosition,
+                        onCameraRegionChange: { lastKnownMapRegion = $0 },
+                        focusOnSavedPickupOrDevice: { animated in focusOnSavedPickupOrDevice(animated: animated) },
+                        focusOnDriverLocation: { animated in focusOnDriverLocation(animated: animated) }
+                    )
+                    .id("passenger-map-tab")
                 case .service:
-                    serviceTab
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(NeonTheme.background)
+                    PassengerServiceTab(
+                        viewModel: viewModel,
+                        nextTwoServices: nextTwoServices,
+                        isHolidayModeActive: isHolidayModeActive,
+                        holidayModeCardSubtitle: holidayModeCardSubtitle,
+                        holidayModeCardDetail: holidayModeCardDetail,
+                        savedMorningPickup: savedMorningPickup,
+                        showComingBlockedWithoutPickupHint: $showComingBlockedWithoutPickupHint,
+                        showHolidayModePicker: $showHolidayModePicker,
+                        pickupWeather: $pickupWeather,
+                        pickupWeatherLoading: $pickupWeatherLoading,
+                        onRequestComingAttendance: { service in requestComingAttendance(for: service) },
+                        onRequestNotComingAttendance: { service in requestNotComingAttendance(for: service) },
+                        onOpenMapForPickup: { openMapFocusedOnPickup() }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(NeonTheme.background)
                 case .settings:
-                    settingsTab
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(NeonTheme.background)
+                    PassengerSettingsTab(
+                        viewModel: viewModel,
+                        showLanguagePicker: $showLanguagePicker,
+                        showMyServices: $showMyServices
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(NeonTheme.background)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             PassengerTabBar(controller: tabBar)
         }
+        .ignoresSafeArea(.keyboard)
     }
 
     private var passengerTabRootWithAppearAndTasks: some View {
@@ -221,7 +206,7 @@ struct PassengerHomeView: BaseView {
                 handlePassengerForegroundReturn()
             }
 #endif
-            .onChange(of: myRawAttendance) { _, _ in
+            .onChange(of: currentServiceRawAttendance) { _, _ in
                 syncTripAttendanceState()
             }
             .onChange(of: store.members.count) { _, _ in
@@ -250,7 +235,7 @@ struct PassengerHomeView: BaseView {
                 viewModel.onTripActiveChanged(
                     wasActive: wasActive,
                     isActive: isActive,
-                    attendance: myRawAttendance,
+                    attendance: currentServiceRawAttendance,
                     holidayModeActive: isHolidayModeActive
                 )
                 updatePassengerMotionMonitoring()
@@ -387,10 +372,10 @@ struct PassengerHomeView: BaseView {
                 selectedComing: viewModel.pendingAttendanceSelection == .coming,
                 selectedNotComing: viewModel.pendingAttendanceSelection == .notComing,
                 onSelectComing: {
-                    requestComingAttendance()
+                    requestComingAttendance(for: currentDriverService)
                 },
                 onSelectNotComing: {
-                    requestNotComingAttendance()
+                    requestNotComingAttendance(for: currentDriverService)
                 }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -411,7 +396,7 @@ struct PassengerHomeView: BaseView {
     private var tripAttendancePromptKey: String {
         let memberID = profile?.memberID ?? ""
         let memberLoaded = store.members.contains { $0.id == memberID }
-        return "\(store.isTripActive)-\(myRawAttendance.rawValue)-\(memberLoaded)-\(isHolidayModeActive)-\(store.members.count)-\(store.attendanceRevision)"
+        return "\(store.isTripActive)-\(currentServiceRawAttendance.rawValue)-\(memberLoaded)-\(isHolidayModeActive)-\(store.members.count)-\(store.attendanceRevision)"
     }
 
     private func syncTripAttendanceState() {
@@ -419,7 +404,7 @@ struct PassengerHomeView: BaseView {
         viewModel.syncTripAttendanceState(
             isTripActive: store.isTripActive,
             holidayModeActive: isHolidayModeActive,
-            rawAttendance: myRawAttendance
+            rawAttendance: currentServiceRawAttendance
         )
     }
 
@@ -530,10 +515,39 @@ struct PassengerHomeView: BaseView {
     // MARK: - Top Bar
 
     private var passengerTopBar: some View {
-        RoleNavBar(chrome: NeonTheme.passengerChrome, onMenuTap: { showMyServices = true }) {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text((profile?.groupName ?? L10n.service).uppercased())
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(NeonTheme.onSurface)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(store.isTripActive ? NeonTheme.secondary : NeonTheme.outline)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: store.isTripActive ? NeonTheme.secondary.opacity(0.8) : .clear, radius: 3)
+
+                    Text(store.isTripActive ? L10n.shuttleActive : L10n.shuttleNotStarted)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(store.isTripActive ? NeonTheme.secondary : NeonTheme.onSurfaceVariant)
+                }
+            }
+
+            Spacer()
+
             if store.isTripActive {
                 liveBadge
             }
+        }
+        .frame(height: 56)
+        .padding(.horizontal, 24)
+        .background(NeonTheme.passengerChrome.navBarBackground.opacity(0.97))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NeonTheme.passengerChrome.navBarDivider)
+                .frame(height: 1)
+                .shadow(color: NeonTheme.passengerChrome.navBarDividerShadow, radius: 6)
         }
     }
 
@@ -547,331 +561,6 @@ struct PassengerHomeView: BaseView {
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(2)
                 .foregroundStyle(NeonTheme.passengerChrome.statusAccent)
-        }
-    }
-
-    // MARK: - Service Tab
-
-    private var serviceTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                serviceHeaderSection
-
-                attendanceSection
-
-                holidayModeSection
-
-                pickupSummarySection
-
-                clothingAdviceSection
-            }
-            .padding(24)
-        }
-    }
-
-    private var weatherCoordinate: CLLocationCoordinate2D? {
-        savedMorningPickup?.coordinate ?? viewModel.draftPickupCoordinate
-    }
-
-    private var clothingAdviceSection: some View {
-        PassengerWeatherCard(
-            model: pickupWeather,
-            isLoading: weatherCoordinate != nil && pickupWeatherLoading,
-            emptyMessage: weatherCoordinate == nil ? L10n.weatherNeedsPickup : nil
-        )
-        .task(id: pickupWeatherTaskKey) {
-            await refreshPickupWeather()
-        }
-    }
-
-    private var pickupWeatherTaskKey: String {
-        guard let coordinate = weatherCoordinate else { return "none" }
-        return "\(coordinate.latitude),\(coordinate.longitude)"
-    }
-
-    private func refreshPickupWeather() async {
-        guard let coordinate = weatherCoordinate else {
-            pickupWeather = nil
-            pickupWeatherLoading = false
-            return
-        }
-        if let cached = PassengerWeatherService.cachedModel(for: coordinate) {
-            pickupWeather = cached
-            return
-        }
-        pickupWeatherLoading = true
-        defer { pickupWeatherLoading = false }
-        pickupWeather = await PassengerWeatherService.load(for: coordinate)
-    }
-
-    private var serviceHeaderSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text((profile?.groupName ?? L10n.service).uppercased())
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(NeonTheme.onSurface)
-
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(store.isTripActive ? NeonTheme.secondary : NeonTheme.outline)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: store.isTripActive ? NeonTheme.secondary.opacity(0.8) : .clear, radius: 4)
-
-                if let location = store.driverLocation {
-                    Text("\(location.driverName.uppercased()) • \(location.updatedAt.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(NeonTheme.secondary)
-                } else {
-                    Text(store.isTripActive ? L10n.waitingForDriverLocation : L10n.shuttleNotStarted)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-
-    private var attendanceSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(attendanceQuestion)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(2)
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
-
-            let showChoice = myRawAttendance != .unknown ||
-                (isHolidayModeActive && myEffectiveAttendance != .unknown)
-            let choiceStatus: AttendanceStatus = myRawAttendance != .unknown ? myRawAttendance : myEffectiveAttendance
-            if showChoice {
-                HStack(spacing: 6) {
-                    Image(systemName: choiceStatus.iconName)
-                        .foregroundStyle(attendanceColor(choiceStatus))
-                    Text(L10n.yourChoice(choiceStatus.selfChoiceLabel))
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(NeonTheme.onSurface)
-                }
-            }
-
-            HStack(spacing: 8) {
-                attendanceButton(
-                    title: L10n.attendanceComingSelf,
-                    icon: "checkmark.circle.fill",
-                    accent: NeonTheme.secondary,
-                    status: .coming,
-                    isSelected: comingAttendanceButtonSelected
-                )
-                attendanceButton(
-                    title: L10n.attendanceNotComingSelf,
-                    icon: "xmark.circle.fill",
-                    accent: Color(hex: 0xFF4444),
-                    status: .notComing,
-                    isSelected: notComingAttendanceButtonSelected
-                )
-            }
-
-            Text(isHolidayModeActive ? L10n.attendanceHolidayHint : L10n.attendanceHint)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(1)
-                .foregroundStyle(NeonTheme.outline)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            if showComingBlockedWithoutPickupHint {
-                Text(L10n.comingBlockedWithoutPickup)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .tracking(0.6)
-                    .foregroundStyle(NeonTheme.error)
-                    .shadow(color: NeonTheme.error.opacity(0.75), radius: 8)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-        }
-        .padding(16)
-        .background(NeonTheme.surfaceContainer)
-        .clipShape(Rectangle())
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.secondary.opacity(0.22), lineWidth: 1)
-        }
-    }
-
-    private var holidayModeSection: some View {
-        HolidayModeServiceCard(
-            isActive: isHolidayModeActive,
-            subtitle: holidayModeCardSubtitle,
-            detailLine: holidayModeCardDetail,
-            showPicker: $showHolidayModePicker
-        )
-    }
-
-    private var pickupSummarySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.pickupPoint)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(1.5)
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
-
-            if let savedMorningPickup {
-                Label(
-                    L10n.savedAt(savedMorningPickup.updatedAt.formatted(date: .omitted, time: .shortened)),
-                    systemImage: "checkmark.circle.fill"
-                )
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(NeonTheme.secondary)
-            } else {
-                Text(L10n.noPickupSaved)
-                    .font(.subheadline)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-            }
-
-            Button {
-                openMapFocusedOnPickup()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "map")
-                    Text(savedMorningPickup == nil ? L10n.setOnMap : L10n.editOnMap)
-                        .tracking(1)
-                }
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
-                .foregroundStyle(NeonTheme.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-            }
-            .background(NeonTheme.surfaceContainerHigh)
-            .clipShape(Rectangle())
-            .overlay {
-                Rectangle()
-                    .strokeBorder(NeonTheme.secondary.opacity(0.45), lineWidth: 1)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(16)
-        .background(NeonTheme.surfaceContainer)
-        .clipShape(Rectangle())
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.outline.opacity(0.25), lineWidth: 1)
-        }
-    }
-
-    // MARK: - Map Tab
-
-    private var mapTab: some View {
-        ZStack {
-            PassengerLiveMap(
-                driverLocation: store.driverLocation,
-                driverRoute: store.driverRoute,
-                isTripActive: store.isTripActive,
-                selectedCoordinate: $viewModel.draftPickupCoordinate,
-                savedPickup: savedMorningPickup,
-                cameraPosition: $mapPosition,
-                isActive: true,
-                autoFitOnAppear: false,
-                onCameraRegionChange: { lastKnownMapRegion = $0 }
-            )
-            .ignoresSafeArea()
-
-            NeonMapOverlay()
-
-            VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
-                    compactTopInfo
-
-                    Spacer(minLength: 0)
-
-                    if store.isTripActive {
-                        liveBadge
-                    }
-
-                    mapControls
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-
-                Spacer(minLength: 0)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            mapPickupBar
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-        }
-    }
-
-    private var mapPickupBar: some View {
-        VStack(spacing: 8) {
-            Text(L10n.tapMapToSelectPickup)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            savePickupButton
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 16)
-        .padding(.bottom, 14)
-        .background(NeonTheme.surfaceContainer.opacity(0.82))
-        .background(.ultraThinMaterial.opacity(0.14))
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.secondary.opacity(0.22), lineWidth: 1)
-        }
-    }
-
-    // MARK: - Settings Tab
-
-    private var settingsTab: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    if let code = profile?.groupCode, !code.isEmpty {
-                        settingsRow(title: L10n.settingsServiceCode, value: code) {
-                            viewModel.copyServiceCode(code)
-                        }
-                        SettingsInviteShareRow(serviceCode: code) { message in
-                            viewModel.showError(message)
-                        }
-                    }
-
-                    if let name = profile?.name {
-                        settingsRow(title: L10n.settingsYourName, value: name, action: nil)
-                    }
-
-                    if let groupName = profile?.groupName {
-                        settingsRow(title: L10n.settingsShuttle, value: groupName, action: nil)
-                    }
-
-                    NotificationSettingsRow()
-
-                    LanguageSettingsRow(showPicker: $showLanguagePicker)
-
-                    Button {
-                        viewModel.requestSignOut {
-                            Task { await viewModel.signOut(store: store, session: session) }
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text(L10n.signOut)
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                        .foregroundStyle(Color(hex: 0xFF4444))
-                        .padding(16)
-                        .background(NeonTheme.surfaceContainer)
-                        .overlay {
-                            Rectangle()
-                                .strokeBorder(Color(hex: 0xFF4444).opacity(0.3), lineWidth: 1)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(24)
-            }
-
-            settingsDeleteAccountFooter
-        }
-        .overlay {
-            if showLanguagePicker {
-                LanguagePickerOverlay(isPresented: $showLanguagePicker)
-                    .animation(.easeInOut(duration: 0.28), value: showLanguagePicker)
-            }
         }
     }
 
@@ -938,211 +627,7 @@ struct PassengerHomeView: BaseView {
         }
     }
 
-    private var settingsDeleteAccountFooter: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(NeonTheme.outline.opacity(0.25))
-                .frame(height: 1)
-
-            deleteAccountButton
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-        }
-        .background(NeonTheme.background)
-    }
-
-    private var deleteAccountButton: some View {
-        Button {
-            viewModel.requestDeleteAccount {
-                Task {
-                    await viewModel.deleteAccount(
-                        store: store,
-                        session: session,
-                        authService: authService
-                    )
-                }
-            }
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text(L10n.deleteAccount)
-                    .fontWeight(.semibold)
-                    .textCase(.uppercase)
-                Spacer()
-            }
-            .foregroundStyle(.white)
-            .padding(16)
-            .background(Color(hex: 0xFF4444))
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func settingsRow(title: String, value: String, action: (() -> Void)?) -> some View {
-        let label = HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title.uppercased())
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .tracking(1.5)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-                Text(value)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(NeonTheme.onSurface)
-            }
-            Spacer()
-            if action != nil {
-                Image(systemName: "doc.on.doc")
-                    .foregroundStyle(NeonTheme.secondary)
-            }
-        }
-        .padding(16)
-        .background(NeonTheme.surfaceContainer)
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
-        }
-
-        if let action {
-            Button(action: action) {
-                label
-            }
-            .buttonStyle(.plain)
-        } else {
-            label
-        }
-    }
-
-    // MARK: - Shared components
-
-    private var compactTopInfo: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            compactServiceInfoBox
-            compactAttendanceInfoBox
-        }
-    }
-
-    private var compactServiceInfoBox: some View {
-        let isServiceLive = store.isTripActive
-        let accent = isServiceLive ? NeonTheme.secondary : NeonTheme.outline
-
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(accent)
-                    .frame(width: 6, height: 6)
-                    .shadow(
-                        color: isServiceLive ? accent.opacity(0.8) : .clear,
-                        radius: isServiceLive ? 4 : 0
-                    )
-                Text((profile?.groupName ?? L10n.service).uppercased())
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(isServiceLive ? NeonTheme.onSurface : NeonTheme.onSurfaceVariant)
-                    .lineLimit(1)
-            }
-
-            if isServiceLive, let location = store.driverLocation {
-                Text("\(location.driverName.uppercased()) • \(location.updatedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(NeonTheme.secondary)
-                    .lineLimit(1)
-            } else {
-                Text(isServiceLive ? L10n.waitingForLocation : L10n.shuttleInactive)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(NeonTheme.onSurfaceVariant.opacity(isServiceLive ? 1 : 0.85))
-                    .lineLimit(1)
-            }
-        }
-        .opacity(isServiceLive ? 1 : 0.88)
-        .mapInfoBoxStyle(accent: accent)
-    }
-
-    private var compactAttendanceInfoBox: some View {
-        let isBoarded = myMember?.isBoardedToday == true
-        let accent = isBoarded ? NeonTheme.secondary : attendanceColor(myEffectiveAttendance)
-        let label = myEffectiveAttendance.mapTabLabel(isBoarded: isBoarded)
-        let icon = isBoarded ? "bus.fill" : myEffectiveAttendance.iconName
-        return Button {
-            tabBar.select(.service)
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                Text(label.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .lineLimit(1)
-                Text(L10n.change)
-                    .font(.system(size: 8, weight: .semibold, design: .rounded))
-                    .tracking(0.5)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundStyle(accent)
-            .padding(.leading, 10)
-            .padding(.trailing, 8)
-            .padding(.vertical, 7)
-            .background(accent.opacity(0.14))
-            .background(NeonTheme.surfaceContainer.opacity(0.5))
-            .fixedSize(horizontal: true, vertical: false)
-            .overlay(alignment: .leading) {
-                Rectangle()
-                    .fill(accent)
-                    .frame(width: 2)
-            }
-            .overlay {
-                Rectangle()
-                    .strokeBorder(accent.opacity(0.48), lineWidth: 1)
-            }
-            .shadow(color: accent.opacity(0.2), radius: 4, y: 1)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var mapControls: some View {
-        VStack(spacing: 8) {
-            mapControlButton(
-                icon: savedMorningPickup != nil ? "pin.fill" : "pin",
-                highlighted: true,
-                iconColor: NeonTheme.secondary
-            ) {
-                focusOnSavedPickupOrDevice(animated: true)
-            }
-            if showsDriverMapButton {
-                mapControlButton(
-                    icon: "bus.fill",
-                    highlighted: true,
-                    iconColor: NeonTheme.mapDriverPin
-                ) {
-                    focusOnDriverLocation(animated: true)
-                }
-            }
-        }
-    }
-
-    private func mapControlButton(
-        icon: String,
-        highlighted: Bool = false,
-        compact: Bool = false,
-        iconColor: Color? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
-        let tint = iconColor ?? (highlighted ? NeonTheme.secondary : NeonTheme.onSurface)
-        let borderColor = iconColor ?? (highlighted ? NeonTheme.secondary : NeonTheme.outline)
-        return Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: compact ? 15 : 17, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: compact ? 32 : 40, height: compact ? 32 : 40)
-                .background(NeonTheme.surfaceContainer.opacity(0.92))
-                .overlay {
-                    Rectangle()
-                        .strokeBorder(borderColor.opacity(highlighted ? 0.55 : 0.3), lineWidth: 1)
-                }
-                .shadow(color: tint.opacity(0.25), radius: 6)
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: - Permission Overlay
 
     private var actionPermissionOverlay: some View {
         Group {
@@ -1203,42 +688,9 @@ struct PassengerHomeView: BaseView {
         }
     }
 
-    private var savePickupButton: some View {
-        Button {
-            viewModel.requestSaveMorningPickup(
-                store: store,
-                session: session,
-                locationTracker: locationTracker
-            )
-        } label: {
-            Group {
-                if viewModel.isSavingPickup {
-                    ProgressView().tint(NeonTheme.mapSaveAction)
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "mappin.and.ellipse")
-                        Text(L10n.savePickupPoint)
-                            .tracking(1)
-                    }
-                    .foregroundStyle(NeonTheme.mapSaveAction)
-                    .shadow(color: NeonTheme.mapSaveAction.opacity(0.55), radius: 8)
-                }
-            }
-            .font(.system(size: 12, weight: .heavy, design: .rounded))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-        }
-        .background(NeonTheme.surfaceContainerHigh.opacity(0.9))
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.mapSaveAction.opacity(0.5), lineWidth: 1)
-        }
-        .disabled(viewModel.isSavingPickup || viewModel.draftPickupCoordinate == nil)
-        .opacity(viewModel.draftPickupCoordinate == nil ? 0.45 : 1)
-        .buttonStyle(.plain)
-    }
+    // MARK: - Attendance Actions
 
-    private func requestComingAttendance() {
+    private func requestComingAttendance(for service: UpcomingService) {
         guard hasSavedMorningPickup else {
             showComingBlockedWithoutPickupHint = true
             tabBar.select(.service)
@@ -1249,63 +701,22 @@ struct PassengerHomeView: BaseView {
         showComingBlockedWithoutPickupHint = false
         viewModel.requestUpdateAttendance(
             status: .coming,
+            dateKey: service.dateKey,
             store: store,
             session: session,
             locationTracker: locationTracker
         )
     }
 
-    private func requestNotComingAttendance() {
+    private func requestNotComingAttendance(for service: UpcomingService) {
         showComingBlockedWithoutPickupHint = false
         viewModel.requestUpdateAttendance(
             status: .notComing,
+            dateKey: service.dateKey,
             store: store,
             session: session,
             locationTracker: locationTracker
         )
-    }
-
-    private func attendanceButton(
-        title: String,
-        icon: String,
-        accent: Color,
-        status: AttendanceStatus,
-        isSelected: Bool
-    ) -> some View {
-        Button {
-            if status == .coming {
-                requestComingAttendance()
-            } else {
-                requestNotComingAttendance()
-            }
-        } label: {
-            VStack(spacing: 8) {
-                if viewModel.isUpdatingAttendance &&
-                    !(status == .coming ? comingAttendanceButtonSelected : notComingAttendanceButtonSelected) {
-                    ProgressView().tint(accent)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 26))
-                        .shadow(color: isSelected ? accent.opacity(0.65) : .clear, radius: 8)
-                }
-
-                Text(title)
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .tracking(1.2)
-            }
-            .foregroundStyle(isSelected ? accent : NeonTheme.onSurfaceVariant)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
-            .background(isSelected ? accent.opacity(0.12) : NeonTheme.surfaceContainerHigh.opacity(0.85))
-            .clipShape(Rectangle())
-            .overlay {
-                Rectangle()
-                    .strokeBorder(isSelected ? accent.opacity(0.55) : NeonTheme.outline.opacity(0.25), lineWidth: isSelected ? 2 : 1)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(viewModel.isUpdatingAttendance)
-        .opacity(viewModel.isUpdatingAttendance ? 0.5 : 1)
     }
 
     // MARK: - Map helpers
@@ -1405,7 +816,7 @@ struct PassengerHomeView: BaseView {
     }
 }
 
-private extension View {
+extension View {
     func mapInfoBoxStyle(accent: Color, compact: Bool = false) -> some View {
         padding(.horizontal, compact ? 8 : 12)
             .padding(.vertical, compact ? 5 : 10)

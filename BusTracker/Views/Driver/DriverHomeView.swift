@@ -71,6 +71,7 @@ struct DriverHomeView: BaseView {
 
             DriverTabBar(controller: tabBar)
         }
+        .ignoresSafeArea(.keyboard)
         .onAppear {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
             updateDriverMotionMonitoring()
@@ -208,7 +209,27 @@ struct DriverHomeView: BaseView {
     // MARK: - Top Bar
 
     private var driverTopBar: some View {
-        RoleNavBar(chrome: NeonTheme.driverChrome, onMenuTap: { showMyServices = true }) {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text((profile?.groupName ?? L10n.service).uppercased())
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(NeonTheme.onSurface)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(store.isTripActive ? NeonTheme.driverChrome.statusAccent : NeonTheme.outline)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: store.isTripActive ? NeonTheme.driverChrome.statusAccent.opacity(0.8) : .clear, radius: 3)
+
+                    Text(store.isTripActive ? L10n.shuttleActive : L10n.shuttleNotStarted)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(store.isTripActive ? NeonTheme.driverChrome.statusAccent : NeonTheme.onSurfaceVariant)
+                }
+            }
+
+            Spacer()
+
             if store.isTripActive {
                 HStack(spacing: 6) {
                     Circle()
@@ -221,6 +242,15 @@ struct DriverHomeView: BaseView {
                         .foregroundStyle(NeonTheme.driverChrome.statusAccent)
                 }
             }
+        }
+        .frame(height: 56)
+        .padding(.horizontal, 24)
+        .background(NeonTheme.driverChrome.navBarBackground.opacity(0.97))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NeonTheme.driverChrome.navBarDivider)
+                .frame(height: 1)
+                .shadow(color: NeonTheme.driverChrome.navBarDividerShadow, radius: 6)
         }
     }
 
@@ -465,10 +495,23 @@ struct DriverHomeView: BaseView {
 
     private var passengerListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.passengerList)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(2)
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
+            HStack {
+                Text(L10n.passengerList)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(2)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text(store.currentDriverService.session.icon)
+                        .font(.system(size: 12))
+                    Text(store.currentDriverService.relativeDisplayName().uppercased())
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .tracking(1)
+                }
+                .foregroundStyle(NeonTheme.primary)
+            }
 
             VStack(spacing: 0) {
                 ForEach(passengers) { member in
@@ -619,7 +662,7 @@ struct DriverHomeView: BaseView {
             ScrollView {
                 VStack(spacing: 16) {
                     if let code = profile?.groupCode, !code.isEmpty {
-                        settingsRow(title: L10n.settingsServiceCode, value: code) {
+                        SettingsServiceCodeRow(code: code) {
                             viewModel.copyServiceCode(code)
                         }
                         SettingsInviteShareRow(serviceCode: code) { message in
@@ -627,39 +670,48 @@ struct DriverHomeView: BaseView {
                         }
                     }
 
-                    if let name = profile?.name {
-                        settingsRow(title: L10n.settingsYourName, value: name, action: nil)
+                    if let memberID = profile?.memberID,
+                       let name = store.members.first(where: { $0.id == memberID })?.name ?? profile?.name {
+                        SettingsEditableNameRow(
+                            title: L10n.settingsYourName,
+                            value: .constant(name)
+                        ) { newName in
+                            viewModel.updateName(newName, store: store, session: session)
+                        }
+                    }
+
+                    SettingsNavigationRow(
+                        title: L10n.myShuttles,
+                        value: profile?.groupName
+                    ) {
+                        showMyServices = true
                     }
 
                     NotificationSettingsRow()
 
                     LanguageSettingsRow(showPicker: $showLanguagePicker)
 
-                    Button {
+                    SettingsSignOutRow {
                         viewModel.requestSignOut {
                             Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
                         }
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text(L10n.signOut)
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                        .foregroundStyle(Color(hex: 0xFF4444))
-                        .padding(16)
-                        .background(NeonTheme.surfaceContainer)
-                        .overlay {
-                            Rectangle()
-                                .strokeBorder(Color(hex: 0xFF4444).opacity(0.3), lineWidth: 1)
-                        }
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(24)
             }
 
-            settingsDeleteAccountFooter
+            SettingsDeleteAccountFooter {
+                viewModel.requestDeleteAccount {
+                    Task {
+                        await viewModel.deleteAccount(
+                            store: store,
+                            session: session,
+                            authService: authService,
+                            locationTracker: locationTracker
+                        )
+                    }
+                }
+            }
         }
         .overlay {
             if showLanguagePicker {
@@ -667,47 +719,6 @@ struct DriverHomeView: BaseView {
                     .animation(.easeInOut(duration: 0.28), value: showLanguagePicker)
             }
         }
-    }
-
-    private var settingsDeleteAccountFooter: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(NeonTheme.outline.opacity(0.25))
-                .frame(height: 1)
-
-            deleteAccountButton
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-        }
-        .background(NeonTheme.background)
-    }
-
-    private var deleteAccountButton: some View {
-        Button {
-            viewModel.requestDeleteAccount {
-                Task {
-                    await viewModel.deleteAccount(
-                        store: store,
-                        session: session,
-                        authService: authService,
-                        locationTracker: locationTracker
-                    )
-                }
-            }
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text(L10n.deleteAccount)
-                    .fontWeight(.semibold)
-                    .textCase(.uppercase)
-                Spacer()
-            }
-            .foregroundStyle(.white)
-            .padding(16)
-            .background(Color(hex: 0xFF4444))
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder

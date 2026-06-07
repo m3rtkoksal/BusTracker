@@ -91,6 +91,7 @@ enum L10n {
 
     static var waitingForDriverLocation: String { L.t("Sürücü konumu bekleniyor", "Waiting for driver location") }
     static var shuttleNotStarted: String { L.t("Servis henüz başlamadı", "Shuttle has not started yet") }
+    static var shuttleActive: String { L.t("Servis aktif", "Shuttle active") }
     static var waitingForLocation: String { L.t("Konum bekleniyor", "Waiting for location") }
     static var shuttleInactive: String { L.t("Servis pasif", "Shuttle inactive") }
     static var attendanceTodayQuestion: String { L.t("BUGÜN GELECEK MİSİNİZ?", "ARE YOU COMING TODAY?") }
@@ -162,6 +163,7 @@ enum L10n {
         L.t("Tatil modu kaydedildi.", "Holiday mode saved.")
     }
     static var holidayModeEnded: String { L.t("Tatil modu kapatıldı.", "Holiday mode turned off.") }
+    static var nameUpdated: String { L.t("İsim güncellendi.", "Name updated.") }
     static var sparseModeSuggestionTitle: String {
         L.t("Servisi az kullanıyor musunuz?", "Rarely use the shuttle?")
     }
@@ -181,7 +183,7 @@ enum L10n {
     static var sparseModeSheetOk: String { L.t("Tamam", "OK") }
     static var signOut: String { L.t("Çıkış Yap", "Sign Out") }
     static var deleteAccount: String { L.t("Hesabı Sil", "Delete Account") }
-    static var inviteLinkShare: String { L.t("DAVET LİNKİ PAYLAŞ", "SHARE INVITE LINK") }
+    static var inviteLinkTitle: String { L.t("DAVET LİNKİ", "INVITE LINK") }
 
     // MARK: - Sign out / delete dialogs
 

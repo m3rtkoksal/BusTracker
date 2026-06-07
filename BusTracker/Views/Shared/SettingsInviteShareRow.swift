@@ -9,46 +9,49 @@ struct SettingsInviteShareRow: View {
     @State private var inviteURL: URL?
 
     var body: some View {
-        Button(action: shareInvite) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.inviteLinkShare)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
-                    Text(displayURL)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NeonTheme.secondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.75)
-                }
-                Spacer()
+        HStack {
+            Text(L10n.inviteLinkTitle)
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .tracking(1.5)
+                .foregroundStyle(NeonTheme.onSurfaceVariant)
+
+            Spacer()
+
+            Button(action: shareInvite) {
                 if isSharing || isLoadingLink {
                     ProgressView()
                         .tint(NeonTheme.secondary)
+                        .frame(width: 72, height: 32)
                 } else {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(NeonTheme.secondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.caption)
+                        Text(L10n.share.uppercased())
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .tracking(1.5)
+                    }
+                    .foregroundStyle(NeonTheme.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(NeonTheme.secondary.opacity(0.12))
+                    .overlay {
+                        Rectangle()
+                            .strokeBorder(NeonTheme.secondary.opacity(0.4), lineWidth: 1)
+                    }
                 }
             }
-            .padding(16)
-            .background(NeonTheme.surfaceContainer)
-            .overlay {
-                Rectangle()
-                    .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
-            }
+            .buttonStyle(.plain)
+            .disabled(isSharing || isLoadingLink)
         }
-        .buttonStyle(.plain)
-        .disabled(isSharing || isLoadingLink)
+        .padding(16)
+        .background(NeonTheme.surfaceContainer)
+        .overlay {
+            Rectangle()
+                .strokeBorder(NeonTheme.outline.opacity(0.3), lineWidth: 1)
+        }
         .task(id: serviceCode) {
             await loadInviteLink()
         }
-    }
-
-    private var displayURL: String {
-        inviteURL?.absoluteString
-            ?? SmlerConfig.shortLinkURL(shortCode: serviceCode)?.absoluteString
-            ?? "https://\(SmlerConfig.linkDomain)/\(SmlerConfig.normalizedCode(serviceCode))"
     }
 
     private func loadInviteLink() async {
