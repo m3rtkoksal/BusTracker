@@ -11,12 +11,27 @@ final class SmlerInviteCoordinator {
 
     private var deferredInviteCode: String?
     private var lastHandledCode: String?
+    private let persistedRegistrationCodeKey = "smler_pending_registration_code_v1"
 
     func ingest(serviceCode: String) {
         let normalized = SmlerConfig.normalizedCode(serviceCode)
         guard normalized.count >= 4 else { return }
         deferredInviteCode = normalized
+        pendingRegistrationCode = normalized
+        UserDefaults.standard.set(normalized, forKey: persistedRegistrationCodeKey)
         inviteRevision += 1
+    }
+
+    func processIncomingURL(_ url: URL) async {
+        guard let code = await SmlerDeepLinkService.shared.serviceCode(from: url) else { return }
+        ingest(serviceCode: code)
+    }
+
+    /// Uygulama yeniden açılırsa veya kayıt ekranı geç yüklenirse davet kodunu geri yükle.
+    func restorePersistedRegistrationInviteIfNeeded() {
+        guard pendingRegistrationCode == nil, deferredInviteCode == nil else { return }
+        guard let stored = UserDefaults.standard.string(forKey: persistedRegistrationCodeKey) else { return }
+        ingest(serviceCode: stored)
     }
 
     /// Kayıt akışında davet kodu bekleniyor (rol seçimini atlamak için).
@@ -33,6 +48,7 @@ final class SmlerInviteCoordinator {
     func consumeRegistrationInvite() {
         pendingRegistrationCode = nil
         deferredInviteCode = nil
+        UserDefaults.standard.removeObject(forKey: persistedRegistrationCodeKey)
     }
 
     func clearAddServicePending() {

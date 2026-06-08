@@ -44,7 +44,7 @@ struct BusTrackerApp: App {
     }
 
     private func handleSmlerURL(_ url: URL) async {
-        guard let code = await SmlerDeepLinkService.shared.serviceCode(from: url) else { return }
-        smlerInviteCoordinator.ingest(serviceCode: code)
+        SmlerPendingInviteURL.capture(url)
+        await smlerInviteCoordinator.processIncomingURL(url)
     }
 }

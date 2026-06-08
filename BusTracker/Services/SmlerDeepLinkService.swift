@@ -13,7 +13,7 @@ enum SmlerShareOutcome {
 final class SmlerDeepLinkService {
     static let shared = SmlerDeepLinkService()
 
-    private let deferredHandledKey = "smler_deferred_handled_v1"
+    private let deferredHandledKey = "smler_deferred_handled_v2"
     private let urlCachePrefix = "smler_cached_url_"
 
     private init() {}
@@ -79,22 +79,42 @@ final class SmlerDeepLinkService {
         return await resolveServiceCode(fromSmlerURL: url)
     }
 
+    /// İlk kurulum sonrası Smler deferred link — pano + IP eşleşmesi (Smler dokümantasyonu).
+    /// Kayıt ekranı görünürken çağrılmalı; iOS yapıştırma izni diyaloğu için kısa gecikmeli tekrar dener.
     func serviceCodeFromDeferredInstall() async -> String? {
         guard !UserDefaults.standard.bool(forKey: deferredHandledKey) else { return nil }
-        UserDefaults.standard.set(true, forKey: deferredHandledKey)
 
 #if os(iOS) || os(visionOS)
-        guard let pasted = UIPasteboard.general.string?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !pasted.isEmpty,
-              let url = URL(string: pasted),
-              SmlerConfig.isSmlerLink(url) else {
-            return nil
+        let retryDelaysNs: [UInt64] = [0, 800_000_000, 2_000_000_000, 4_000_000_000]
+        for delay in retryDelaysNs {
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            if let url = await clipboardInviteURL() {
+                log("Deferred pano eşleşmesi: \(url.absoluteString)")
+                if let code = await resolveServiceCode(fromSmlerURL: url, triggerWebhook: true) {
+                    markDeferredInstallHandled()
+                    return code
+                }
+            }
         }
-        return await resolveServiceCode(fromSmlerURL: url)
+
+        log("Deferred pano boş — probabilistic deneniyor")
+        if let code = await probabilisticServiceCode() {
+            markDeferredInstallHandled()
+            return code
+        }
+
+        markDeferredInstallHandled()
+        return nil
 #else
+        markDeferredInstallHandled()
         return nil
 #endif
+    }
+
+    private func markDeferredInstallHandled() {
+        UserDefaults.standard.set(true, forKey: deferredHandledKey)
     }
 
     // MARK: - Smler Create link API
@@ -207,19 +227,200 @@ final class SmlerDeepLinkService {
         return SmlerConfig.shortLinkURL(shortCode: code)
     }
 
-    private func resolveServiceCode(fromSmlerURL url: URL) async -> String? {
-        let pathCode = shortCodeFromPath(url)
-        if let resolved = await fetchResolvedDestination(shortCode: pathCode, dltHeader: nil),
+    private func resolveServiceCode(fromSmlerURL url: URL, triggerWebhook: Bool = false) async -> String? {
+        if url.scheme?.lowercased() == "shuttlelive",
+           let code = serviceCodeFromDestination(url) {
+            return code
+        }
+
+        let pathParams = extractPathParams(from: url)
+        guard !pathParams.shortCode.isEmpty else { return nil }
+
+        if let resolved = await fetchResolvedDestination(
+            shortCode: pathParams.shortCode,
+            dltHeader: pathParams.dltHeader,
+            triggerWebhook: triggerWebhook
+        ),
            let code = serviceCodeFromDestination(resolved) {
             return code
         }
-        if pathCode.count >= 4 {
-            return pathCode
+        if pathParams.shortCode.count >= 4 {
+            return pathParams.shortCode
         }
         return nil
     }
 
-    private func fetchResolvedDestination(shortCode: String, dltHeader: String?) async -> URL? {
+#if os(iOS) || os(visionOS)
+    private func clipboardInviteURL() async -> URL? {
+        guard let clipboard = await readClipboardText()?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !clipboard.isEmpty else {
+            return nil
+        }
+
+        if let url = parseURLLikeString(clipboard),
+           url.scheme?.lowercased() == "shuttlelive" {
+            return url
+        }
+
+        let patterns = [
+            "https://\(SmlerConfig.linkDomain)",
+            "http://\(SmlerConfig.linkDomain)",
+            SmlerConfig.linkDomain
+        ]
+        for pattern in patterns where matchesDeepLinkPattern(clipboard: clipboard, pattern: pattern) {
+            return parseURLLikeString(clipboard)
+        }
+        return nil
+    }
+
+    private func readClipboardText() async -> String? {
+        if #available(iOS 16.0, *) {
+            return await withCheckedContinuation { continuation in
+                UIPasteboard.general.detectPatterns(for: [.probableWebURL]) { result in
+                    switch result {
+                    case .success:
+                        continuation.resume(returning: UIPasteboard.general.string)
+                    case .failure:
+                        continuation.resume(returning: UIPasteboard.general.string)
+                    }
+                }
+            }
+        }
+        return UIPasteboard.general.string
+    }
+
+    private func probabilisticServiceCode() async -> String? {
+        guard let endpoint = URL(string: "https://smler.in/api/v2/track/probablistic") else {
+            return nil
+        }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 20
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "device": probabilisticDeviceName(),
+            "os": "iOS \(UIDevice.current.systemVersion)",
+            "domain": SmlerConfig.linkDomain
+        ])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  json["matched"] as? Bool == true,
+                  let score = json["score"] as? Double, score > 0.65 else {
+                return nil
+            }
+
+            if let shortUrl = json["shortUrl"] as? [String: Any],
+               let original = shortUrl["originalUrl"] as? String,
+               let destination = URL(string: original),
+               let code = serviceCodeFromDestination(destination) {
+                log("Probabilistic eşleşme score=\(score) code=\(code)")
+                return code
+            }
+
+            if let pathParams = json["pathParams"] as? [String: Any],
+               let shortCode = pathParams["shortCode"] as? String {
+                let normalized = SmlerConfig.normalizedCode(shortCode)
+                if normalized.count >= 4 {
+                    log("Probabilistic pathParams shortCode=\(normalized)")
+                    return normalized
+                }
+            }
+        } catch {
+            log("Probabilistic HATA: \(error.localizedDescription)")
+        }
+        return nil
+    }
+
+    private func probabilisticDeviceName() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                String(cString: $0)
+            }
+        }
+    }
+
+    private func matchesDeepLinkPattern(clipboard: String, pattern: String) -> Bool {
+        let trimmedPattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPattern.isEmpty else { return false }
+
+        let normalizedClipboard = normalizeURLLikeString(clipboard)
+        let normalizedPattern = normalizeURLLikeString(trimmedPattern)
+        if normalizedClipboard == normalizedPattern || normalizedClipboard.hasPrefix(normalizedPattern) {
+            return true
+        }
+
+        guard let clipboardURI = parseURLLikeString(clipboard),
+              let patternURI = parseURLLikeString(trimmedPattern) else {
+            return false
+        }
+
+        func stripWWW(_ host: String) -> String {
+            host.lowercased().hasPrefix("www.") ? String(host.dropFirst(4)) : host.lowercased()
+        }
+
+        let clipboardHost = stripWWW(clipboardURI.host ?? "")
+        let patternHost = stripWWW(patternURI.host ?? "")
+        guard !clipboardHost.isEmpty, !patternHost.isEmpty else { return false }
+
+        let hostMatches = clipboardHost == patternHost || clipboardHost.hasSuffix(".\(patternHost)")
+        guard hostMatches else { return false }
+
+        let patternPath = patternURI.path
+        if patternPath.isEmpty || patternPath == "/" { return true }
+        let clipboardPath = clipboardURI.path.isEmpty ? "/" : clipboardURI.path
+        return clipboardPath.hasPrefix(patternPath)
+    }
+
+    private func normalizeURLLikeString(_ value: String) -> String {
+        var normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.lowercased().hasPrefix("https://") {
+            normalized = String(normalized.dropFirst("https://".count))
+        } else if normalized.lowercased().hasPrefix("http://") {
+            normalized = String(normalized.dropFirst("http://".count))
+        }
+        return normalized
+    }
+
+    private func parseURLLikeString(_ value: String) -> URL? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: trimmed), url.host != nil {
+            return url
+        }
+        return URL(string: "https://\(trimmed)")
+    }
+#endif
+
+    private struct SmlerPathParams {
+        let shortCode: String
+        let dltHeader: String?
+    }
+
+    private func extractPathParams(from url: URL) -> SmlerPathParams {
+        let segments = url.path.split(separator: "/").map(String.init).filter { !$0.isEmpty }
+        if segments.count >= 2 {
+            return SmlerPathParams(
+                shortCode: SmlerConfig.normalizedCode(segments[1]),
+                dltHeader: segments[0]
+            )
+        }
+        if let first = segments.first {
+            return SmlerPathParams(shortCode: SmlerConfig.normalizedCode(first), dltHeader: nil)
+        }
+        return SmlerPathParams(shortCode: "", dltHeader: nil)
+    }
+
+    private func fetchResolvedDestination(
+        shortCode: String,
+        dltHeader: String?,
+        triggerWebhook: Bool = false
+    ) async -> URL? {
         var components = URLComponents(string: "\(SmlerConfig.resolveAPIBase)/short")
         var query: [URLQueryItem] = [
             URLQueryItem(name: "short", value: shortCode),
@@ -227,6 +428,9 @@ final class SmlerDeepLinkService {
         ]
         if let dltHeader, !dltHeader.isEmpty {
             query.append(URLQueryItem(name: "dltHeader", value: dltHeader))
+        }
+        if triggerWebhook {
+            query.append(URLQueryItem(name: "triggerWebhook", value: "true"))
         }
         components?.queryItems = query
         guard let url = components?.url else { return nil }
@@ -237,11 +441,6 @@ final class SmlerDeepLinkService {
         } catch {
             return nil
         }
-    }
-
-    private func shortCodeFromPath(_ url: URL) -> String {
-        let parts = url.path.split(separator: "/").map(String.init)
-        return parts.last.map { SmlerConfig.normalizedCode($0) } ?? ""
     }
 
     private func serviceCodeFromDestination(_ url: URL) -> String? {

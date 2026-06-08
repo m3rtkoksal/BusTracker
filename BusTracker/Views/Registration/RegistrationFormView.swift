@@ -59,6 +59,10 @@ struct RegistrationFormView: BaseView {
             .padding(.bottom, 32)
         }
         .onAppear { applySmlerInviteCodeIfNeeded() }
+        .onChange(of: smlerInviteCoordinator.pendingRegistrationCode) { _, code in
+            guard role == .passenger, let code else { return }
+            viewModel.applyPrefillServiceCode(code)
+        }
     }
 
     private func applySmlerInviteCodeIfNeeded() {

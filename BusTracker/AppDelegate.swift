@@ -53,8 +53,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        guard FirebaseAuthLaunch.isReady else { return false }
-        return Auth.auth().canHandle(url)
+        if SmlerPendingInviteURL.isInviteURL(url) {
+            Task { @MainActor in SmlerPendingInviteURL.capture(url) }
+        }
+        if FirebaseAuthLaunch.isReady, Auth.auth().canHandle(url) {
+            return true
+        }
+        return SmlerPendingInviteURL.isInviteURL(url)
+    }
+
+    func application(
+        _ application: UIApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else {
+            return false
+        }
+        Task { @MainActor in SmlerPendingInviteURL.capture(url) }
+        return true
     }
 }
 #endif
