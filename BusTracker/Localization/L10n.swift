@@ -35,6 +35,12 @@ enum L10n {
     static func passengerBoardedNotification(_ name: String) -> String {
         L.t("\(name) servise bindi", "\(name) boarded the shuttle")
     }
+    static func serviceNotComingListTitle(_ serviceRelativeName: String) -> String {
+        L.t("\(serviceRelativeName) Gelmeyenler", "\(serviceRelativeName) — Not coming")
+    }
+    static var serviceNotComingListEmpty: String {
+        L.t("Henüz kimse gelmiyorum seçmedi.", "No one has marked not coming yet.")
+    }
 
     // MARK: - Roles
 
@@ -211,6 +217,15 @@ enum L10n {
     // MARK: - Driver trip
 
     static var shuttleStopped: String { L.t("Servis durduruldu.", "Shuttle stopped.") }
+    static var shuttleStoppedMotionAutoStop: String {
+        L.t(
+            "Yolcular indi — servis otomatik olarak durduruldu.",
+            "Passengers dropped off — shuttle stopped automatically."
+        )
+    }
+    static var shuttleStoppedExpired: String {
+        L.t("Planlanan süre doldu — servis durduruldu.", "Planned duration ended — shuttle stopped.")
+    }
     static var alwaysLocationRequiredToStart: String {
         L.t(
             "Servisi başlatmak için \"Her zaman\" konum izni zorunludur. Ayarlar'dan izin verin.",
@@ -219,6 +234,19 @@ enum L10n {
     }
     static func shuttleStartedAutoStop(_ hoursLabel: String) -> String {
         L.t("Servis başlatıldı. \(hoursLabel) sonra otomatik duracak.", "Shuttle started. It will stop automatically after \(hoursLabel).")
+    }
+    static var shuttleStartedMotionAutoStop: String {
+        L.t(
+            "Servis başlatıldı. Yolcular indiğinde otomatik duracak.",
+            "Shuttle started. It will stop automatically when passengers have been dropped off."
+        )
+    }
+    static var tripStartConfirmTitle: String { L.t("Servisi Başlat", "Start Shuttle") }
+    static var tripStartConfirmBody: String {
+        L.t(
+            "Konumunuz yolcularla paylaşılır. Yolcular indiğinde servis otomatik durur. En geç 3 saatte de durur.",
+            "Your location is shared with passengers. The shuttle stops when passengers have been dropped off, or after 3 hours at most."
+        )
     }
     static func hoursLabel(_ hours: Double) -> String {
         if hours == floor(hours) {

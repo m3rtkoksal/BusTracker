@@ -2,6 +2,7 @@ import CoreLocation
 import SwiftUI
 
 struct PassengerServiceTab: View {
+    @Environment(ShuttleStore.self) private var store
     @Bindable var viewModel: PassengerHomeViewModel
     let nextTwoServices: [UpcomingService]
     let isHolidayModeActive: Bool
@@ -21,6 +22,7 @@ struct PassengerServiceTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 attendanceSection
+                notComingPassengersSection
                 holidayModeSection
                 pickupSummarySection
                 clothingAdviceSection
@@ -178,6 +180,75 @@ struct PassengerServiceTab: View {
         )
     }
     
+    // MARK: - Not Coming Passengers Section
+
+    private var nearestUpcomingService: UpcomingService {
+        viewModel.nearestUpcomingService
+    }
+
+    private var notComingPassengers: [ShuttleMember] {
+        _ = store.attendanceRevision
+        return viewModel.notComingPassengers(for: nearestUpcomingService)
+    }
+
+    private var notComingPassengersSection: some View {
+        let service = nearestUpcomingService
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text(service.session.icon)
+                    .font(.system(size: 16))
+
+                Text(L10n.serviceNotComingListTitle(service.relativeDisplayName()).uppercased())
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(NeonTheme.onSurface)
+            }
+
+            if notComingPassengers.isEmpty {
+                Text(L10n.serviceNotComingListEmpty)
+                    .font(.subheadline)
+                    .foregroundStyle(NeonTheme.onSurfaceVariant)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(notComingPassengers.enumerated()), id: \.element.id) { index, member in
+                        HStack(spacing: 12) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(Color(hex: 0xFF4444))
+
+                            Text(member.name)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(NeonTheme.onSurface)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(NeonTheme.surfaceContainer.opacity(0.6))
+
+                        if index < notComingPassengers.count - 1 {
+                            Rectangle()
+                                .fill(NeonTheme.onSurfaceVariant.opacity(0.45))
+                                .frame(height: 1.5)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay {
+                    Rectangle()
+                        .strokeBorder(NeonTheme.onSurfaceVariant.opacity(0.7), lineWidth: 2)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NeonTheme.surfaceContainer)
+        .overlay {
+            Rectangle()
+                .strokeBorder(NeonTheme.onSurfaceVariant.opacity(0.55), lineWidth: 1.5)
+        }
+    }
+
     // MARK: - Pickup Summary Section
     
     private var pickupSummarySection: some View {

@@ -9,9 +9,12 @@ const {
 } = require("./weather");
 const {
   buildDriverApproachingMessage,
+  buildTripEndedMessage,
+  buildTripEndedNotification,
   buildTripStartedMessage,
 } = require("./notifications");
 const { evaluateGroupBoarding } = require("./boarding");
+const { MORNING_SESSION, reconcileGroupMorningRoute } = require("./routeLearning");
 
 initializeApp();
 
@@ -92,6 +95,16 @@ function passengerMembers(membersSnapshot, attendanceResponses) {
   return passengers;
 }
 
+function membersWithTokens(membersSnapshot) {
+  return membersSnapshot.docs
+    .filter((doc) => doc.data().fcmToken)
+    .map((doc) => ({
+      memberID: doc.id,
+      token: doc.data().fcmToken,
+      role: doc.data().role || "passenger",
+    }));
+}
+
 exports.notifyTripStarted = onDocumentCreated(
   "groups/{groupId}/tripEvents/{eventId}",
   async (event) => {
@@ -167,6 +180,61 @@ exports.notifyTripStarted = onDocumentCreated(
         "returnees:",
         returneeYesterday.size
       );
+    }
+  }
+);
+
+exports.notifyTripEnded = onDocumentCreated(
+  "groups/{groupId}/tripEvents/{eventId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data || data.type !== "ended") {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    const driverName = data.driverName || "Şoför";
+    const endReason = data.endReason || "manual";
+    const db = getFirestore();
+
+    const membersSnapshot = await db
+      .collection("groups")
+      .doc(groupId)
+      .collection("members")
+      .get();
+
+    const recipients = membersWithTokens(membersSnapshot);
+    console.log(
+      "[notifyTripEnded] recipients:",
+      recipients.length,
+      "of",
+      membersSnapshot.docs.length,
+      "members",
+      "reason:",
+      endReason
+    );
+
+    if (recipients.length === 0) {
+      return;
+    }
+
+    const notification = buildTripEndedNotification(driverName, endReason);
+    const messages = recipients.map(({ memberID, token }) =>
+      buildTripEndedMessage({
+        token,
+        groupId,
+        memberID,
+        notification,
+        endReason,
+      })
+    );
+
+    const result = await getMessaging().sendEach(messages);
+    const failed = result.responses.filter((response) => !response.success).length;
+    if (failed > 0) {
+      console.warn("[notifyTripEnded] FCM failures:", failed);
+    } else {
+      console.log("[notifyTripEnded] sent:", messages.length);
     }
   }
 );
@@ -278,5 +346,23 @@ exports.evaluatePassengerBoardedOnTelemetry = onDocumentWritten(
     if (event.params.telemetryId !== "driver") return;
     const groupId = event.params.groupId;
     await evaluateGroupBoarding(getFirestore(), groupId);
+  }
+);
+
+exports.reconcileMorningCanonicalRoute = onDocumentCreated(
+  "groups/{groupId}/routeHistory/{tripId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data || data.session !== MORNING_SESSION) {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    try {
+      await reconcileGroupMorningRoute(getFirestore(), groupId);
+    } catch (error) {
+      console.error("[reconcileMorningCanonicalRoute] failed", groupId, error);
+      throw error;
+    }
   }
 );

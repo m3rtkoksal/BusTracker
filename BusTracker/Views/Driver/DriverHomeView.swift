@@ -14,11 +14,18 @@ struct DriverHomeView: BaseView {
     @State private var locationForegroundGuidePhase: DriverLocationForegroundGuidePhase = .guide
     @State private var alwaysLocationGuidePhase: DriverAlwaysLocationGuidePhase = .guide
     @State private var motionGuidePhase: DriverMotionGuidePhase = .guide
+    @State private var showsOnlyNotComingPassengers = false
 
     private var profile: UserProfile? { session.profile }
 
     private var passengers: [ShuttleMember] {
         store.members.filter { $0.role == .passenger }
+    }
+
+    private var displayedPassengers: [ShuttleMember] {
+        _ = store.attendanceRevision
+        guard showsOnlyNotComingPassengers else { return passengers }
+        return passengers.filter { store.serviceDayAttendance(for: $0) == .notComing }
     }
 
     private var stats: DriverPassengerStats {
@@ -42,13 +49,6 @@ struct DriverHomeView: BaseView {
             memberID: memberID,
             store: store
         )
-    }
-
-    private var canConfirmTripStart: Bool {
-        locationTracker.refreshAuthorizationStatus()
-        let motion = MotionActivityService.shared
-        motion.refreshAuthorization()
-        return locationTracker.canDriverStartTrip && (!motion.canRequestAuthorization || motion.isAuthorized)
     }
 
     func content() -> some View {
@@ -75,6 +75,9 @@ struct DriverHomeView: BaseView {
         .onAppear {
             viewModel.onAppear(store: store, session: session, locationTracker: locationTracker)
             updateDriverMotionMonitoring()
+            if PushNotificationRouter.consumePendingOpenDriverMap() {
+                tabBar.select(.map)
+            }
         }
         .onChange(of: store.isTripActive) { _, _ in
             updateDriverMotionMonitoring()
@@ -88,6 +91,22 @@ struct DriverHomeView: BaseView {
             alwaysLocationGuidePhase = .guide
             motionGuidePhase = .guide
         }
+        .onReceive(NotificationCenter.default.publisher(for: .driverTripAutoEnded)) { notification in
+            let reason = notification.userInfo?["reason"] as? String
+            switch reason {
+            case TripEndReason.motionAutoStop.rawValue:
+                viewModel.showSuccess(L10n.shuttleStoppedMotionAutoStop)
+            case TripEndReason.expired.rawValue:
+                viewModel.showSuccess(L10n.shuttleStoppedExpired)
+            default:
+                break
+            }
+        }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: PushNotificationRouter.openDriverMapNotification)) { _ in
+            tabBar.select(.map)
+        }
+#endif
         .overlay {
             if let sheet = viewModel.activeStartPermissionSheet {
                 ZStack(alignment: .bottom) {
@@ -140,34 +159,6 @@ struct DriverHomeView: BaseView {
                 }
                 .ignoresSafeArea(edges: .bottom)
                 .animation(.easeInOut(duration: 0.28), value: viewModel.activeStartPermissionSheet)
-            }
-        }
-        .overlay {
-            if viewModel.showTripDurationSheet {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.45)
-                        .ignoresSafeArea()
-                        .onTapGesture { viewModel.showTripDurationSheet = false }
-
-                    TripDurationBottomSheet(
-                        selectedHours: $viewModel.selectedTripDurationHours,
-                        isLoading: store.isLoading,
-                        canStartTrip: canConfirmTripStart,
-                        onConfirm: {
-                            Task {
-                                await viewModel.confirmStartTrip(
-                                    store: store,
-                                    session: session,
-                                    locationTracker: locationTracker
-                                )
-                            }
-                        },
-                        onDismiss: { viewModel.showTripDurationSheet = false }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .animation(.easeInOut(duration: 0.28), value: viewModel.showTripDurationSheet)
             }
         }
         .onChange(of: locationTracker.authorizationStatus) { _, _ in
@@ -274,7 +265,7 @@ struct DriverHomeView: BaseView {
                 if passengers.isEmpty {
                     emptyPassengersState
                 } else {
-                    passengerListSection
+                    passengerListSection(passengers: displayedPassengers)
                 }
 
                 if locationTracker.authorizationStatus == .denied || locationTracker.authorizationStatus == .restricted {
@@ -393,7 +384,9 @@ struct DriverHomeView: BaseView {
                 value: "\(stats.notComing)",
                 valueColor: Color(hex: 0xFF4444),
                 accentBorder: Color(hex: 0xFF4444).opacity(0.3),
-                trailingIcon: "xmark.circle.fill"
+                trailingIcon: "xmark.circle.fill",
+                isActive: showsOnlyNotComingPassengers,
+                onTap: { showsOnlyNotComingPassengers.toggle() }
             )
             statCard(
                 title: L10n.statUnknown,
@@ -405,6 +398,7 @@ struct DriverHomeView: BaseView {
         }
     }
 
+    @ViewBuilder
     private func statCard(
         title: String,
         value: String,
@@ -412,7 +406,38 @@ struct DriverHomeView: BaseView {
         accentBorder: Color,
         progress: Double? = nil,
         trailingIcon: String? = nil,
-        footnote: String? = nil
+        footnote: String? = nil,
+        isActive: Bool = false,
+        onTap: (() -> Void)? = nil
+    ) -> some View {
+        let card = statCardContent(
+            title: title,
+            value: value,
+            valueColor: valueColor,
+            accentBorder: accentBorder,
+            progress: progress,
+            trailingIcon: trailingIcon,
+            footnote: footnote,
+            isActive: isActive
+        )
+
+        if let onTap {
+            Button(action: onTap) { card }
+                .buttonStyle(.plain)
+        } else {
+            card
+        }
+    }
+
+    private func statCardContent(
+        title: String,
+        value: String,
+        valueColor: Color,
+        accentBorder: Color,
+        progress: Double? = nil,
+        trailingIcon: String? = nil,
+        footnote: String? = nil,
+        isActive: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
@@ -457,10 +482,10 @@ struct DriverHomeView: BaseView {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(NeonTheme.surfaceContainer)
+        .background(isActive ? valueColor.opacity(0.12) : NeonTheme.surfaceContainer)
         .overlay {
             Rectangle()
-                .strokeBorder(accentBorder, lineWidth: 1)
+                .strokeBorder(isActive ? valueColor.opacity(0.65) : accentBorder, lineWidth: isActive ? 2 : 1)
         }
         .shadow(color: valueColor == NeonTheme.secondary ? NeonTheme.secondary.opacity(0.1) : .clear, radius: 6)
     }
@@ -493,7 +518,7 @@ struct DriverHomeView: BaseView {
         .opacity(0.85)
     }
 
-    private var passengerListSection: some View {
+    private func passengerListSection(passengers: [ShuttleMember]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(L10n.passengerList)

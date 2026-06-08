@@ -10,6 +10,8 @@ struct ShuttleMapView: View {
     var cameraPosition: Binding<MapCameraPosition>?
     /// Konum/pin güncellenince tüm pinlere zoom yapılmasın (sürücü haritası).
     var autoFitCameraOnUpdate: Bool = false
+    /// Sürücü navigasyon modunda kamera sıfırlama hack'i kapalı (zoom fight önlenir).
+    var enableAnnotationRefreshHack: Bool = false
     /// Üst view konum/pin hazır olunca artırır; MapKit annotation yenilemesi tetiklenir.
     var annotationRefreshNonce: Int = 0
 
@@ -60,17 +62,22 @@ struct ShuttleMapView: View {
         .onAppear {
             if autoFitCameraOnUpdate {
                 fitCamera(animated: false)
+            } else if enableAnnotationRefreshHack {
+                scheduleAnnotationRefresh()
             }
-            scheduleAnnotationRefresh()
         }
         .onChange(of: annotationSignature) { _, _ in
             if autoFitCameraOnUpdate {
                 fitCamera(animated: false)
             }
-            scheduleAnnotationRefresh()
+            if enableAnnotationRefreshHack {
+                scheduleAnnotationRefresh()
+            }
         }
         .onChange(of: annotationRefreshNonce) { _, _ in
-            scheduleAnnotationRefresh()
+            if enableAnnotationRefreshHack {
+                scheduleAnnotationRefresh()
+            }
         }
     }
 

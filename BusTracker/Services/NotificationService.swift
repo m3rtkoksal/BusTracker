@@ -224,9 +224,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         let userInfo = response.notification.request.content.userInfo
-        await MainActor.run {
-            PushNotificationRouter.handle(userInfo: userInfo)
-        }
+        await PushNotificationRouter.handle(userInfo: userInfo)
     }
 }
 
@@ -235,8 +233,24 @@ extension NotificationService {
     static let approachSoundName = "approach_tink.caf"
 
     nonisolated static func notificationType(from userInfo: [AnyHashable: Any]) -> String? {
-        if let type = userInfo["type"] as? String { return type }
-        if let gcm = userInfo["gcm.notification.type"] as? String { return gcm }
+        if let type = normalizedNotificationString(userInfo["type"]) { return type }
+        if let gcm = normalizedNotificationString(userInfo["gcm.notification.type"]) { return gcm }
+        if let data = userInfo["data"] as? [AnyHashable: Any],
+           let nested = normalizedNotificationString(data["type"]) {
+            return nested
+        }
+        return nil
+    }
+
+    nonisolated static func normalizedNotificationString(_ value: Any?) -> String? {
+        if let string = value as? String {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let string = value as? NSString {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
         return nil
     }
 
@@ -245,27 +259,71 @@ extension NotificationService {
     }
 }
 
-/// `trip_started` bildirimine basınca yolcu harita sekmesine gider (yoklama sheet'i ayrı kurallarla).
+/// Bildirim tıklanınca rol uygun ekrana yönlendirir.
 @MainActor
 enum PushNotificationRouter {
     static let openPassengerMapNotification = Notification.Name("PushNotificationRouter.openPassengerMap")
+    static let openDriverMapNotification = Notification.Name("PushNotificationRouter.openDriverMap")
     static let openSparseModeSheetNotification = Notification.Name("PushNotificationRouter.openSparseModeSheet")
 
     private static var pendingOpenPassengerMap = false
+    private static var pendingOpenDriverMap = false
     private static var pendingOpenSparseModeSheet = false
 
-    static func handle(userInfo: [AnyHashable: Any]) {
+    static func handle(userInfo: [AnyHashable: Any]) async {
+        await waitForProfileIfNeeded()
+        route(userInfo: userInfo)
+    }
+
+    private static func waitForProfileIfNeeded() async {
+        guard UserSession.shared.profile == nil else { return }
+        for _ in 0..<40 {
+            if UserSession.shared.profile != nil { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    private static func route(userInfo: [AnyHashable: Any]) {
         let type = NotificationService.notificationType(from: userInfo)
+        let role = UserSession.shared.profile?.role
+
         switch type {
         case "trip_started", "passenger_boarded":
-            pendingOpenPassengerMap = true
-            NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
+            guard role == .passenger else { return }
+            signalOpenPassengerMap()
+        case "canonical_route_ready":
+            switch role {
+            case .driver:
+                signalOpenDriverMap()
+            case .passenger:
+                signalOpenPassengerMap()
+            case .none:
+                break
+            }
+        case "trip_ended":
+            // Bilgi amaçlı — ek navigasyon yok (sürücüde yolcu haritası açılmaz).
+            return
         case SparseModeSuggestionNotifier.notificationType, "open_holiday_mode":
-            pendingOpenSparseModeSheet = true
-            NotificationCenter.default.post(name: openSparseModeSheetNotification, object: nil)
+            guard role == .passenger else { return }
+            signalOpenSparseModeSheet()
         default:
             break
         }
+    }
+
+    private static func signalOpenPassengerMap() {
+        pendingOpenPassengerMap = true
+        NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
+    }
+
+    private static func signalOpenDriverMap() {
+        pendingOpenDriverMap = true
+        NotificationCenter.default.post(name: openDriverMapNotification, object: nil)
+    }
+
+    private static func signalOpenSparseModeSheet() {
+        pendingOpenSparseModeSheet = true
+        NotificationCenter.default.post(name: openSparseModeSheetNotification, object: nil)
     }
 
     static func consumePendingOpenPassengerMap() -> Bool {
@@ -277,6 +335,12 @@ enum PushNotificationRouter {
     static func consumePendingOpenSparseModeSheet() -> Bool {
         guard pendingOpenSparseModeSheet else { return false }
         pendingOpenSparseModeSheet = false
+        return true
+    }
+
+    static func consumePendingOpenDriverMap() -> Bool {
+        guard pendingOpenDriverMap else { return false }
+        pendingOpenDriverMap = false
         return true
     }
 }

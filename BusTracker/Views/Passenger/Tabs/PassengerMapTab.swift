@@ -22,6 +22,7 @@ struct PassengerMapTab: View {
             PassengerLiveMap(
                 driverLocation: store.driverLocation,
                 driverRoute: store.driverRoute,
+                canonicalMorningRoute: store.canonicalMorningRoute,
                 isTripActive: store.isTripActive,
                 selectedCoordinate: $viewModel.draftPickupCoordinate,
                 savedPickup: savedMorningPickup,

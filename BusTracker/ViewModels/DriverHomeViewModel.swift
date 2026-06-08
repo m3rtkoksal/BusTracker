@@ -25,10 +25,11 @@ struct DriverPassengerStats {
 @MainActor
 @Observable
 final class DriverHomeViewModel: BaseViewModel {
-    var showTripDurationSheet = false
     var activeStartPermissionSheet: DriverStartPermissionSheet?
-    var pendingTripDurationSheetAfterPermissions = false
-    var selectedTripDurationHours = 2.0
+    var pendingTripStartAfterPermissions = false
+    private weak var tripStartStore: ShuttleStore?
+    private weak var tripStartSession: UserSession?
+    static let defaultTripDurationHours = 3.0
     private var isRequestingMotionAuthorization = false
 
     enum DriverStartPermissionSheet: Equatable {
@@ -52,7 +53,7 @@ final class DriverHomeViewModel: BaseViewModel {
     @discardableResult
     private func presentDriverAlwaysLocationSheetIfNeeded(locationTracker: LocationTracker) -> Bool {
         guard needsDriverAlwaysLocationUpgrade(locationTracker: locationTracker) else { return false }
-        pendingTripDurationSheetAfterPermissions = true
+        pendingTripStartAfterPermissions = true
         activeStartPermissionSheet = .locationAlways
         return true
     }
@@ -78,6 +79,7 @@ final class DriverHomeViewModel: BaseViewModel {
                 return .motion
             }
         }
+
         return .ready
     }
 
@@ -87,7 +89,7 @@ final class DriverHomeViewModel: BaseViewModel {
     ) {
         switch gate {
         case .locationForeground:
-            pendingTripDurationSheetAfterPermissions = true
+            pendingTripStartAfterPermissions = true
             locationTracker.refreshAuthorizationStatus()
             switch locationTracker.authorizationStatus {
             case .notDetermined:
@@ -97,7 +99,7 @@ final class DriverHomeViewModel: BaseViewModel {
             case .denied, .restricted:
                 activeStartPermissionSheet = .locationForeground
             case .authorizedWhenInUse:
-                pendingTripDurationSheetAfterPermissions = true
+                pendingTripStartAfterPermissions = true
                 activeStartPermissionSheet = .locationAlways
             default:
                 presentStartTripPermissionGate(
@@ -106,15 +108,22 @@ final class DriverHomeViewModel: BaseViewModel {
                 )
             }
         case .locationAlways:
-            pendingTripDurationSheetAfterPermissions = true
+            pendingTripStartAfterPermissions = true
             activeStartPermissionSheet = .locationAlways
         case .motion:
-            pendingTripDurationSheetAfterPermissions = true
+            pendingTripStartAfterPermissions = true
             Task { await presentMotionStep(locationTracker: locationTracker) }
         case .ready:
             activeStartPermissionSheet = nil
-            pendingTripDurationSheetAfterPermissions = false
-            showTripDurationSheet = true
+            pendingTripStartAfterPermissions = false
+            attemptAutoStartTrip(locationTracker: locationTracker)
+        }
+    }
+
+    private func attemptAutoStartTrip(locationTracker: LocationTracker) {
+        guard let store = tripStartStore, let session = tripStartSession else { return }
+        Task {
+            await confirmStartTrip(store: store, session: session, locationTracker: locationTracker)
         }
     }
 
@@ -135,7 +144,7 @@ final class DriverHomeViewModel: BaseViewModel {
             activeStartPermissionSheet = nil
             await motion.requestAuthorizationIfNeeded()
             motion.refreshAuthorization()
-            guard pendingTripDurationSheetAfterPermissions else { return }
+            guard pendingTripStartAfterPermissions else { return }
             if motion.isAuthorized {
                 presentStartTripPermissionGate(
                     startTripPermissionGate(locationTracker: locationTracker),
@@ -304,6 +313,8 @@ final class DriverHomeViewModel: BaseViewModel {
             return
         }
 
+        tripStartStore = store
+        tripStartSession = session
         locationTracker.refreshAuthorizationStatus()
         MotionActivityService.shared.refreshAuthorization()
         continueStartTripPermissionFlow(locationTracker: locationTracker)
@@ -319,7 +330,7 @@ final class DriverHomeViewModel: BaseViewModel {
         if locationTracker.hasWhenInUseAuthorization {
             locationTracker.requestDriverSingleLocation()
         }
-        guard pendingTripDurationSheetAfterPermissions else { return }
+        guard pendingTripStartAfterPermissions else { return }
         if locationTracker.authorizationStatus == .notDetermined {
             return
         }
@@ -339,8 +350,7 @@ final class DriverHomeViewModel: BaseViewModel {
 
         let gate = startTripPermissionGate(locationTracker: locationTracker)
         guard gate == .ready else {
-            pendingTripDurationSheetAfterPermissions = true
-            showTripDurationSheet = false
+            pendingTripStartAfterPermissions = true
             if gate == .motion {
                 Task { await presentMotionStep(locationTracker: locationTracker) }
             } else {
@@ -350,19 +360,17 @@ final class DriverHomeViewModel: BaseViewModel {
         }
 
         activeStartPermissionSheet = nil
-        pendingTripDurationSheetAfterPermissions = false
-        showTripDurationSheet = false
+        pendingTripStartAfterPermissions = false
 
         do {
             try await store.startTrip(
                 groupID: groupID,
                 driverName: driverName,
-                durationHours: selectedTripDurationHours,
+                durationHours: Self.defaultTripDurationHours,
                 locationTracker: locationTracker
             )
-            BusTrackerAnalytics.tripStarted(durationHours: selectedTripDurationHours)
-            let hoursLabel = L10n.hoursLabel(selectedTripDurationHours)
-            showSuccess(L10n.shuttleStartedAutoStop(hoursLabel))
+            BusTrackerAnalytics.tripStarted(durationHours: Self.defaultTripDurationHours)
+            showSuccess(L10n.shuttleStartedMotionAutoStop)
         } catch {
             showError(L10n.shuttleStartFailed)
         }
