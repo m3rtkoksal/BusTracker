@@ -6,7 +6,7 @@ import UIKit
 #endif
 
 /// Açılış izinleri: yolcu → (harita sekmesinde konum; bildirim/hareket aksiyon zincirinde);
-/// sürücü → yalnızca bildirim. Sürücü konum/hareket → Servisi başlat bottom sheet zinciri.
+/// sürücü → yalnızca bildirim. Sürücü konum/hareket → Servisi başlat izin zinciri.
 struct AppPermissionsHandlerModifier: ViewModifier {
     var enabled: Bool = true
     let profile: UserProfile?

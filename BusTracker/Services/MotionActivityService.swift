@@ -26,6 +26,10 @@ final class MotionActivityService {
     private var store: ShuttleStore?
 
     private var openAutomotiveStartedAt: Date?
+    private var lastVehicleExitAt: Date?
+    private var walkingSince: Date?
+    private var hasBeenInVehicleThisSession = false
+    private(set) var currentActivity: MotionCurrentActivity = .unknown
     private var segments: [MotionActivitySegment] = []
     private var uploadLoopTask: Task<Void, Never>?
     private var permissionProbeActive = false
@@ -78,6 +82,10 @@ final class MotionActivityService {
         permissionProbeActive = false
         isMonitoring = false
         openAutomotiveStartedAt = nil
+        lastVehicleExitAt = nil
+        walkingSince = nil
+        hasBeenInVehicleThisSession = false
+        currentActivity = .unknown
         segments = []
         role = nil
         groupID = nil
@@ -181,19 +189,46 @@ final class MotionActivityService {
     }
 
     private func applyActivity(_ activity: CMMotionActivity) {
-        let automotive = Self.isAutomotive(activity)
+        let classified = Self.classify(activity)
+        currentActivity = classified
+        let automotive = classified == .inVehicle
         let now = Date()
 
         if automotive {
+            hasBeenInVehicleThisSession = true
+            walkingSince = nil
             if openAutomotiveStartedAt == nil {
                 openAutomotiveStartedAt = now
             }
-        } else if let started = openAutomotiveStartedAt {
-            segments.append(MotionActivitySegment(startedAt: started, endedAt: now, isAutomotive: true))
-            openAutomotiveStartedAt = nil
+        } else {
+            if openAutomotiveStartedAt != nil {
+                lastVehicleExitAt = now
+                segments.append(
+                    MotionActivitySegment(
+                        startedAt: openAutomotiveStartedAt!,
+                        endedAt: now,
+                        isAutomotive: true
+                    )
+                )
+                openAutomotiveStartedAt = nil
+            }
+            if classified == .walking {
+                if walkingSince == nil {
+                    walkingSince = now
+                }
+            } else {
+                walkingSince = nil
+            }
         }
 
         pruneSegments(now: now)
+    }
+
+    private static func classify(_ activity: CMMotionActivity) -> MotionCurrentActivity {
+        if isAutomotive(activity) { return .inVehicle }
+        if activity.walking { return .walking }
+        if activity.stationary { return .stationary }
+        return .unknown
     }
 
     private static func isAutomotive(_ activity: CMMotionActivity) -> Bool {
@@ -241,9 +276,21 @@ final class MotionActivityService {
             role: role,
             memberID: memberID,
             automotiveSecondsInWindow: Int(automotiveSeconds.rounded()),
-            segments: workingSegments
+            segments: workingSegments,
+            currentActivity: currentActivity.rawValue,
+            inVehicle: openAutomotiveStartedAt != nil,
+            lastVehicleExitAt: lastVehicleExitAt,
+            walkingSince: walkingSince,
+            hasBeenInVehicle: hasBeenInVehicleThisSession || openAutomotiveStartedAt != nil
         )
     }
+}
+
+enum MotionCurrentActivity: String {
+    case inVehicle = "in_vehicle"
+    case walking
+    case stationary
+    case unknown
 }
 
 struct MotionActivitySegment: Equatable {

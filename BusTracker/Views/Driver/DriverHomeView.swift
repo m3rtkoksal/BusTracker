@@ -44,13 +44,6 @@ struct DriverHomeView: BaseView {
         )
     }
 
-    private var canConfirmTripStart: Bool {
-        locationTracker.refreshAuthorizationStatus()
-        let motion = MotionActivityService.shared
-        motion.refreshAuthorization()
-        return locationTracker.canDriverStartTrip && (!motion.canRequestAuthorization || motion.isAuthorized)
-    }
-
     func content() -> some View {
         VStack(spacing: 0) {
             if tabBar.selectedTab != .map {
@@ -87,6 +80,17 @@ struct DriverHomeView: BaseView {
             locationForegroundGuidePhase = .guide
             alwaysLocationGuidePhase = .guide
             motionGuidePhase = .guide
+        }
+        .onChange(of: store.lastTripEndReason) { _, reason in
+            guard let reason else { return }
+            switch reason {
+            case .motionAutoStop:
+                viewModel.showSuccess(L10n.shuttleStoppedMotionAutoStop)
+            case .expired:
+                viewModel.showSuccess(L10n.shuttleStoppedExpired)
+            case .manual:
+                break
+            }
         }
         .overlay {
             if let sheet = viewModel.activeStartPermissionSheet {
@@ -140,34 +144,6 @@ struct DriverHomeView: BaseView {
                 }
                 .ignoresSafeArea(edges: .bottom)
                 .animation(.easeInOut(duration: 0.28), value: viewModel.activeStartPermissionSheet)
-            }
-        }
-        .overlay {
-            if viewModel.showTripDurationSheet {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.45)
-                        .ignoresSafeArea()
-                        .onTapGesture { viewModel.showTripDurationSheet = false }
-
-                    TripDurationBottomSheet(
-                        selectedHours: $viewModel.selectedTripDurationHours,
-                        isLoading: store.isLoading,
-                        canStartTrip: canConfirmTripStart,
-                        onConfirm: {
-                            Task {
-                                await viewModel.confirmStartTrip(
-                                    store: store,
-                                    session: session,
-                                    locationTracker: locationTracker
-                                )
-                            }
-                        },
-                        onDismiss: { viewModel.showTripDurationSheet = false }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .animation(.easeInOut(duration: 0.28), value: viewModel.showTripDurationSheet)
             }
         }
         .onChange(of: locationTracker.authorizationStatus) { _, _ in

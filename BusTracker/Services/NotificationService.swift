@@ -257,7 +257,7 @@ enum PushNotificationRouter {
     static func handle(userInfo: [AnyHashable: Any]) {
         let type = NotificationService.notificationType(from: userInfo)
         switch type {
-        case "trip_started", "passenger_boarded":
+        case "trip_started", "passenger_boarded", "canonical_route_ready":
             pendingOpenPassengerMap = true
             NotificationCenter.default.post(name: openPassengerMapNotification, object: nil)
         case SparseModeSuggestionNotifier.notificationType, "open_holiday_mode":

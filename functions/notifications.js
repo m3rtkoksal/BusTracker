@@ -156,10 +156,123 @@ function buildPassengerBoardedMessage({ token, groupId, boardedMemberID, boarded
   };
 }
 
+/**
+ * 5 sabah seferi sonrası canonical rota oluştu — gruptaki tüm üyelere.
+ */
+function buildCanonicalRouteReadyNotification() {
+  return {
+    title: "Servis rotası hazır",
+    body: "Sabah servisi güzergâhı artık haritada görünebilir.",
+  };
+}
+
+function buildCanonicalRouteReadyMessage({ token, groupId, memberID, notification }) {
+  const { title, body } = notification;
+  return {
+    token,
+    notification: { title, body },
+    data: {
+      type: "canonical_route_ready",
+      groupId,
+      memberID,
+      session: "am",
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: CHANNEL_TRIP,
+        sound: SOUND_TRIP_ANDROID,
+        priority: "high",
+        tag: `canonical_route_${groupId}_${memberID}`,
+        ticker: title,
+        visibility: "public",
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: SOUND_TRIP_IOS,
+          "thread-id": `trip_${groupId}`,
+        },
+      },
+    },
+  };
+}
+
+function buildTripEndedNotification(driverName, endReason) {
+  if (endReason === "motion_auto_stop") {
+    return {
+      title: "Servis bitti",
+      body: "Servis otomatik olarak sonlandı.",
+    };
+  }
+  if (endReason === "expired") {
+    return {
+      title: "Servis bitti",
+      body: "Planlanan süre doldu, servis sonlandı.",
+    };
+  }
+  const name = driverName || "Şoför";
+  return {
+    title: "Servis bitti",
+    body: `${name} servisi durdurdu.`,
+  };
+}
+
+/**
+ * Servis sona erdi — gruptaki tüm üyelere (sürücü + yolcular).
+ */
+function buildTripEndedMessage({
+  token,
+  groupId,
+  memberID,
+  notification,
+  endReason,
+}) {
+  const { title, body } = notification;
+  return {
+    token,
+    notification: { title, body },
+    data: {
+      type: "trip_ended",
+      groupId,
+      memberID,
+      endReason: endReason || "manual",
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: CHANNEL_TRIP,
+        sound: SOUND_TRIP_ANDROID,
+        priority: "high",
+        tag: `trip_ended_${groupId}_${memberID}`,
+        ticker: title,
+        visibility: "public",
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: SOUND_TRIP_IOS,
+          "thread-id": `trip_${groupId}`,
+        },
+      },
+    },
+  };
+}
+
 module.exports = {
   CHANNEL_TRIP,
   CHANNEL_APPROACHING,
   buildTripStartedMessage,
+  buildCanonicalRouteReadyMessage,
+  buildCanonicalRouteReadyNotification,
+  buildTripEndedMessage,
+  buildTripEndedNotification,
   buildDriverApproachingMessage,
   buildPassengerBoardedMessage,
 };

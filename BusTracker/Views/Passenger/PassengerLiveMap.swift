@@ -5,6 +5,7 @@ import SwiftUI
 struct PassengerLiveMap: View {
     let driverLocation: DriverLocation?
     var driverRoute: [CLLocationCoordinate2D] = []
+    var canonicalMorningRoute: [CLLocationCoordinate2D] = []
     var isTripActive: Bool = false
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
     var savedPickup: MorningPickup?
@@ -26,6 +27,11 @@ struct PassengerLiveMap: View {
     var body: some View {
         MapReader { proxy in
             Map(position: activePosition) {
+                if !isTripActive, !canonicalMorningRoute.isEmpty {
+                    MapPolyline(coordinates: canonicalMorningRoute)
+                        .stroke(NeonTheme.secondary.opacity(0.45), lineWidth: 3)
+                }
+
                 if DriverRouteDisplay.shouldDrawPolyline(
                     route: driverRoute,
                     driverLocation: driverLocation,

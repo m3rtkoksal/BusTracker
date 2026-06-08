@@ -66,6 +66,17 @@ service cloud.firestore {
       match /tripActivity/{activityDocId} {
         allow read, write: if isSignedIn();
       }
+
+      match /routeHistory/{tripId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isGroupDriver(groupId);
+        allow update, delete: if false;
+      }
+
+      match /canonicalRoutes/{sessionId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
     }
   }
 }

@@ -3,6 +3,12 @@ import FirebaseAuth
 import FirebaseFirestore
 import Foundation
 
+enum TripEndReason: String {
+    case manual
+    case motionAutoStop = "motion_auto_stop"
+    case expired
+}
+
 enum ShuttleStoreError: LocalizedError {
     case notAuthenticated
     case groupNotFound
@@ -25,6 +31,8 @@ final class ShuttleStore {
     var members: [ShuttleMember] = []
     var driverLocation: DriverLocation?
     var driverRoute: [CLLocationCoordinate2D] = []
+    var canonicalMorningRoute: [CLLocationCoordinate2D] = []
+    var isCanonicalMorningRouteReady = false
     var morningPickups: [MorningPickup] = []
     var isTripActive = false
     var isLoading = false
@@ -34,6 +42,7 @@ final class ShuttleStore {
     private var membersListener: ListenerRegistration?
     private var locationListener: ListenerRegistration?
     private var routeListener: ListenerRegistration?
+    private var canonicalRouteListener: ListenerRegistration?
     private var attendanceListeners: [String: ListenerRegistration] = [:]
     private var morningPickupsListener: ListenerRegistration?
     private var locationUploadTask: Task<Void, Never>?
@@ -48,7 +57,14 @@ final class ShuttleStore {
     private static let pickupReachRadiusMeters: CLLocationDistance = 120
     private var tripAutoStopTask: Task<Void, Never>?
     private static let minRoutePointDistanceMeters: CLLocationDistance = 20
+    private static let minRouteHistoryPointCount = 5
+    private var activeTripStartedAt: Date?
+    private var activeTripDateKey: String?
+    private weak var activeTripLocationTracker: LocationTracker?
+    private var tripActivityListener: ListenerRegistration?
+    private var motionAutoStopTriggered = false
     private(set) var plannedTripEndAt: Date?
+    private(set) var lastTripEndReason: TripEndReason?
     private(set) var attendanceRevision = 0
 
     private var todayKey: String {
@@ -106,6 +122,20 @@ final class ShuttleStore {
                 }
 
             startAttendanceListeners(groupID: groupID)
+
+            canonicalRouteListener = db.collection("groups").document(groupID)
+                .collection("canonicalRoutes").document("morning")
+                .addSnapshotListener { [weak self] snapshot, error in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        if error != nil { return }
+                        let data = snapshot?.data()
+                        self.isCanonicalMorningRouteReady = data?["status"] as? String == "ready"
+                        self.canonicalMorningRoute = self.isCanonicalMorningRouteReady
+                            ? Self.routePoints(from: data)
+                            : []
+                    }
+                }
 
             morningPickupsListener = db.collection("groups").document(groupID)
                 .collection("morningPickups")
@@ -170,21 +200,27 @@ final class ShuttleStore {
         membersListener?.remove()
         locationListener?.remove()
         routeListener?.remove()
+        canonicalRouteListener?.remove()
         stopAttendanceListeners()
         morningPickupsListener?.remove()
         membersListener = nil
         locationListener = nil
         routeListener = nil
+        canonicalRouteListener = nil
         morningPickupsListener = nil
         attendanceResponsesByDate = [:]
         morningPickups = []
         driverRoute = []
+        canonicalMorningRoute = []
+        isCanonicalMorningRouteReady = false
         lastAppendedRoutePoint = nil
         locationUploadTask?.cancel()
         locationUploadTask = nil
         tripAutoStopTask?.cancel()
         tripAutoStopTask = nil
         plannedTripEndAt = nil
+        stopTripActivityListener()
+        activeTripLocationTracker = nil
         isTripActive = false
     }
 
@@ -479,6 +515,11 @@ final class ShuttleStore {
         try await resetTripActivity(groupID: groupID)
 
         isTripActive = true
+        activeTripStartedAt = Date()
+        activeTripDateKey = todayKey
+        activeTripLocationTracker = locationTracker
+        motionAutoStopTriggered = false
+        startTripActivityListener(groupID: groupID)
         lastDriverTelemetryLocation = nil
         pickupReachLoggedMemberIDs = []
         activeTripGroupID = groupID
@@ -512,7 +553,29 @@ final class ShuttleStore {
         )
     }
 
-    func stopTrip(groupID: String, driverName: String, locationTracker: LocationTracker) async {
+    func stopTrip(
+        groupID: String,
+        driverName: String,
+        locationTracker: LocationTracker,
+        endReason: TripEndReason = .manual
+    ) async {
+        let routeToArchive = driverRoute
+        let tripStartedAt = activeTripStartedAt
+        let tripDateKey = activeTripDateKey ?? todayKey
+        activeTripStartedAt = nil
+        activeTripDateKey = nil
+        lastTripEndReason = endReason
+
+        try? await archiveRouteHistory(
+            groupID: groupID,
+            driverName: driverName,
+            points: routeToArchive,
+            startedAt: tripStartedAt
+        )
+
+        stopTripActivityListener()
+        activeTripLocationTracker = nil
+
         tripAutoStopTask?.cancel()
         tripAutoStopTask = nil
         plannedTripEndAt = nil
@@ -527,6 +590,15 @@ final class ShuttleStore {
         locationTracker.stopTracking()
 
         try? await FirebaseSession.shared.ensureAuthenticated()
+
+        try? await db.collection("groups").document(groupID).collection("tripEvents").addDocument(data: [
+            "type": "ended",
+            "date": tripDateKey,
+            "driverName": driverName,
+            "endReason": endReason.rawValue,
+            "createdAt": FieldValue.serverTimestamp()
+        ])
+
         try? await db.collection("groups").document(groupID)
             .collection("live").document("current")
             .setData([
@@ -549,7 +621,12 @@ final class ShuttleStore {
     ) async {
         guard isTripActive else { return }
         if let endsAt = plannedTripEndAt, endsAt <= Date() {
-            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            await stopTrip(
+                groupID: groupID,
+                driverName: driverName,
+                locationTracker: locationTracker,
+                endReason: .expired
+            )
             return
         }
 
@@ -567,7 +644,12 @@ final class ShuttleStore {
         let endsAt = timestamp.dateValue()
         plannedTripEndAt = endsAt
         if endsAt <= Date() {
-            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            await stopTrip(
+                groupID: groupID,
+                driverName: driverName,
+                locationTracker: locationTracker,
+                endReason: .expired
+            )
             return
         }
 
@@ -592,7 +674,12 @@ final class ShuttleStore {
                 try? await Task.sleep(for: .seconds(delay))
             }
             guard !Task.isCancelled, isTripActive, activeTripGroupID == groupID else { return }
-            await stopTrip(groupID: groupID, driverName: driverName, locationTracker: locationTracker)
+            await stopTrip(
+                groupID: groupID,
+                driverName: driverName,
+                locationTracker: locationTracker,
+                endReason: .expired
+            )
         }
     }
 
@@ -803,7 +890,12 @@ final class ShuttleStore {
         role: MotionActivityRole,
         memberID: String,
         automotiveSecondsInWindow: Int,
-        segments: [MotionActivitySegment]
+        segments: [MotionActivitySegment],
+        currentActivity: String = "unknown",
+        inVehicle: Bool = false,
+        lastVehicleExitAt: Date? = nil,
+        walkingSince: Date? = nil,
+        hasBeenInVehicle: Bool = false
     ) async throws {
         try await FirebaseSession.shared.ensureAuthenticated()
 
@@ -823,16 +915,127 @@ final class ShuttleStore {
             ]
         }
 
+        var payload: [String: Any] = [
+            "tripDate": todayKey,
+            "role": role.rawValue,
+            "memberID": memberID,
+            "automotiveSecondsInWindow": automotiveSecondsInWindow,
+            "segments": encodedSegments,
+            "currentActivity": currentActivity,
+            "inVehicle": inVehicle,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        if hasBeenInVehicle {
+            payload["hasBeenInVehicle"] = true
+        }
+        if let lastVehicleExitAt {
+            payload["lastVehicleExitAt"] = Timestamp(date: lastVehicleExitAt)
+        }
+        if let walkingSince {
+            payload["walkingSince"] = Timestamp(date: walkingSince)
+        }
+
         try await db.collection("groups").document(groupID)
             .collection("tripActivity").document(documentID)
-            .setData([
-                "tripDate": todayKey,
-                "role": role.rawValue,
-                "memberID": memberID,
-                "automotiveSecondsInWindow": automotiveSecondsInWindow,
-                "segments": encodedSegments,
-                "updatedAt": FieldValue.serverTimestamp()
-            ], merge: true)
+            .setData(payload, merge: true)
+    }
+
+    private func startTripActivityListener(groupID: String) {
+        stopTripActivityListener()
+        tripActivityListener = db.collection("groups").document(groupID)
+            .collection("tripActivity")
+            .addSnapshotListener { [weak self] snapshot, error in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if error != nil { return }
+                    self.evaluatePassengerMotionAutoStop(snapshot: snapshot)
+                }
+            }
+    }
+
+    private func stopTripActivityListener() {
+        tripActivityListener?.remove()
+        tripActivityListener = nil
+    }
+
+    private func evaluatePassengerMotionAutoStop(snapshot: QuerySnapshot?) {
+        guard isTripActive,
+              !motionAutoStopTriggered,
+              let groupID = activeTripGroupID,
+              let driverName = activeTripDriverName,
+              let tripStartedAt = activeTripStartedAt,
+              let locationTracker = activeTripLocationTracker else { return }
+
+        let documents = snapshot?.documents ?? []
+        var pickupReachMemberIDs = Set<String>()
+        var passengerSnapshots: [TripMotionAutoStop.PassengerMotionSnapshot] = []
+
+        for document in documents {
+            let documentID = document.documentID
+            let data = document.data()
+
+            if documentID.hasPrefix("pickupReach_") {
+                if let memberID = data["memberID"] as? String {
+                    pickupReachMemberIDs.insert(memberID)
+                }
+                continue
+            }
+
+            guard documentID.hasPrefix("activity_passenger_"),
+                  data["role"] as? String == MotionActivityRole.passenger.rawValue,
+                  let memberID = data["memberID"] as? String else { continue }
+
+            let lastExit = (data["lastVehicleExitAt"] as? Timestamp)?.dateValue()
+            let walkingSince = (data["walkingSince"] as? Timestamp)?.dateValue()
+            let hasBeenInVehicle = data["hasBeenInVehicle"] as? Bool ?? false
+
+            passengerSnapshots.append(
+                TripMotionAutoStop.PassengerMotionSnapshot(
+                    memberID: memberID,
+                    inVehicle: data["inVehicle"] as? Bool ?? false,
+                    currentActivity: data["currentActivity"] as? String ?? "unknown",
+                    hasBeenInVehicle: hasBeenInVehicle,
+                    lastVehicleExitAt: lastExit,
+                    walkingSince: walkingSince,
+                    hadPickupReach: pickupReachMemberIDs.contains(memberID)
+                )
+            )
+        }
+
+        // pickupReach belgeleri ayrı dökümanlarda; yolcu snapshot'larına işle
+        passengerSnapshots = passengerSnapshots.map { snapshot in
+            TripMotionAutoStop.PassengerMotionSnapshot(
+                memberID: snapshot.memberID,
+                inVehicle: snapshot.inVehicle,
+                currentActivity: snapshot.currentActivity,
+                hasBeenInVehicle: snapshot.hasBeenInVehicle,
+                lastVehicleExitAt: snapshot.lastVehicleExitAt,
+                walkingSince: snapshot.walkingSince,
+                hadPickupReach: snapshot.hadPickupReach || pickupReachMemberIDs.contains(snapshot.memberID)
+            )
+        }
+
+        let comingMemberIDs = Set(
+            members
+                .filter { $0.role == .passenger && serviceDayAttendance(for: $0) == .coming }
+                .map(\.id)
+        )
+
+        guard TripMotionAutoStop.shouldAutoStopTrip(
+            tripStartedAt: tripStartedAt,
+            comingMemberIDs: comingMemberIDs,
+            passengers: passengerSnapshots
+        ) else { return }
+
+        motionAutoStopTriggered = true
+        Task {
+            await stopTrip(
+                groupID: groupID,
+                driverName: driverName,
+                locationTracker: locationTracker,
+                endReason: .motionAutoStop
+            )
+        }
     }
 
     private func recordPickupReachIfNeeded(
@@ -963,6 +1166,39 @@ final class ShuttleStore {
         if isActive {
             try await appendRoutePoint(groupID: groupID, coordinate: location.coordinate)
         }
+    }
+
+    private func archiveRouteHistory(
+        groupID: String,
+        driverName: String,
+        points: [CLLocationCoordinate2D],
+        startedAt: Date?
+    ) async throws {
+        guard points.count >= Self.minRouteHistoryPointCount else { return }
+
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        let service = ServiceSchedule.currentDriverSession()
+        let endedAt = Date()
+        let pointsData = points.map { point in
+            [
+                "latitude": point.latitude,
+                "longitude": point.longitude
+            ] as [String: Any]
+        }
+
+        try await db.collection("groups").document(groupID)
+            .collection("routeHistory")
+            .addDocument(data: [
+                "session": service.session.rawValue,
+                "tripDate": HolidayMode.dateKey(from: service.date),
+                "dateKey": service.dateKey,
+                "driverName": driverName,
+                "startedAt": Timestamp(date: startedAt ?? endedAt),
+                "endedAt": Timestamp(date: endedAt),
+                "pointCount": points.count,
+                "points": pointsData
+            ])
     }
 
     private func resetDriverRoute(groupID: String) async throws {
