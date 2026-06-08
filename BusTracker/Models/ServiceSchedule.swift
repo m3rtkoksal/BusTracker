@@ -150,12 +150,16 @@ enum ServiceSchedule {
         
         let today = cal.startOfDay(for: reference)
         
-        if hour < eveningStartHour {
-            // 00:00 - 15:59: Sabah servisi
+        if hour < morningEndHour {
+            // 00:00 - 09:59: Sabah servisi
             return UpcomingService(date: today, session: .morning)
-        } else {
-            // 16:00 - 23:59: Akşam servisi
+        } else if hour < eveningEndHour {
+            // 10:00 - 19:59: Akşam servisi
             return UpcomingService(date: today, session: .evening)
+        } else {
+            // 20:00 - 23:59: Sonraki iş günü sabah
+            let nextWorkday = nextWeekday(from: reference, afterToday: true)
+            return UpcomingService(date: nextWorkday, session: .morning)
         }
     }
     

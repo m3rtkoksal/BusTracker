@@ -42,6 +42,7 @@ struct PassengerHomeView: BaseView {
     private var currentDriverService: UpcomingService { viewModel.currentDriverService }
     private var currentServiceRawAttendance: AttendanceStatus { viewModel.currentServiceRawAttendance }
     private var currentServiceEffectiveAttendance: AttendanceStatus { viewModel.currentServiceEffectiveAttendance }
+    private var nearestUpcomingServiceEffectiveAttendance: AttendanceStatus { viewModel.nearestUpcomingServiceEffectiveAttendance }
     private var isHolidayModeActive: Bool { viewModel.isHolidayModeActive }
     private var memberLoaded: Bool { viewModel.memberLoaded }
     private var resolvedGroupID: String { viewModel.resolvedGroupID }
@@ -99,7 +100,7 @@ struct PassengerHomeView: BaseView {
                         viewModel: viewModel,
                         savedMorningPickup: savedMorningPickup,
                         hasSavedMorningPickup: hasSavedMorningPickup,
-                        currentServiceEffectiveAttendance: currentServiceEffectiveAttendance,
+                        currentServiceEffectiveAttendance: nearestUpcomingServiceEffectiveAttendance,
                         onSelectServiceTab: { tabBar.select(.service) },
                         onSavePickup: {
                             viewModel.requestSaveMorningPickup(

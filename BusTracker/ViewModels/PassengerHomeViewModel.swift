@@ -57,6 +57,11 @@ final class PassengerHomeViewModel: BaseViewModel {
         ServiceSchedule.currentDriverSession()
     }
 
+    /// Yolcu harita/servis sekmesinde gösterilen en yakın sonraki servis
+    var nearestUpcomingService: UpcomingService {
+        nextTwoServices.first ?? ServiceSchedule.currentDriverSession()
+    }
+
     func rawAttendance(for service: UpcomingService) -> AttendanceStatus {
         guard let memberID = profile?.memberID, let store else { return .unknown }
         return store.rawAttendance(for: memberID, dateKey: service.dateKey)
@@ -73,6 +78,10 @@ final class PassengerHomeViewModel: BaseViewModel {
 
     var currentServiceEffectiveAttendance: AttendanceStatus {
         effectiveAttendance(for: currentDriverService)
+    }
+
+    var nearestUpcomingServiceEffectiveAttendance: AttendanceStatus {
+        effectiveAttendance(for: nearestUpcomingService)
     }
 
     func isComingSelected(for service: UpcomingService) -> Bool {
