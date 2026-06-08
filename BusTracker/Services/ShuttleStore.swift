@@ -3,6 +3,10 @@ import FirebaseAuth
 import FirebaseFirestore
 import Foundation
 
+extension Notification.Name {
+    static let driverTripAutoEnded = Notification.Name("ShuttleStore.driverTripAutoEnded")
+}
+
 enum TripEndReason: String {
     case manual
     case motionAutoStop = "motion_auto_stop"
@@ -611,6 +615,14 @@ final class ShuttleStore {
 
         // Artık attendance reset yapılmıyor - her servis (sabah/akşam) ayrı dateKey'de tutulduğu için
         // yolcuların akşam seçimleri sabah servisi bittiğinde korunuyor
+
+        if endReason != .manual {
+            NotificationCenter.default.post(
+                name: .driverTripAutoEnded,
+                object: nil,
+                userInfo: ["reason": endReason.rawValue]
+            )
+        }
     }
 
     /// Uygulama açıldığında süresi dolmuş aktif servisi kapatır.

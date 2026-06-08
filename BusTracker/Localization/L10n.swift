@@ -35,6 +35,12 @@ enum L10n {
     static func passengerBoardedNotification(_ name: String) -> String {
         L.t("\(name) servise bindi", "\(name) boarded the shuttle")
     }
+    static func serviceNotComingListTitle(_ serviceRelativeName: String) -> String {
+        L.t("\(serviceRelativeName) Gelmeyenler", "\(serviceRelativeName) — Not coming")
+    }
+    static var serviceNotComingListEmpty: String {
+        L.t("Henüz kimse gelmiyorum seçmedi.", "No one has marked not coming yet.")
+    }
 
     // MARK: - Roles
 

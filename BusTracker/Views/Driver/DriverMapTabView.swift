@@ -11,7 +11,8 @@ struct DriverMapTabView: View {
 
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
     @State private var didInitialDriverCenter = false
-    @State private var mapAnnotationRefreshNonce = 0
+    /// Navigasyon modu: sabit mesafe, kuzey yukarı (heading 0).
+    @State private var navigationCameraDistance: CLLocationDistance = 1_200
     /// Sağ üst konum tuşu: false = sürücü odak, true = tüm pinler.
     @State private var mapShowsAllPins = false
 
@@ -28,7 +29,7 @@ struct DriverMapTabView: View {
                 morningPickups: morningPickups,
                 mapStyle: .hybrid(elevation: .flat),
                 cameraPosition: $mapPosition,
-                annotationRefreshNonce: mapAnnotationRefreshNonce
+                enableAnnotationRefreshHack: false
             )
             .ignoresSafeArea()
 
@@ -48,27 +49,27 @@ struct DriverMapTabView: View {
         }
         .onAppear {
             mapShowsAllPins = false
-            centerOnDriver(animated: false)
+            if isTripActive {
+                followDriverNavigation(animated: false)
+            } else {
+                centerOnDriver(animated: false)
+            }
             didInitialDriverCenter = driverLocation != nil
-            requestMapAnnotationRefresh()
+        }
+        .onChange(of: isTripActive) { _, active in
+            guard active else { return }
+            mapShowsAllPins = false
+            followDriverNavigation(animated: true)
         }
         .onChange(of: driverLocation?.updatedAt) { _, _ in
-            if !didInitialDriverCenter, driverLocation != nil {
-                didInitialDriverCenter = true
-                mapShowsAllPins = false
-                centerOnDriver(animated: true)
+            if isTripActive, !mapShowsAllPins {
+                followDriverNavigation(animated: true)
+                return
             }
-            requestMapAnnotationRefresh()
-        }
-        .onChange(of: morningPickups.map(\.memberID).joined()) { _, _ in
-            requestMapAnnotationRefresh()
-        }
-    }
-
-    private func requestMapAnnotationRefresh() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(80))
-            mapAnnotationRefreshNonce += 1
+            guard !didInitialDriverCenter, driverLocation != nil else { return }
+            didInitialDriverCenter = true
+            mapShowsAllPins = false
+            centerOnDriver(animated: true)
         }
     }
 
@@ -120,16 +121,10 @@ struct DriverMapTabView: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(NeonTheme.onSurface)
 
-                HStack {
-                    if let distanceText = distanceToPickup(pickup) {
-                        Text(distanceText)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(NeonTheme.secondary)
-                    }
-                    Spacer()
-                    Text(L10n.morningPickup)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(NeonTheme.onSurfaceVariant)
+                if let distanceText = distanceToPickup(pickup) {
+                    Text(distanceText)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(NeonTheme.secondary)
                 }
             } else {
                 Text(L10n.noStop)
@@ -157,15 +152,11 @@ struct DriverMapTabView: View {
     }
 
     private var mapControls: some View {
-        VStack(spacing: 8) {
-            mapControlButton(icon: "plus") { zoom(by: 0.7) }
-            mapControlButton(icon: "minus") { zoom(by: 1.35) }
-            mapControlButton(
-                icon: mapShowsAllPins ? "location.fill" : "location.north.line.fill",
-                highlighted: true
-            ) {
-                toggleMapFocus()
-            }
+        mapControlButton(
+            icon: mapShowsAllPins ? "location.fill" : "location.north.line.fill",
+            highlighted: true
+        ) {
+            toggleMapFocus()
         }
     }
 
@@ -294,25 +285,43 @@ struct DriverMapTabView: View {
         return String(format: "%.0f M", meters)
     }
 
-    private func zoom(by factor: Double) {
-        guard var region = mapPosition.region else { return }
-        region.span.latitudeDelta = min(0.5, max(0.005, region.span.latitudeDelta * factor))
-        region.span.longitudeDelta = min(0.5, max(0.005, region.span.longitudeDelta * factor))
-        withAnimation { mapPosition = .region(region) }
-    }
-
     private func toggleMapFocus() {
         if mapShowsAllPins {
-            centerOnDriver(animated: true)
             mapShowsAllPins = false
+            if isTripActive {
+                followDriverNavigation(animated: true)
+            } else {
+                centerOnDriver(animated: true)
+            }
         } else {
             fitAllPins()
             mapShowsAllPins = true
         }
-        requestMapAnnotationRefresh()
     }
 
-    /// Navigasyon benzeri: sürücü ortada, sabit yakın zoom.
+    /// Aktif sefer: sürücü ortada, sabit mesafe, kuzey yukarı (pusula üstte).
+    private func followDriverNavigation(animated: Bool) {
+        guard let driverLocation else {
+            mapPosition = .region(MapDefaults.homeRegion)
+            return
+        }
+
+        let camera = MapCamera(
+            centerCoordinate: driverLocation.coordinate,
+            distance: navigationCameraDistance,
+            heading: 0,
+            pitch: 0
+        )
+        if animated {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                mapPosition = .camera(camera)
+            }
+        } else {
+            mapPosition = .camera(camera)
+        }
+    }
+
+    /// Servis kapalıyken: sürücü ortada, ılımlı zoom.
     private func centerOnDriver(animated: Bool) {
         guard let driverLocation else {
             mapPosition = .region(MapDefaults.homeRegion)

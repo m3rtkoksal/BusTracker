@@ -95,6 +95,14 @@ final class PassengerHomeViewModel: BaseViewModel {
             (isHolidayModeActive && raw == .unknown && effective == .notComing)
     }
 
+    func notComingPassengers(for service: UpcomingService) -> [ShuttleMember] {
+        guard let store else { return [] }
+        return store.members
+            .filter { $0.role == .passenger }
+            .filter { store.rawAttendance(for: $0.id, dateKey: service.dateKey) == .notComing }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
     var isHolidayModeActive: Bool {
         myMember?.isHolidayModeActive == true
     }

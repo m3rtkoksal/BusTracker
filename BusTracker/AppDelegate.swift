@@ -24,8 +24,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
 
         if let userInfo = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
-            Task { @MainActor in
-                PushNotificationRouter.handle(userInfo: userInfo)
+            Task {
+                await PushNotificationRouter.handle(userInfo: userInfo)
             }
         }
 
