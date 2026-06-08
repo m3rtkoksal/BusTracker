@@ -210,8 +210,8 @@ struct PassengerServiceTab: View {
                     .font(.subheadline)
                     .foregroundStyle(NeonTheme.onSurfaceVariant)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(notComingPassengers.enumerated()), id: \.element.id) { index, member in
+                VStack(spacing: 8) {
+                    ForEach(notComingPassengers) { member in
                         HStack(spacing: 12) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 18))
@@ -225,19 +225,13 @@ struct PassengerServiceTab: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                         .background(NeonTheme.surfaceContainer.opacity(0.6))
-
-                        if index < notComingPassengers.count - 1 {
+                        .overlay {
                             Rectangle()
-                                .fill(NeonTheme.onSurfaceVariant.opacity(0.45))
-                                .frame(height: 1.5)
+                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay {
-                    Rectangle()
-                        .strokeBorder(NeonTheme.onSurfaceVariant.opacity(0.7), lineWidth: 2)
-                }
             }
         }
         .padding(16)
@@ -245,8 +239,9 @@ struct PassengerServiceTab: View {
         .background(NeonTheme.surfaceContainer)
         .overlay {
             Rectangle()
-                .strokeBorder(NeonTheme.onSurfaceVariant.opacity(0.55), lineWidth: 1.5)
+                .strokeBorder(NeonTheme.primary.opacity(0.7), lineWidth: 1.5)
         }
+        .shadow(color: NeonTheme.primary.opacity(0.12), radius: 6)
     }
 
     // MARK: - Pickup Summary Section
