@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shuttle Live — Ödeme sonucu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="icon" href="/shuttle-live-og.png" type="image/png" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container inner">
+        <a href="/" class="brand" style="text-decoration: none; color: inherit">
+          <strong>Mika Technology</strong>
+          <span>Shuttle Live</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="join-hero">
+      <div class="container">
+        <p class="section-title" data-i18n="complete-label" data-tr="Ödeme sonucu" data-en="Payment result">Ödeme sonucu</p>
+        <h1 id="complete-title">—</h1>
+        <p class="hint" id="complete-message">—</p>
+        <div class="join-actions" style="margin-top: 1.5rem">
+          <a class="btn btn-primary" href="/" data-i18n="complete-home" data-tr="Ana sayfa" data-en="Home">Ana sayfa</a>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <p>© <span id="year"></span> Mika Technology</p>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+      const status = new URLSearchParams(window.location.search).get("status") || "failure";
+      const titleEl = document.getElementById("complete-title");
+      const messageEl = document.getElementById("complete-message");
+
+      if (status === "success") {
+        titleEl.textContent = "Ödeme alındı";
+        messageEl.textContent =
+          "Abonelik birkaç dakika içinde uygulamada güncellenir. Sürücü ayarlarından tarihleri kontrol edebilirsiniz.";
+      } else if (status === "error") {
+        titleEl.textContent = "İşlem tamamlanamadı";
+        messageEl.textContent = "Ödeme doğrulanamadı. Destek için sürücünüzle iletişime geçin.";
+      } else {
+        titleEl.textContent = "Ödeme başarısız";
+        messageEl.textContent = "Ödeme tamamlanmadı veya iptal edildi. Linkten tekrar deneyebilirsiniz.";
+      }
+    </script>
+  </body>
+</html>

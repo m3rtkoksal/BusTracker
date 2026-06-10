@@ -11,6 +11,7 @@ struct DriverHomeView: BaseView {
     @State private var showMyServices = false
     @State private var isCreatingInviteLink = false
     @State private var showLanguagePicker = false
+    @State private var subscriptionViewModel = DriverSubscriptionViewModel()
     @State private var locationForegroundGuidePhase: DriverLocationForegroundGuidePhase = .guide
     @State private var alwaysLocationGuidePhase: DriverAlwaysLocationGuidePhase = .guide
     @State private var motionGuidePhase: DriverMotionGuidePhase = .guide
@@ -78,6 +79,9 @@ struct DriverHomeView: BaseView {
             if PushNotificationRouter.consumePendingOpenDriverMap() {
                 tabBar.select(.map)
             }
+        }
+        .task(id: profile?.primaryGroupID ?? "") {
+            await subscriptionViewModel.load(groupID: profile?.primaryGroupID ?? "")
         }
         .onChange(of: store.isTripActive) { _, _ in
             updateDriverMotionMonitoring()
@@ -252,6 +256,11 @@ struct DriverHomeView: BaseView {
             VStack(alignment: .leading, spacing: 24) {
                 serviceCodeCard
                 tripControlSection
+
+                if let message = subscriptionViewModel.expiringSoonMessage {
+                    SubscriptionExpiringSoonBanner(message: message)
+                }
+
                 statsGrid
 
                 if passengers.isEmpty {
@@ -718,58 +727,67 @@ struct DriverHomeView: BaseView {
     // MARK: - Settings Tab
 
     private var settingsTab: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if let code = profile?.groupCode, !code.isEmpty {
-                    SettingsServiceCodeRow(code: code) {
-                        viewModel.copyServiceCode(code)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let code = profile?.groupCode, !code.isEmpty {
+                        SettingsServiceCodeRow(code: code) {
+                            viewModel.copyServiceCode(code)
+                        }
+                        SettingsInviteShareRow(serviceCode: code) { message in
+                            viewModel.showError(message)
+                        }
                     }
-                    SettingsInviteShareRow(serviceCode: code) { message in
-                        viewModel.showError(message)
+
+                    if let memberID = profile?.memberID,
+                       let name = store.members.first(where: { $0.id == memberID })?.name ?? profile?.name {
+                        SettingsEditableNameRow(
+                            title: L10n.settingsYourName,
+                            value: .constant(name)
+                        ) { newName in
+                            viewModel.updateName(newName, store: store, session: session)
+                        }
                     }
-                }
 
-                if let memberID = profile?.memberID,
-                   let name = store.members.first(where: { $0.id == memberID })?.name ?? profile?.name {
-                    SettingsEditableNameRow(
-                        title: L10n.settingsYourName,
-                        value: .constant(name)
-                    ) { newName in
-                        viewModel.updateName(newName, store: store, session: session)
+                    SettingsNavigationRow(
+                        title: L10n.myShuttles,
+                        value: profile?.groupName
+                    ) {
+                        showMyServices = true
                     }
-                }
 
-                SettingsNavigationRow(
-                    title: L10n.myShuttles,
-                    value: profile?.groupName
-                ) {
-                    showMyServices = true
-                }
-
-                NotificationSettingsRow()
-
-                LanguageSettingsRow(showPicker: $showLanguagePicker)
-
-                SettingsSignOutRow {
-                    viewModel.requestSignOut {
-                        Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                    SettingsNavigationLinkRow(
+                        title: L10n.subscription,
+                        value: subscriptionViewModel.statusSubtitle
+                    ) {
+                        DriverSubscriptionView()
                     }
-                }
 
-                SettingsDeleteAccountLink {
-                    viewModel.requestDeleteAccount {
-                        Task {
-                            await viewModel.deleteAccount(
-                                store: store,
-                                session: session,
-                                authService: authService,
-                                locationTracker: locationTracker
-                            )
+                    NotificationSettingsRow()
+
+                    LanguageSettingsRow(showPicker: $showLanguagePicker)
+
+                    SettingsSignOutRow {
+                        viewModel.requestSignOut {
+                            Task { await viewModel.signOut(store: store, session: session, locationTracker: locationTracker) }
+                        }
+                    }
+
+                    SettingsDeleteAccountLink {
+                        viewModel.requestDeleteAccount {
+                            Task {
+                                await viewModel.deleteAccount(
+                                    store: store,
+                                    session: session,
+                                    authService: authService,
+                                    locationTracker: locationTracker
+                                )
+                            }
                         }
                     }
                 }
+                .padding(24)
             }
-            .padding(24)
         }
         .overlay {
             if showLanguagePicker {

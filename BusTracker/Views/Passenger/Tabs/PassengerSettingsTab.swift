@@ -35,9 +35,7 @@ struct PassengerSettingsTab: View {
                 ) {
                     showMyServices = true
                 }
-                
-                NotificationSettingsRow()
-                
+
                 LanguageSettingsRow(showPicker: $showLanguagePicker)
                 
                 SettingsSignOutRow {

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shuttle Live — Üyelik devamı</title>
+    <meta property="og:title" content="Shuttle Live — Üyelik devamı" />
+    <meta
+      property="og:description"
+      content="Shuttle Live sürücü üyeliğini devam ettirmek için resmi sayfa."
+    />
+    <meta property="og:image" content="https://mika.technology/shuttle-live-og.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="icon" href="/shuttle-live-og.png" type="image/png" />
+    <style>
+      .subscribe-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 14px;
+        margin-bottom: 2rem;
+        padding-bottom: 1.75rem;
+        border-bottom: 1px solid rgba(90, 80, 104, 0.35);
+      }
+      .subscribe-brand img {
+        width: 88px;
+        height: 88px;
+        border-radius: 20px;
+        box-shadow: 0 12px 40px rgba(255, 45, 120, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      .subscribe-brand h2 {
+        margin: 0;
+        font-size: clamp(1.75rem, 5vw, 2.25rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      .subscribe-brand .app-tagline {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        max-width: 28rem;
+      }
+      .subscribe-brand .official-badge {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 6px 12px;
+        border: 1px solid rgba(0, 255, 204, 0.35);
+        background: rgba(0, 255, 204, 0.08);
+        color: var(--secondary);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .payment-grid {
+        display: grid;
+        gap: 12px;
+        margin-top: 1.5rem;
+      }
+      .payment-row {
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .payment-row strong {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        opacity: 0.72;
+        margin-bottom: 6px;
+      }
+      .payment-row span,
+      .payment-row code {
+        font-size: 15px;
+        font-weight: 600;
+        word-break: break-word;
+      }
+      .payment-row code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .service-code {
+        font-size: 28px;
+        letter-spacing: 0.18em;
+        font-weight: 800;
+        margin-top: 0.75rem;
+      }
+      .copy-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 1.25rem;
+      }
+      .copy-actions .btn {
+        flex: 1 1 140px;
+      }
+      .toast {
+        margin-top: 1rem;
+        font-size: 13px;
+        color: #7cf5d0;
+        min-height: 1.25rem;
+      }
+      .payment-row.warning {
+        border-color: rgba(255, 224, 74, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container inner">
+        <a href="/" class="brand" style="text-decoration: none; color: inherit; flex-direction: row; align-items: center; gap: 12px;">
+          <img src="/shuttle-live-og.png" alt="" width="36" height="36" style="border-radius: 9px;" />
+          <span>
+            <strong style="display: block; line-height: 1.2;">Shuttle Live</strong>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Mika Technology</span>
+          </span>
+        </a>
+      </div>
+    </header>
+
+    <main class="join-hero">
+      <div class="container">
+        <div class="subscribe-brand">
+          <img src="/shuttle-live-og.png" alt="Shuttle Live uygulama logosu" width="88" height="88" />
+          <div>
+            <h2>Shuttle Live</h2>
+            <p class="app-tagline">Servis takip uygulaması — resmi üyelik devam sayfası</p>
+            <span class="official-badge">Resmi sayfa</span>
+          </div>
+        </div>
+
+        <p class="section-title">Üyelik devamı</p>
+        <h1>İşlem bilgileri</h1>
+        <p class="hint">
+          İşlem sırasında açıklama alanına aşağıdaki servis kodunu yazın. Kurumunuz işlemi tamamladığında
+          üyelik birkaç iş günü içinde uygulamada güncellenir.
+        </p>
+
+        <div class="payment-row warning">
+          <strong>Servis kodu (açıklama)</strong>
+          <div class="service-code" id="service-code">——</div>
+        </div>
+
+        <div class="payment-grid">
+          <div class="payment-row">
+            <strong>Tutar</strong>
+            <span id="amount">699 TL</span>
+          </div>
+          <div class="payment-row">
+            <strong>Banka</strong>
+            <span id="bank">Akbank</span>
+          </div>
+          <div class="payment-row">
+            <strong>IBAN</strong>
+            <code id="iban">TR59 0004 6012 7788 8000 0730 65</code>
+          </div>
+          <div class="payment-row">
+            <strong>Alıcı</strong>
+            <span id="recipient">Mert Köksal</span>
+          </div>
+        </div>
+
+        <div class="copy-actions">
+          <button type="button" class="btn btn-primary" id="copy-all">Tümünü kopyala</button>
+          <button type="button" class="btn btn-secondary" id="copy-iban">IBAN kopyala</button>
+          <button type="button" class="btn btn-secondary" id="copy-code">Servis kodu kopyala</button>
+        </div>
+        <p class="toast" id="toast" aria-live="polite"></p>
+
+        <p class="hint" id="no-code" hidden style="margin-top: 1.5rem">
+          Linkte servis kodu bulunamadı. Shuttle Live uygulamasından Üyelik ekranındaki linki
+          kullanın.
+        </p>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <p>© <span id="year"></span> Mika Technology</p>
+        <nav class="footer-links">
+          <a href="mailto:hello@mika.technology">hello@mika.technology</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      const PAYMENT = {
+        amount: "699 TL",
+        bank: "Akbank",
+        iban: "TR59 0004 6012 7788 8000 0730 65",
+        recipient: "Mert Köksal",
+      };
+
+      function normalizedCode(raw) {
+        return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const serviceCode = normalizedCode(params.get("code") || params.get("serviceCode") || "");
+      const codeEl = document.getElementById("service-code");
+      const toastEl = document.getElementById("toast");
+      const noCodeEl = document.getElementById("no-code");
+
+      document.getElementById("amount").textContent = PAYMENT.amount;
+      document.getElementById("bank").textContent = PAYMENT.bank;
+      document.getElementById("iban").textContent = PAYMENT.iban;
+      document.getElementById("recipient").textContent = PAYMENT.recipient;
+
+      if (serviceCode) {
+        codeEl.textContent = serviceCode;
+      } else {
+        codeEl.textContent = "——";
+        noCodeEl.hidden = false;
+      }
+
+      function paymentText() {
+        return [
+          "Shuttle Live sürücü üyeliği (1 ay)",
+          "",
+          "Tutar: " + PAYMENT.amount,
+          "Banka: " + PAYMENT.bank,
+          "IBAN: " + PAYMENT.iban,
+          "Alıcı: " + PAYMENT.recipient,
+          "Açıklama: " + (serviceCode || "——"),
+          "",
+          "İşlem tamamlandığında üyelik birkaç iş günü içinde aktifleştirilir.",
+        ].join("\n");
+      }
+
+      async function copyText(text, message) {
+        try {
+          await navigator.clipboard.writeText(text);
+          toastEl.textContent = message;
+        } catch (error) {
+          toastEl.textContent = "Kopyalanamadı. Metni elle seçip kopyalayın.";
+        }
+      }
+
+      document.getElementById("copy-all").addEventListener("click", function () {
+        copyText(paymentText(), "Bilgiler kopyalandı.");
+      });
+      document.getElementById("copy-iban").addEventListener("click", function () {
+        copyText(PAYMENT.iban, "IBAN kopyalandı.");
+      });
+      document.getElementById("copy-code").addEventListener("click", function () {
+        if (!serviceCode) {
+          toastEl.textContent = "Servis kodu linkte yok.";
+          return;
+        }
+        copyText(serviceCode, "Servis kodu kopyalandı.");
+      });
+    </script>
+  </body>
+</html>

@@ -18,6 +18,15 @@ service cloud.firestore {
       return isSignedIn() && groupData(groupId).driverMemberID == request.auth.uid;
     }
 
+    function subscriptionFieldsUnchanged() {
+      return (!('subscriptionStartDate' in request.resource.data)
+          || request.resource.data.subscriptionStartDate == resource.data.subscriptionStartDate)
+        && (!('subscriptionEndDate' in request.resource.data)
+          || request.resource.data.subscriptionEndDate == resource.data.subscriptionEndDate)
+        && (!('subscriptionUpdatedAt' in request.resource.data)
+          || request.resource.data.subscriptionUpdatedAt == resource.data.subscriptionUpdatedAt);
+    }
+
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
@@ -25,7 +34,7 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() && subscriptionFieldsUnchanged();
 
       match /members/{memberId} {
         allow read: if isSignedIn();
@@ -82,6 +91,14 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if false;
       }
+
+      match /subscriptionPayments/{paymentId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /subscriptionPaymentIndex/{conversationId} {
+      allow read, write: if false;
     }
   }
 }

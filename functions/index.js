@@ -1,4 +1,10 @@
 const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
+const {
+  handleSubscribeInit,
+  handleSubscribeCallback,
+  handleSubscribeWebhook,
+} = require("./subscription");
 const { initializeApp } = require("firebase-admin/app");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -430,6 +436,42 @@ exports.evaluatePassengerBoardedOnTelemetry = onDocumentWritten(
     if (event.params.telemetryId !== "driver") return;
     const groupId = event.params.groupId;
     await evaluateGroupBoarding(getFirestore(), groupId);
+  }
+);
+
+const subscribeRuntime = {
+  region: "europe-west1",
+  cors: true,
+  secrets: ["IYZICO_API_KEY", "IYZICO_SECRET_KEY"],
+};
+
+exports.subscribeInit = onRequest(subscribeRuntime, async (req, res) => {
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+  await handleSubscribeInit(getFirestore(), req, res);
+});
+
+exports.subscribeCallback = onRequest(
+  { ...subscribeRuntime, cors: false },
+  async (req, res) => {
+    if (req.method !== "GET" && req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+    await handleSubscribeCallback(getFirestore(), req, res);
+  }
+);
+
+exports.subscribeWebhook = onRequest(
+  { ...subscribeRuntime, cors: false },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+    await handleSubscribeWebhook(getFirestore(), req, res);
   }
 );
 

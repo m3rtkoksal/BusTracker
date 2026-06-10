@@ -4,7 +4,12 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/join", "destination": "/join.html" },
-      { "source": "/join/**", "destination": "/join.html" }
+      { "source": "/join/**", "destination": "/join.html" },
+      { "source": "/subscribe", "destination": "/subscribe.html" },
+      { "source": "/subscribe/complete", "destination": "/subscribe-complete.html" },
+      { "source": "/api/subscribe/init", "function": "subscribeInit" },
+      { "source": "/api/subscribe/callback", "function": "subscribeCallback" },
+      { "source": "/api/subscribe/webhook", "function": "subscribeWebhook" }
     ],
     "headers": [
       {

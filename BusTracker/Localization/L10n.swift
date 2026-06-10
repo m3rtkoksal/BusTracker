@@ -161,6 +161,88 @@ enum L10n {
     static var settingsServiceCode: String { L.t("Servis Kodu", "Shuttle Code") }
     static var settingsYourName: String { L.t("Adınız", "Your Name") }
     static var settingsShuttle: String { L.t("Servis", "Shuttle") }
+
+    // MARK: - Subscription
+
+    static var subscription: String { L.t("Üyelik", "Membership") }
+    static var subscriptionSectionTitle: String { L.t("Üyelik durumu", "Membership status") }
+    static var subscriptionStartDate: String { L.t("Üyelik başlangıç", "Membership start") }
+    static var subscriptionEndDate: String { L.t("Üyelik bitiş", "Membership end") }
+    static var subscriptionInactive: String { L.t("Kapalı", "Inactive") }
+    static var subscriptionActiveDescription: String {
+        L.t(
+            "Üyeliğiniz aktif. Bitiş tarihine kadar sürücü özelliklerini kullanabilirsiniz.",
+            "Your membership is active. You can use driver features until the end date."
+        )
+    }
+    static var subscriptionInactiveDescription: String {
+        L.t(
+            "Şu an aktif üyelik görünmüyor.",
+            "No active membership at the moment."
+        )
+    }
+    static var subscriptionPaymentLinkTitle: String { L.t("Üyeliği devam ettir", "Continue membership") }
+    static var subscriptionRenewalHint: String {
+        L.t(
+            "Linki kuruma iletebilir, paylaşabilir veya kopyalayabilirsiniz.",
+            "You can share or copy the link for your organization."
+        )
+    }
+    static var subscriptionRenewalOpen: String {
+        L.t("Web sayfasını aç", "Open website")
+    }
+    static var subscriptionBossPaymentHint: String {
+        L.t(
+            "Devam etmek için linki bağlı olduğunuz kuruma iletebilirsiniz.",
+            "You can share the link with your organization to continue."
+        )
+    }
+    static func subscriptionRenewalShareMessage(_ url: String) -> String {
+        L.t(
+            "Shuttle Live üyelik devamı. Servis kodunuz linkte hazır:\n\(url)",
+            "Shuttle Live membership continuation. Your service code is in the link:\n\(url)"
+        )
+    }
+    static var subscriptionLinkCopied: String {
+        L.t("Link kopyalandı.", "Link copied.")
+    }
+    static var subscriptionPaymentHint: String {
+        L.t(
+            "Kurumunuz işlemi tamamladığında tarihler burada güncellenir.",
+            "Dates will update here once your organization completes the process."
+        )
+    }
+    static var subscriptionPayment: String { L.t("Üyelik devamı", "Membership") }
+    static func subscriptionExpiringSoonMessage(endDate: String, daysRemaining: Int) -> String {
+        switch daysRemaining {
+        case 0:
+            return L.t(
+                "Üyeliğiniz bugün (\(endDate)) sona eriyor. Devam etmek için linki kuruma iletebilirsiniz.",
+                "Your membership ends today (\(endDate)). Share the link with your organization to continue."
+            )
+        case 1:
+            return L.t(
+                "Üyeliğiniz yarın (\(endDate)) sona eriyor. Devam etmek için linki kuruma iletebilirsiniz.",
+                "Your membership ends tomorrow (\(endDate)). Share the link with your organization to continue."
+            )
+        default:
+            return L.t(
+                "Üyeliğiniz \(endDate) tarihinde sona eriyor (\(daysRemaining) gün kaldı). Devam etmek için linki kuruma iletebilirsiniz.",
+                "Your membership ends on \(endDate) (\(daysRemaining) days left). Share the link with your organization to continue."
+            )
+        }
+    }
+    static func subscriptionExpiringSoonSubtitle(daysRemaining: Int) -> String {
+        switch daysRemaining {
+        case 0:
+            return L.t("Bugün bitiyor", "Expires today")
+        case 1:
+            return L.t("Yarın bitiyor", "Expires tomorrow")
+        default:
+            return L.t("\(daysRemaining) gün kaldı", "\(daysRemaining) days left")
+        }
+    }
+    static var close: String { L.t("Kapat", "Close") }
     static var holidayModeTitle: String { L.t("Tatil Modu", "Holiday Mode") }
     static var holidayModeOff: String { L.t("Kapalı", "Off") }
     static var holidayModeBadgeActive: String { L.t("AKTİF", "ON") }
@@ -590,8 +672,28 @@ enum L10n {
         )
     }
     static var pickupPlaceFallback: String { L.t("Biniş noktan", "your pickup point") }
-    static func weatherContext(_ placeName: String, _ temperature: Int) -> String {
-        L.t("Bugün \(placeName) · \(temperature)°", "Today \(placeName) · \(temperature)°")
+    static func weatherContextMorning(
+        timing: PassengerWeatherTiming,
+        placeName: String,
+        temperature: Int
+    ) -> String {
+        switch timing {
+        case .todayMorning:
+            return L.t(
+                "Bugün sabah \(placeName) · \(temperature)°",
+                "This morning \(placeName) · \(temperature)°"
+            )
+        case .tomorrowMorning:
+            return L.t(
+                "Yarın sabah \(placeName) · \(temperature)°",
+                "Tomorrow morning \(placeName) · \(temperature)°"
+            )
+        case .weekdayMorning(let dayName):
+            return L.t(
+                "\(dayName) sabah \(placeName) · \(temperature)°",
+                "\(dayName) morning \(placeName) · \(temperature)°"
+            )
+        }
     }
     static var adviceRain: String { L.t("Yağmur var — şemsiyeni kap.", "Rain expected — grab an umbrella.") }
     static var adviceColdHat: String { L.t("Hava soğuk — bere takmadan çıkma.", "It's cold — don't leave without a hat.") }

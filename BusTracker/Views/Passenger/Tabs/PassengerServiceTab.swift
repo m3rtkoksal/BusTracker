@@ -28,7 +28,9 @@ struct PassengerServiceTab: View {
                     notComingPassengersSection
                 }
                 holidayModeSection
-                clothingAdviceSection
+                if weatherAdvisory != nil {
+                    clothingAdviceSection
+                }
             }
             .padding(24)
         }
@@ -271,7 +273,11 @@ struct PassengerServiceTab: View {
     }
 
     // MARK: - Clothing Advice Section
-    
+
+    private var weatherAdvisory: PassengerWeatherAdvisoryContext? {
+        PassengerWeatherService.advisoryContext()
+    }
+
     private var weatherCoordinate: CLLocationCoordinate2D? {
         savedMorningPickup?.coordinate ?? viewModel.draftPickupCoordinate
     }
@@ -288,23 +294,27 @@ struct PassengerServiceTab: View {
     }
     
     private var pickupWeatherTaskKey: String {
-        guard let coordinate = weatherCoordinate else { return "none" }
-        return "\(coordinate.latitude),\(coordinate.longitude)"
+        guard let coordinate = weatherCoordinate,
+              let advisory = weatherAdvisory
+        else { return "none" }
+        return "\(coordinate.latitude),\(coordinate.longitude),\(advisory.targetMorningKey)"
     }
     
     private func refreshPickupWeather() async {
-        guard let coordinate = weatherCoordinate else {
+        guard let coordinate = weatherCoordinate,
+              let advisory = weatherAdvisory
+        else {
             pickupWeather = nil
             pickupWeatherLoading = false
             return
         }
-        if let cached = PassengerWeatherService.cachedModel(for: coordinate) {
+        if let cached = PassengerWeatherService.cachedModel(for: coordinate, advisory: advisory) {
             pickupWeather = cached
             return
         }
         pickupWeatherLoading = true
         defer { pickupWeatherLoading = false }
-        pickupWeather = await PassengerWeatherService.load(for: coordinate)
+        pickupWeather = await PassengerWeatherService.load(for: coordinate, advisory: advisory)
     }
     
     // MARK: - Helpers
