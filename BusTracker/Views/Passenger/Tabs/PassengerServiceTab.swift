@@ -16,21 +16,57 @@ struct PassengerServiceTab: View {
     
     let onRequestComingAttendance: (UpcomingService) -> Void
     let onRequestNotComingAttendance: (UpcomingService) -> Void
-    let onOpenMapForPickup: () -> Void
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                if let delayMinutes = serviceDelayMinutes {
+                    serviceDelayNoticeSection(minutes: delayMinutes)
+                }
                 attendanceSection
-                notComingPassengersSection
+                if !notComingPassengers.isEmpty {
+                    notComingPassengersSection
+                }
                 holidayModeSection
-                pickupSummarySection
                 clothingAdviceSection
             }
             .padding(24)
         }
     }
     
+    // MARK: - Service Delay
+
+    private var nearestUpcomingService: UpcomingService {
+        viewModel.nearestUpcomingService
+    }
+
+    private var serviceDelayMinutes: Int? {
+        _ = store.delayNoticeRevision
+        return store.delayNoticeMinutes(for: nearestUpcomingService.dateKey)
+    }
+
+    private func serviceDelayNoticeSection(minutes: Int) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "clock.badge.exclamationmark.fill")
+                .font(.system(size: 22))
+                .foregroundStyle(Color(hex: 0xFFE04A))
+                .shadow(color: Color(hex: 0xFFE04A).opacity(0.5), radius: 6)
+
+            Text(L10n.passengerServiceDelayed(minutes))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(NeonTheme.onSurface)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color(hex: 0xFFE04A).opacity(0.1))
+        .clipShape(Rectangle())
+        .overlay {
+            Rectangle()
+                .strokeBorder(Color(hex: 0xFFE04A).opacity(0.45), lineWidth: 1.5)
+        }
+    }
+
     // MARK: - Attendance Section
     
     private var attendanceSection: some View {
@@ -182,10 +218,6 @@ struct PassengerServiceTab: View {
     
     // MARK: - Not Coming Passengers Section
 
-    private var nearestUpcomingService: UpcomingService {
-        viewModel.nearestUpcomingService
-    }
-
     private var notComingPassengers: [ShuttleMember] {
         _ = store.attendanceRevision
         return viewModel.notComingPassengers(for: nearestUpcomingService)
@@ -205,34 +237,28 @@ struct PassengerServiceTab: View {
                     .foregroundStyle(NeonTheme.onSurface)
             }
 
-            if notComingPassengers.isEmpty {
-                Text(L10n.serviceNotComingListEmpty)
-                    .font(.subheadline)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(notComingPassengers) { member in
-                        HStack(spacing: 12) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundStyle(Color(hex: 0xFF4444))
+            VStack(spacing: 8) {
+                ForEach(notComingPassengers) { member in
+                    HStack(spacing: 12) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Color(hex: 0xFF4444))
 
-                            Text(member.name)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(NeonTheme.onSurface)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background(NeonTheme.surfaceContainer.opacity(0.6))
-                        .overlay {
-                            Rectangle()
-                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
-                        }
+                        Text(member.name)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(NeonTheme.onSurface)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(NeonTheme.surfaceContainer.opacity(0.6))
+                    .overlay {
+                        Rectangle()
+                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -244,58 +270,6 @@ struct PassengerServiceTab: View {
         .shadow(color: NeonTheme.primary.opacity(0.12), radius: 6)
     }
 
-    // MARK: - Pickup Summary Section
-    
-    private var pickupSummarySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.pickupPoint)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(1.5)
-                .foregroundStyle(NeonTheme.onSurfaceVariant)
-            
-            if let savedMorningPickup {
-                Label(
-                    L10n.savedAt(savedMorningPickup.updatedAt.formatted(date: .omitted, time: .shortened)),
-                    systemImage: "checkmark.circle.fill"
-                )
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(NeonTheme.secondary)
-            } else {
-                Text(L10n.noPickupSaved)
-                    .font(.subheadline)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-            }
-            
-            Button {
-                onOpenMapForPickup()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "map")
-                    Text(savedMorningPickup == nil ? L10n.setOnMap : L10n.editOnMap)
-                        .tracking(1)
-                }
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
-                .foregroundStyle(NeonTheme.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-            }
-            .background(NeonTheme.surfaceContainerHigh)
-            .clipShape(Rectangle())
-            .overlay {
-                Rectangle()
-                    .strokeBorder(NeonTheme.secondary.opacity(0.45), lineWidth: 1)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(16)
-        .background(NeonTheme.surfaceContainer)
-        .clipShape(Rectangle())
-        .overlay {
-            Rectangle()
-                .strokeBorder(NeonTheme.outline.opacity(0.25), lineWidth: 1)
-        }
-    }
-    
     // MARK: - Clothing Advice Section
     
     private var weatherCoordinate: CLLocationCoordinate2D? {

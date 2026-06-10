@@ -51,6 +51,11 @@ service cloud.firestore {
         allow create: if isSignedIn();
       }
 
+      match /delayNotices/{serviceKey} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+
       match /morningPickups/{memberId} {
         allow read: if isSignedIn();
         allow create, update: if isSignedIn()

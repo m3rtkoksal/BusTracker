@@ -245,19 +245,11 @@ struct DriverHomeView: BaseView {
         }
     }
 
-    private var pulseDot: some View {
-        Circle()
-            .fill(store.isTripActive ? NeonTheme.driverChrome.statusAccent : NeonTheme.outline)
-            .frame(width: 8, height: 8)
-            .shadow(color: store.isTripActive ? NeonTheme.driverChrome.statusAccent.opacity(0.8) : .clear, radius: 4)
-    }
-
     // MARK: - Passengers Tab
 
     private var passengersTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                serviceTitleSection
                 serviceCodeCard
                 tripControlSection
                 statsGrid
@@ -277,22 +269,6 @@ struct DriverHomeView: BaseView {
             .padding(.horizontal, 24)
             .padding(.top, 16)
             .padding(.bottom, 24)
-        }
-    }
-
-    private var serviceTitleSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                pulseDot
-                Text(L10n.serviceNameLabel)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .tracking(2)
-                    .foregroundStyle(NeonTheme.onSurfaceVariant)
-            }
-            Text((profile?.groupName ?? L10n.service).uppercased())
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(NeonTheme.onSurface)
-                .tracking(-0.5)
         }
     }
 
@@ -606,11 +582,70 @@ struct DriverHomeView: BaseView {
             }
             .buttonStyle(.plain)
 
-            Text(tripStatusCaption)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
+            if !store.isTripActive {
+                driverDelayNoticeSection
+            } else {
+                Text(tripStatusCaption)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .tracking(2)
+                    .foregroundStyle(NeonTheme.outline)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private var driverDelayNoticeSection: some View {
+        let sentMinutes = store.currentServiceDelayNoticeMinutes
+        let chipsDisabled = sentMinutes != nil || viewModel.isSendingDelayNotice
+
+        return VStack(spacing: 10) {
+            Text(L10n.driverDelaySectionTitle)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
                 .tracking(2)
-                .foregroundStyle(NeonTheme.outline)
+                .foregroundStyle(NeonTheme.secondary)
                 .frame(maxWidth: .infinity)
+
+            HStack(spacing: 8) {
+                ForEach(ShuttleStore.driverDelayMinuteOptions, id: \.self) { minutes in
+                    Button {
+                        Task {
+                            await viewModel.sendDelayNotice(
+                                minutes: minutes,
+                                store: store,
+                                session: session
+                            )
+                        }
+                    } label: {
+                        Text(L10n.driverDelayChip(minutes))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(chipsDisabled ? NeonTheme.outline : NeonTheme.onSurface)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(NeonTheme.surfaceContainer.opacity(chipsDisabled ? 0.35 : 0.7))
+                            .overlay {
+                                Rectangle()
+                                    .strokeBorder(
+                                        chipsDisabled ? NeonTheme.outline.opacity(0.35) : NeonTheme.secondary.opacity(0.5),
+                                        lineWidth: 1
+                                    )
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(chipsDisabled)
+                }
+            }
+
+            Text(
+                viewModel.isSendingDelayNotice
+                    ? L10n.driverDelaySending
+                    : sentMinutes.map { L10n.driverDelaySent($0) } ?? L10n.driverDelaySectionHint
+            )
+            .font(.system(size: 10, weight: .medium, design: .rounded))
+            .tracking(1)
+            .foregroundStyle(sentMinutes != nil ? NeonTheme.secondary : NeonTheme.outline)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
         }
         .padding(.top, 4)
     }

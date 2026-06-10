@@ -70,6 +70,19 @@ final class ShuttleStore {
     private(set) var plannedTripEndAt: Date?
     private(set) var lastTripEndReason: TripEndReason?
     private(set) var attendanceRevision = 0
+    private(set) var delayNoticeRevision = 0
+    private var delayNoticeMinutesByServiceKey: [String: Int] = [:]
+    private var delayNoticeListeners: [String: ListenerRegistration] = [:]
+
+    static let driverDelayMinuteOptions = [5, 10, 15, 30]
+
+    var currentServiceDelayNoticeMinutes: Int? {
+        delayNoticeMinutesByServiceKey[ServiceSchedule.currentDriverSession().dateKey]
+    }
+
+    func delayNoticeMinutes(for dateKey: String) -> Int? {
+        delayNoticeMinutesByServiceKey[dateKey]
+    }
 
     private var todayKey: String {
         HolidayMode.dateKey(from: Date())
@@ -126,6 +139,7 @@ final class ShuttleStore {
                 }
 
             startAttendanceListeners(groupID: groupID)
+            startDelayNoticeListeners(groupID: groupID)
 
             canonicalRouteListener = db.collection("groups").document(groupID)
                 .collection("canonicalRoutes").document("morning")
@@ -200,12 +214,55 @@ final class ShuttleStore {
         attendanceListeners.removeAll()
     }
 
+    private func listenDelayNotice(groupID: String, serviceKey: String) -> ListenerRegistration {
+        db.collection("groups").document(groupID)
+            .collection("delayNotices").document(serviceKey)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if let minutes = snapshot?.data()?["minutes"] as? Int {
+                        self.delayNoticeMinutesByServiceKey[serviceKey] = minutes
+                    } else {
+                        self.delayNoticeMinutesByServiceKey.removeValue(forKey: serviceKey)
+                    }
+                    self.delayNoticeRevision += 1
+                }
+            }
+    }
+
+    private func startDelayNoticeListeners(groupID: String) {
+        stopDelayNoticeListeners()
+
+        var serviceKeys: Set<String> = []
+        let (todayAm, todayPm) = ServiceSchedule.todayDateKeys()
+        serviceKeys.insert(todayAm)
+        serviceKeys.insert(todayPm)
+        serviceKeys.insert(ServiceSchedule.currentDriverSession().dateKey)
+        for service in ServiceSchedule.nextTwoServices() {
+            serviceKeys.insert(service.dateKey)
+        }
+
+        for serviceKey in serviceKeys {
+            delayNoticeListeners[serviceKey] = listenDelayNotice(groupID: groupID, serviceKey: serviceKey)
+        }
+    }
+
+    private func stopDelayNoticeListeners() {
+        for (_, listener) in delayNoticeListeners {
+            listener.remove()
+        }
+        delayNoticeListeners.removeAll()
+        delayNoticeMinutesByServiceKey = [:]
+        delayNoticeRevision = 0
+    }
+
     func stopListening() {
         membersListener?.remove()
         locationListener?.remove()
         routeListener?.remove()
         canonicalRouteListener?.remove()
         stopAttendanceListeners()
+        stopDelayNoticeListeners()
         morningPickupsListener?.remove()
         membersListener = nil
         locationListener = nil
@@ -473,6 +530,30 @@ final class ShuttleStore {
 
         try await saveUserDocument(profile)
         return profile
+    }
+
+    func sendDelayNotice(groupID: String, driverName: String, minutes: Int) async throws {
+        guard !isTripActive else {
+            throw ShuttleStoreError.invalidInput(L10n.driverDelayTripActive)
+        }
+        guard Self.driverDelayMinuteOptions.contains(minutes) else {
+            throw ShuttleStoreError.invalidInput(L10n.driverDelayInvalidMinutes)
+        }
+        let service = ServiceSchedule.currentDriverSession()
+        if currentServiceDelayNoticeMinutes != nil {
+            throw ShuttleStoreError.invalidInput(L10n.driverDelayAlreadySent)
+        }
+
+        try await FirebaseSession.shared.ensureAuthenticated()
+
+        try await db.collection("groups").document(groupID).collection("tripEvents").addDocument(data: [
+            "type": "delay_notice",
+            "serviceKey": service.dateKey,
+            "session": service.session.rawValue,
+            "minutes": minutes,
+            "driverName": driverName,
+            "createdAt": FieldValue.serverTimestamp()
+        ])
     }
 
     func startTrip(

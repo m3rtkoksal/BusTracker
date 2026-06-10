@@ -81,6 +81,27 @@ enum L10n {
     static var startShuttle: String { L.t("SERVİSİ BAŞLAT", "START SHUTTLE") }
     static var sharingLocation: String { L.t("Konum paylaşılıyor", "Sharing location") }
     static var selectDurationOnStart: String { L.t("Başlatınca süre seçilir", "Duration is selected when starting") }
+    static var driverDelaySectionTitle: String { L.t("GECİKME BİLDİR", "NOTIFY DELAY") }
+    static var driverDelaySectionHint: String {
+        L.t("Yolculara gecikme süresini bildir (servis başına 1 kez)", "Notify passengers of delay (once per service)")
+    }
+    static func driverDelayChip(_ minutes: Int) -> String { L.t("\(minutes) dk", "\(minutes) min") }
+    static func driverDelaySent(_ minutes: Int) -> String {
+        L.t("Gecikme bildirimi gönderildi (+\(minutes) dk)", "Delay notice sent (+\(minutes) min)")
+    }
+    static var driverDelaySending: String { L.t("Gönderiliyor…", "Sending…") }
+    static var driverDelaySentSuccess: String { L.t("Gecikme bildirimi gönderildi", "Delay notice sent") }
+    static var driverDelayAlreadySent: String {
+        L.t("Bu servis için zaten gecikme bildirimi gönderildi", "Delay notice already sent for this service")
+    }
+    static var driverDelayTripActive: String {
+        L.t("Servis aktifken gecikme bildirimi gönderilemez", "Cannot send delay notice while shuttle is active")
+    }
+    static var driverDelayInvalidMinutes: String { L.t("Geçersiz gecikme süresi", "Invalid delay duration") }
+    static var driverDelaySendFailed: String { L.t("Gecikme bildirimi gönderilemedi", "Could not send delay notice") }
+    static func passengerServiceDelayed(_ minutes: Int) -> String {
+        L.t("Servis \(minutes) dakika gecikiyor", "Shuttle is delayed by \(minutes) minutes")
+    }
     static func tripEndTime(_ time: String) -> String { L.t("Bitiş: \(time)", "Ends: \(time)") }
     static var locationPermissionDenied: String {
         L.t("Konum izni kapalı. Ayarlar'dan izin verin.", "Location permission is off. Enable it in Settings.")

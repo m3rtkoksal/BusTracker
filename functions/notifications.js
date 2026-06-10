@@ -265,6 +265,48 @@ function buildTripEndedMessage({
   };
 }
 
+function buildDriverDelayNotification(driverName, minutes) {
+  return {
+    title: "Servis gecikiyor",
+    body: `${driverName} servisi yaklaşık ${minutes} dakika gecikecek.`,
+  };
+}
+
+function buildDriverDelayMessage({ token, groupId, memberID, notification, minutes }) {
+  const { title, body } = notification;
+  return {
+    token,
+    notification: { title, body },
+    data: {
+      type: "driver_delay",
+      groupId,
+      memberID,
+      minutes: String(minutes),
+    },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: CHANNEL_TRIP,
+        sound: SOUND_TRIP_ANDROID,
+        priority: "high",
+        tag: `driver_delay_${groupId}_${memberID}`,
+        ticker: title,
+        visibility: "public",
+      },
+    },
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: SOUND_TRIP_IOS,
+          "thread-id": `trip_${groupId}`,
+        },
+      },
+    },
+  };
+}
+
 module.exports = {
   CHANNEL_TRIP,
   CHANNEL_APPROACHING,
@@ -275,4 +317,6 @@ module.exports = {
   buildTripEndedNotification,
   buildDriverApproachingMessage,
   buildPassengerBoardedMessage,
+  buildDriverDelayNotification,
+  buildDriverDelayMessage,
 };

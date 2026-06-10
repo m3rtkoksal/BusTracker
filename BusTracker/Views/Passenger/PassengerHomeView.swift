@@ -128,8 +128,7 @@ struct PassengerHomeView: BaseView {
                         pickupWeather: $pickupWeather,
                         pickupWeatherLoading: $pickupWeatherLoading,
                         onRequestComingAttendance: { service in requestComingAttendance(for: service) },
-                        onRequestNotComingAttendance: { service in requestNotComingAttendance(for: service) },
-                        onOpenMapForPickup: { openMapFocusedOnPickup() }
+                        onRequestNotComingAttendance: { service in requestNotComingAttendance(for: service) }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(NeonTheme.background)
@@ -451,10 +450,6 @@ struct PassengerHomeView: BaseView {
 
     private func centerOnMyLocation() {
         focusOnSavedPickupOrDevice(animated: true)
-    }
-
-    private func openMapFocusedOnPickup() {
-        openMapFromTripStartedNotification()
     }
 
     /// Servis yola çıktı bildirimine basınca harita sekmesi (+ sefer aktifse odak).

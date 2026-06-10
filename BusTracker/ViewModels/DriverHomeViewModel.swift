@@ -31,6 +31,7 @@ final class DriverHomeViewModel: BaseViewModel {
     private weak var tripStartSession: UserSession?
     static let defaultTripDurationHours = 3.0
     private var isRequestingMotionAuthorization = false
+    var isSendingDelayNotice = false
 
     enum DriverStartPermissionSheet: Equatable {
         case locationForeground
@@ -384,6 +385,30 @@ final class DriverHomeViewModel: BaseViewModel {
         }
         store.stopListening()
         await session.signOut()
+    }
+
+    func sendDelayNotice(
+        minutes: Int,
+        store: ShuttleStore,
+        session: UserSession
+    ) async {
+        guard !isSendingDelayNotice else { return }
+        guard let profile = session.profile,
+              let groupID = profile.groupID else { return }
+
+        isSendingDelayNotice = true
+        defer { isSendingDelayNotice = false }
+
+        do {
+            try await store.sendDelayNotice(
+                groupID: groupID,
+                driverName: profile.name,
+                minutes: minutes
+            )
+            showSuccess(L10n.driverDelaySentSuccess)
+        } catch {
+            showError(error.localizedDescription.isEmpty ? L10n.driverDelaySendFailed : error.localizedDescription)
+        }
     }
 
     func copyServiceCode(_ code: String) {

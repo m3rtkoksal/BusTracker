@@ -9,6 +9,8 @@ const {
 } = require("./weather");
 const {
   buildDriverApproachingMessage,
+  buildDriverDelayMessage,
+  buildDriverDelayNotification,
   buildTripEndedMessage,
   buildTripEndedNotification,
   buildTripStartedMessage,
@@ -180,6 +182,88 @@ exports.notifyTripStarted = onDocumentCreated(
         "returnees:",
         returneeYesterday.size
       );
+    }
+  }
+);
+
+exports.notifyDriverDelay = onDocumentCreated(
+  "groups/{groupId}/tripEvents/{eventId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data || data.type !== "delay_notice") {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    const serviceKey = data.serviceKey;
+    const minutes = Number(data.minutes);
+    const driverName = data.driverName || "Şoför";
+    const allowedMinutes = [5, 10, 15, 30];
+
+    if (!serviceKey || !allowedMinutes.includes(minutes)) {
+      console.warn("[notifyDriverDelay] invalid payload", data);
+      return;
+    }
+
+    const db = getFirestore();
+    const noticeRef = db
+      .collection("groups")
+      .doc(groupId)
+      .collection("delayNotices")
+      .doc(serviceKey);
+
+    const alreadySent = await db.runTransaction(async (tx) => {
+      const existing = await tx.get(noticeRef);
+      if (existing.exists) {
+        return true;
+      }
+      tx.set(noticeRef, {
+        minutes,
+        driverName,
+        serviceKey,
+        createdAt: FieldValue.serverTimestamp(),
+        eventId: event.params.eventId,
+      });
+      return false;
+    });
+
+    if (alreadySent) {
+      console.log("[notifyDriverDelay] duplicate skipped:", serviceKey);
+      return;
+    }
+
+    const [membersSnapshot, attendanceSnapshot] = await Promise.all([
+      db.collection("groups").doc(groupId).collection("members").get(),
+      db.collection("groups").doc(groupId).collection("attendance").doc(serviceKey).get(),
+    ]);
+
+    const attendanceResponses = attendanceSnapshot.data()?.responses || {};
+    const passengers = passengerMembers(membersSnapshot, attendanceResponses);
+
+    console.log(
+      "[notifyDriverDelay] recipients:",
+      passengers.length,
+      "service:",
+      serviceKey,
+      "minutes:",
+      minutes
+    );
+
+    if (passengers.length === 0) {
+      return;
+    }
+
+    const notification = buildDriverDelayNotification(driverName, minutes);
+    const messages = passengers.map(({ memberID, token }) =>
+      buildDriverDelayMessage({ token, groupId, memberID, notification, minutes })
+    );
+
+    const result = await getMessaging().sendEach(messages);
+    const failed = result.responses.filter((response) => !response.success).length;
+    if (failed > 0) {
+      console.warn("[notifyDriverDelay] FCM failures:", failed);
+    } else {
+      console.log("[notifyDriverDelay] sent:", messages.length);
     }
   }
 );
