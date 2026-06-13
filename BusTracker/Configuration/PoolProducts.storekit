@@ -1,0 +1,125 @@
+{
+  "identifier" : "F4B1A002",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "50",
+      "familyShareable" : false,
+      "internalID" : "POOL50",
+      "localizations" : [
+        {
+          "description" : "Servis havuzuna 50 TL katkı",
+          "displayName" : "Havuz Katkısı 50",
+          "locale" : "tr"
+        },
+        {
+          "description" : "50 TRY pool contribution",
+          "displayName" : "Pool 50",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mikatechnology.BusTracker.pool.50",
+      "referenceName" : "Pool Contribution 50",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "100",
+      "familyShareable" : false,
+      "internalID" : "POOL100",
+      "localizations" : [
+        {
+          "description" : "Servis havuzuna 100 TL katkı",
+          "displayName" : "Havuz Katkısı 100",
+          "locale" : "tr"
+        },
+        {
+          "description" : "100 TRY pool contribution",
+          "displayName" : "Pool 100",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mikatechnology.BusTracker.pool.100",
+      "referenceName" : "Pool Contribution 100",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "250",
+      "familyShareable" : false,
+      "internalID" : "POOL250",
+      "localizations" : [
+        {
+          "description" : "Servis havuzuna 250 TL katkı",
+          "displayName" : "Havuz Katkısı 250",
+          "locale" : "tr"
+        },
+        {
+          "description" : "250 TRY pool contribution",
+          "displayName" : "Pool 250",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mikatechnology.BusTracker.pool.250",
+      "referenceName" : "Pool Contribution 250",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "500",
+      "familyShareable" : false,
+      "internalID" : "POOL500",
+      "localizations" : [
+        {
+          "description" : "Servis havuzuna 500 TL katkı",
+          "displayName" : "Havuz Katkısı 500",
+          "locale" : "tr"
+        },
+        {
+          "description" : "500 TRY pool contribution",
+          "displayName" : "Pool 500",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mikatechnology.BusTracker.pool.500",
+      "referenceName" : "Pool Contribution 500",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "1000",
+      "familyShareable" : false,
+      "internalID" : "POOL1000",
+      "localizations" : [
+        {
+          "description" : "Servis havuzuna 1000 TL katkı",
+          "displayName" : "Havuz Katkısı 1000",
+          "locale" : "tr"
+        },
+        {
+          "description" : "1000 TRY pool contribution",
+          "displayName" : "Pool 1000",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mikatechnology.BusTracker.pool.1000",
+      "referenceName" : "Pool Contribution 1000",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0000000000",
+    "_developerTeamID" : "79G38KD48M",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "tr",
+    "_storefront" : "TUR",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

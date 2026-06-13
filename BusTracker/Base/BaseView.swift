@@ -88,7 +88,7 @@ struct BaseViewShell<VM: BaseViewModel, Content: View, TrailingToolbar: View>: V
                     }
 
                     if let toast = viewModel.toast {
-                        toastBanner(toast)
+                        TopToastBanner(popup: toast, onDismiss: viewModel.clearToast)
                             .transition(.move(edge: .top).combined(with: .opacity))
                             .zIndex(1)
                     }
@@ -166,28 +166,6 @@ struct BaseViewShell<VM: BaseViewModel, Content: View, TrailingToolbar: View>: V
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
         .zIndex(2)
-    }
-
-    private func toastBanner(_ popup: PopupPresentation) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: popup.style.iconName)
-                .foregroundStyle(popup.style.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                if !popup.title.isEmpty {
-                    Text(popup.title).font(.subheadline.weight(.semibold))
-                }
-                Text(popup.message).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button { viewModel.clearToast() } label: {
-                Image(systemName: "xmark")
-                    .font(.caption)
-            }
-        }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
-        .padding(.top, 8)
     }
 }
 

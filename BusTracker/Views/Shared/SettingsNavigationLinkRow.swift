@@ -1,14 +1,14 @@
 import SwiftUI
 
-struct SettingsNavigationLinkRow<Destination: View>: View {
+struct ServiceSubscriptionRoute: Hashable {}
+
+struct SettingsNavigationLinkRow<Route: Hashable>: View {
     let title: String
     var value: String? = nil
-    @ViewBuilder let destination: () -> Destination
+    let route: Route
 
     var body: some View {
-        NavigationLink {
-            destination()
-        } label: {
+        NavigationLink(value: route) {
             HStack {
                 Text(title.uppercased())
                     .font(.system(size: 10, weight: .medium, design: .rounded))

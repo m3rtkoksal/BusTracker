@@ -1,10 +1,11 @@
 const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall } = require("firebase-functions/v2/https");
 const {
   handleSubscribeInit,
   handleSubscribeCallback,
   handleSubscribeWebhook,
 } = require("./subscription");
+const { recordPoolIAP } = require("./pool");
 const { initializeApp } = require("firebase-admin/app");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -473,6 +474,11 @@ exports.subscribeWebhook = onRequest(
     }
     await handleSubscribeWebhook(getFirestore(), req, res);
   }
+);
+
+exports.recordPoolIAP = onCall(
+  { region: "europe-west1" },
+  async (request) => recordPoolIAP(request)
 );
 
 exports.reconcileMorningCanonicalRoute = onDocumentCreated(

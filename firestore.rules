@@ -27,6 +27,22 @@ service cloud.firestore {
           || request.resource.data.subscriptionUpdatedAt == resource.data.subscriptionUpdatedAt);
     }
 
+    function poolServerFieldsUnchanged() {
+      return (!('poolCollected' in request.resource.data)
+          || request.resource.data.poolCollected == resource.data.poolCollected)
+        && (!('poolUpdatedAt' in request.resource.data)
+          || request.resource.data.poolUpdatedAt == resource.data.poolUpdatedAt);
+    }
+
+    function poolModeUpdateValid() {
+      return request.resource.data.poolMode in ['monthly', 'annual']
+        && request.resource.data.poolTarget is int
+        && (
+          (request.resource.data.poolMode == 'monthly' && request.resource.data.poolTarget == 99)
+          || (request.resource.data.poolMode == 'annual' && request.resource.data.poolTarget == 1000)
+        );
+    }
+
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
@@ -34,7 +50,13 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && subscriptionFieldsUnchanged();
+      allow update: if isSignedIn()
+        && subscriptionFieldsUnchanged()
+        && poolServerFieldsUnchanged()
+        && (
+          !('poolMode' in request.resource.data)
+          || poolModeUpdateValid()
+        );
 
       match /members/{memberId} {
         allow read: if isSignedIn();
@@ -93,6 +115,10 @@ service cloud.firestore {
       }
 
       match /subscriptionPayments/{paymentId} {
+        allow read, write: if false;
+      }
+
+      match /poolIAPTransactions/{transactionId} {
         allow read, write: if false;
       }
     }

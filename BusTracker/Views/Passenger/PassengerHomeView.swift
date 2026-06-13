@@ -13,9 +13,7 @@ struct PassengerHomeView: BaseView {
     @State var tabBar = PassengerTabBarController()
     @State private var mapPosition: MapCameraPosition = MapDefaults.homeMapPosition
     @State private var lastKnownMapRegion = MapDefaults.homeRegion
-    @State private var showMyServices = false
-    @State private var myServicesInviteCode = ""
-    @State private var openAddServiceFromInvite = false
+    @State private var settingsPath = NavigationPath()
     @State private var pendingCenterOnPassenger = false
     @State private var hasInitializedMapCamera = false
     /// Konum tuşu: false = bir sonraki basış birincil odak, true = bir sonraki basış alternatif odak.
@@ -75,10 +73,8 @@ struct PassengerHomeView: BaseView {
             .overlay { holidayModePickerOverlay }
             .overlay { actionPermissionOverlay }
             .modifier(PassengerSmlerInviteModifier(
-                showMyServices: $showMyServices,
-                myServicesInviteCode: $myServicesInviteCode,
-                openAddServiceFromInvite: $openAddServiceFromInvite,
-                session: session,
+                settingsPath: $settingsPath,
+                tabBar: tabBar,
                 onAppearCheck: presentMyServicesForSmlerInviteIfNeeded
             ))
     }
@@ -89,7 +85,7 @@ struct PassengerHomeView: BaseView {
 
     private var passengerTabRootContent: some View {
         VStack(spacing: 0) {
-            if tabBar.selectedTab != .map {
+            if tabBar.selectedTab != .map && !shouldHideSettingsChrome {
                 passengerTopBar
             }
 
@@ -136,7 +132,7 @@ struct PassengerHomeView: BaseView {
                     PassengerSettingsTab(
                         viewModel: viewModel,
                         showLanguagePicker: $showLanguagePicker,
-                        showMyServices: $showMyServices
+                        settingsPath: $settingsPath
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(NeonTheme.background)
@@ -388,11 +384,16 @@ struct PassengerHomeView: BaseView {
         .animation(.easeInOut(duration: 0.28), value: viewModel.showTripStartedAttendanceSheet)
     }
 
+    private var shouldHideSettingsChrome: Bool {
+        tabBar.selectedTab == .settings
+    }
+
     private func presentMyServicesForSmlerInviteIfNeeded() {
         guard let code = smlerInviteCoordinator.pendingAddServiceCode else { return }
-        myServicesInviteCode = code
-        openAddServiceFromInvite = true
-        showMyServices = true
+        tabBar.select(.settings)
+        settingsPath.append(
+            MyServicesRoute(initialServiceCode: code, openAddServiceOnAppear: true)
+        )
         smlerInviteCoordinator.clearAddServicePending()
     }
 

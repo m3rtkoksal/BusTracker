@@ -164,71 +164,95 @@ enum L10n {
 
     // MARK: - Subscription
 
-    static var subscription: String { L.t("Üyelik", "Membership") }
-    static var subscriptionSectionTitle: String { L.t("Üyelik durumu", "Membership status") }
-    static var subscriptionStartDate: String { L.t("Üyelik başlangıç", "Membership start") }
-    static var subscriptionEndDate: String { L.t("Üyelik bitiş", "Membership end") }
-    static var subscriptionInactive: String { L.t("Kapalı", "Inactive") }
+    static var subscription: String { L.t("Servis üyeliği", "Service membership") }
+    static var subscriptionSectionTitle: String { L.t("Servis durumu", "Service status") }
+    static var subscriptionStartDate: String { L.t("Aktif başlangıç", "Active from") }
+    static var subscriptionEndDate: String { L.t("Aktif bitiş", "Active until") }
+    static var subscriptionInactive: String { L.t("Pasif", "Inactive") }
     static var subscriptionActiveDescription: String {
         L.t(
-            "Üyeliğiniz aktif. Bitiş tarihine kadar sürücü özelliklerini kullanabilirsiniz.",
-            "Your membership is active. You can use driver features until the end date."
+            "Servis kodunuz aktif. Bitiş tarihine kadar canlı takip kullanılabilir.",
+            "Your shuttle code is active. Live tracking is available until the end date."
         )
     }
     static var subscriptionInactiveDescription: String {
         L.t(
-            "Şu an aktif üyelik görünmüyor.",
-            "No active membership at the moment."
+            "Servis kodu pasif. Havuz hedefi tamamlanınca yeniden açılır.",
+            "Shuttle code is inactive. It reopens when the pool target is met."
         )
     }
-    static var subscriptionPaymentLinkTitle: String { L.t("Üyeliği devam ettir", "Continue membership") }
-    static var subscriptionRenewalHint: String {
+    static var subscriptionGraceDescription: String {
         L.t(
-            "Linki kuruma iletebilir, paylaşabilir veya kopyalayabilirsiniz.",
-            "You can share or copy the link for your organization."
+            "Üyelik süresi doldu; ek süre içindesiniz. Havuzu yenileyin.",
+            "Membership ended; you are in the grace period. Renew the pool."
         )
     }
-    static var subscriptionRenewalOpen: String {
-        L.t("Web sayfasını aç", "Open website")
+    static var poolPaymentTitle: String { L.t("Havuza katkı", "Pool contribution") }
+    static var poolModeMonthly: String { L.t("Aylık", "Monthly") }
+    static var poolModeAnnual: String { L.t("Yıllık", "Annual") }
+    static var poolRequiredBalance: String { L.t("Ödenmesi gereken", "Required") }
+    static var poolPaidBalance: String { L.t("Ödenen", "Paid") }
+    static var poolRemainingBalance: String { L.t("Eksik bakiye", "Remaining") }
+    static var poolSelectAmount: String { L.t("Katkı tutarı seç", "Select amount") }
+    static var poolPayButton: String { L.t("App Store ile öde", "Pay with App Store") }
+    static var poolCompleteMessage: String {
+        L.t("Bu dönem için havuz tamamlandı.", "Pool complete for this period.")
     }
-    static var subscriptionBossPaymentHint: String {
-        L.t(
-            "Devam etmek için linki bağlı olduğunuz kuruma iletebilirsiniz.",
-            "You can share the link with your organization to continue."
-        )
+    static var poolMonthlyHint: String {
+        L.t("15 kişinin toplaması gereken aylık hedef.", "Monthly target for the group to collect.")
     }
-    static func subscriptionRenewalShareMessage(_ url: String) -> String {
-        L.t(
-            "Shuttle Live üyelik devamı. Servis kodunuz linkte hazır:\n\(url)",
-            "Shuttle Live membership continuation. Your service code is in the link:\n\(url)"
-        )
+    static var poolAnnualHint: String {
+        L.t("1 yıl aktif kalmak için toplam hedef.", "Total target for one year of service.")
     }
-    static var subscriptionLinkCopied: String {
-        L.t("Link kopyalandı.", "Link copied.")
+    static func poolCurrency(_ amount: Int) -> String {
+        L.t("\(amount) TL", "\(amount) TRY")
+    }
+    static var poolPurchaseProductUnavailable: String {
+        L.t("Ürün şu an yüklenemedi.", "Product could not be loaded.")
+    }
+    static var poolPurchasePending: String {
+        L.t("Ödeme onay bekliyor.", "Payment is pending approval.")
+    }
+    static var poolPurchaseVerificationFailed: String {
+        L.t("Ödeme doğrulanamadı.", "Payment could not be verified.")
+    }
+    static var poolPurchaseBackendFailed: String {
+        L.t("Ödeme kaydedilemedi.", "Payment could not be recorded.")
+    }
+    static var poolPurchaseSuccess: String {
+        L.t("Katkınız havuza eklendi.", "Your contribution was added to the pool.")
+    }
+    static var poolMissingGroup: String {
+        L.t("Servis grubu bulunamadı.", "Shuttle group not found.")
+    }
+    static var poolNotGroupMember: String {
+        L.t("Bu servisin üyesi değilsiniz.", "You are not a member of this shuttle group.")
+    }
+    static var poolFunctionNotDeployed: String {
+        L.t("Ödeme sunucusu hazır değil. Lütfen biraz sonra tekrar deneyin.", "Payment server is not ready. Please try again shortly.")
     }
     static var subscriptionPaymentHint: String {
         L.t(
-            "Kurumunuz işlemi tamamladığında tarihler burada güncellenir.",
-            "Dates will update here once your organization completes the process."
+            "Ödeme sonrası bakiye ve tarihler birkaç saniye içinde güncellenir.",
+            "Balance and dates update within a few seconds after payment."
         )
     }
-    static var subscriptionPayment: String { L.t("Üyelik devamı", "Membership") }
     static func subscriptionExpiringSoonMessage(endDate: String, daysRemaining: Int) -> String {
         switch daysRemaining {
         case 0:
             return L.t(
-                "Üyeliğiniz bugün (\(endDate)) sona eriyor. Devam etmek için linki kuruma iletebilirsiniz.",
-                "Your membership ends today (\(endDate)). Share the link with your organization to continue."
+                "Servis üyeliği bugün (\(endDate)) bitiyor. Havuzu yenileyin.",
+                "Service membership ends today (\(endDate)). Renew the pool."
             )
         case 1:
             return L.t(
-                "Üyeliğiniz yarın (\(endDate)) sona eriyor. Devam etmek için linki kuruma iletebilirsiniz.",
-                "Your membership ends tomorrow (\(endDate)). Share the link with your organization to continue."
+                "Servis üyeliği yarın (\(endDate)) bitiyor. Havuzu yenileyin.",
+                "Service membership ends tomorrow (\(endDate)). Renew the pool."
             )
         default:
             return L.t(
-                "Üyeliğiniz \(endDate) tarihinde sona eriyor (\(daysRemaining) gün kaldı). Devam etmek için linki kuruma iletebilirsiniz.",
-                "Your membership ends on \(endDate) (\(daysRemaining) days left). Share the link with your organization to continue."
+                "Servis üyeliği \(endDate) tarihinde bitiyor (\(daysRemaining) gün kaldı). Havuzu yenileyin.",
+                "Service membership ends on \(endDate) (\(daysRemaining) days left). Renew the pool."
             )
         }
     }

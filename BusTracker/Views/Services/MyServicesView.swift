@@ -1,6 +1,11 @@
 import SwiftUI
 import FirebaseFirestore
 
+struct MyServicesRoute: Hashable {
+    var initialServiceCode: String = ""
+    var openAddServiceOnAppear: Bool = false
+}
+
 struct MyServicesView: View {
     @Environment(UserSession.self) private var session
     @Environment(ShuttleStore.self) private var store
@@ -265,37 +270,17 @@ struct MyServicesView: View {
                         }
 
                     }
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 16)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if profile?.role == .passenger {
-                    Button(action: openAddServiceSheet) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundStyle(NeonTheme.primary)
-
-                            Text(L10n.addNewShuttle)
-                                .font(.system(size: 15, weight: .black, design: .rounded))
-                                .tracking(1)
-                                .foregroundStyle(NeonTheme.primary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(NeonTheme.background)
-                        .clipShape(Rectangle())
-                        .overlay(
-                            Rectangle()
-                                .stroke(NeonTheme.primary, lineWidth: 2)
-                        )
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if profile?.role == .passenger {
+                        addNewShuttleButton
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
                 }
             }
+            .safeAreaPadding(.top)
         }
+        .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(.dark)
         .onAppear { openSmlerInviteAddServiceIfNeeded() }
         .overlay {
@@ -329,6 +314,34 @@ struct MyServicesView: View {
         } message: {
             Text(joinSuccessMessage ?? "")
         }
+    }
+
+    private var addNewShuttleButton: some View {
+        Button(action: openAddServiceSheet) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(NeonTheme.primary)
+
+                Text(L10n.addNewShuttle)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(NeonTheme.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(NeonTheme.background)
+            .clipShape(Rectangle())
+            .overlay(
+                Rectangle()
+                    .stroke(NeonTheme.primary, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(NeonTheme.background)
     }
 
     private func openSmlerInviteAddServiceIfNeeded() {

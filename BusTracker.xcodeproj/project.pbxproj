@@ -13,6 +13,7 @@
 		A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1CD22FC3394E008B17BC /* FirebaseAuth */; };
 		A6DF1D042FC34100008B17BC /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D052FC34100008B17BC /* FirebaseMessaging */; };
 		A6DF1D062FC34200008B17BC /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D072FC34200008B17BC /* FirebaseAnalytics */; };
+		A6DF1D082FC34300008B17BC /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = A6DF1D092FC34300008B17BC /* FirebaseFunctions */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +53,7 @@
 				A6DF1CD12FC3394E008B17BC /* FirebaseAuth in Frameworks */,
 				A6DF1CCF2FC3394E008B17BC /* FirebaseCore in Frameworks */,
 				A6DF1D062FC34200008B17BC /* FirebaseAnalytics in Frameworks */,
+				A6DF1D082FC34300008B17BC /* FirebaseFunctions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,6 +102,7 @@
 				A6DF1D052FC34100008B17BC /* FirebaseMessaging */,
 				A697E1D52FC8AC2A0071889D /* Lottie */,
 				A6DF1D072FC34200008B17BC /* FirebaseAnalytics */,
+				A6DF1D092FC34300008B17BC /* FirebaseFunctions */,
 			);
 			productName = BusTracker;
 			productReference = A6DF1C642FC33796008B17BC /* BusTracker.app */;
@@ -288,7 +291,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 79G38KD48M;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -317,7 +320,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.3.2;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechnology.BusTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -343,7 +346,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = BusTracker/BusTrackerRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 79G38KD48M;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -372,7 +375,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.3.2;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mikatechnology.BusTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -463,6 +466,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		A6DF1D092FC34300008B17BC /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6DF1C742FC33800008B17BC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

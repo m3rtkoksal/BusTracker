@@ -8,7 +8,7 @@ struct DriverHomeView: BaseView {
     @Environment(AuthService.self) private var authService
     @State var viewModel = DriverHomeViewModel()
     @State var tabBar = DriverTabBarController()
-    @State private var showMyServices = false
+    @State private var settingsPath = NavigationPath()
     @State private var isCreatingInviteLink = false
     @State private var showLanguagePicker = false
     @State private var subscriptionViewModel = DriverSubscriptionViewModel()
@@ -54,7 +54,7 @@ struct DriverHomeView: BaseView {
 
     func content() -> some View {
         VStack(spacing: 0) {
-            if tabBar.selectedTab != .map {
+            if tabBar.selectedTab != .map && !shouldHideSettingsChrome {
                 driverTopBar
             }
 
@@ -195,10 +195,6 @@ struct DriverHomeView: BaseView {
             viewModel.onDriverPermissionsUpdated(locationTracker: locationTracker)
         }
 #endif
-        .sheet(isPresented: $showMyServices) {
-            MyServicesView()
-                .environment(session)
-        }
     }
 
     // MARK: - Top Bar
@@ -724,10 +720,14 @@ struct DriverHomeView: BaseView {
         }
     }
 
+    private var shouldHideSettingsChrome: Bool {
+        tabBar.selectedTab == .settings
+    }
+
     // MARK: - Settings Tab
 
     private var settingsTab: some View {
-        NavigationStack {
+        NavigationStack(path: $settingsPath) {
             ScrollView {
                 VStack(spacing: 16) {
                     if let code = profile?.groupCode, !code.isEmpty {
@@ -749,19 +749,17 @@ struct DriverHomeView: BaseView {
                         }
                     }
 
-                    SettingsNavigationRow(
+                    SettingsNavigationLinkRow(
                         title: L10n.myShuttles,
-                        value: profile?.groupName
-                    ) {
-                        showMyServices = true
-                    }
+                        value: profile?.groupName,
+                        route: MyServicesRoute()
+                    )
 
                     SettingsNavigationLinkRow(
                         title: L10n.subscription,
-                        value: subscriptionViewModel.statusSubtitle
-                    ) {
-                        DriverSubscriptionView()
-                    }
+                        value: subscriptionViewModel.statusSubtitle,
+                        route: ServiceSubscriptionRoute()
+                    )
 
                     NotificationSettingsRow()
 
@@ -787,6 +785,15 @@ struct DriverHomeView: BaseView {
                     }
                 }
                 .padding(24)
+            }
+            .navigationDestination(for: MyServicesRoute.self) { route in
+                MyServicesView(
+                    initialServiceCode: route.initialServiceCode,
+                    openAddServiceOnAppear: route.openAddServiceOnAppear
+                )
+            }
+            .navigationDestination(for: ServiceSubscriptionRoute.self) { _ in
+                DriverSubscriptionView()
             }
         }
         .overlay {
